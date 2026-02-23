@@ -109,65 +109,33 @@ Use this prompt to generate final App Store icon artwork:
 
 Create a full-bleed 1024×1024 square App Store icon.
 
-The background must be a continuous deep midnight indigo / blue-black (in the #05060B–#0B0B16 range) filling the entire canvas edge-to-edge.
+Background: a continuous deep midnight indigo-black (#04050B–#0A0B14 range), filling the entire canvas edge-to-edge. No inner panel, no inset, no framing, no borders, no container shapes. One seamless background surface.
 
-There must be:
-    •    No inner rounded rectangle
-    •    No inset panel
-    •    No secondary background layer
-    •    No framed stage
-    •    No card shape
-    •    No visible container
-    •    No borders or mask simulation
+Main subject: a single premium lavender die that dominates the canvas.
 
-The background must be one seamless continuous surface.
+• The die must occupy 95–98% of the total canvas height.
+• The die should feel extremely close to the frame edges.
+• At least one corner of the die should approach within a few pixels of the canvas edge.
+• Minimal negative space. No comfortable padding.
+• The composition should feel immersive and bold, not centered with breathing room.
 
-Main subject: a single premium die, centered, large, and dominant (occupying 85–90% of the canvas height). The die should slightly approach the edges for immersion but remain fully readable.
+The die must remain fully readable (no cropping of pips), but the body of the die can feel close to the frame edges.
 
-The die is modern and slightly stylized (not photorealistic, not cartoon). Rounded corners, subtle bevel, soft dimensional shading.
+Die color: muted lavender-purple matching Color(red: 0.60, green: 0.50, blue: 0.90). Slightly brighter midtones on the visible face.
 
-Show the face with five pips clearly visible.
+Show three visible faces with clearly readable numbers (5 on top, 3 and 2 on sides).
 
-Color:
-The die’s base color matches Color(red: 0.60, green: 0.50, blue: 0.90). Muted lavender-purple with soft gradient depth.
+Pips: warm soft white (#F3F1F8), clean circles, evenly spaced, with subtle recessed depth (micro ambient shadowing).
 
-Pips:
-Warm soft white (#F3F1F8), clean circles, evenly spaced, high contrast.
+Lighting: soft cinematic top-left light with crisp but refined edge definition. Soft grounding shadow that blends seamlessly into the same background plane. Extremely subtle vignette.
 
-Lighting:
-Soft cinematic top-left light.
-Gentle highlight.
-Subtle ambient occlusion.
-Soft shadow directly beneath the die fading naturally into the same background surface.
-Very subtle vignette darkening toward corners.
-
-No texture overlays.
-No felt.
-No wood.
+No texture.
 No grain.
-No noise.
 No glow effects.
-No additional objects.
+No extra objects.
 No text.
-No decorative elements.
 
-The die must appear directly on the midnight background with no framing element.
+Minimal, calm, premium, high-contrast, optimized for small icon readability.
 
-This is final production App Store icon artwork, not a preview or mockup.
+This is final production App Store icon artwork.
 
----
-
-## Optional Variants (If Needed)
-
-If you want quick alternate directions without changing the core identity:
-
-1) **More Iconic / Minimal**
-- Less perspective, flatter shading, sharper silhouette.
-
-2) **More Cozy / Cinematic**
-- Slightly warmer highlights, slightly stronger shadow, still no tabletop textures.
-
-3) **More “Midnight Glow”**
-- Very faint purple halo behind the die (extremely subtle), still predominantly dark.
-
-(Keep each variant minimal and avoid drifting into casino/cartoony territory.)

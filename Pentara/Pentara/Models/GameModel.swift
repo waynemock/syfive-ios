@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SwiftUI
 
 @Observable
 final class GameModel {
@@ -58,44 +59,123 @@ final class GameModel {
     private(set) var diceValues: [Int]
     private(set) var held: [Bool]
     private(set) var rollsRemaining: Int
-    private(set) var scores: [ScoreCategory: Int]
+    private(set) var playerScores: [[ScoreCategory: Int]]
+    private(set) var playerThemes: [Theme.ThemeType]
+    private(set) var currentPlayerIndex: Int
 
     init() {
         diceValues = Array(repeating: 1, count: diceCount)
         held = Array(repeating: false, count: diceCount)
         rollsRemaining = rollsPerTurn
-        scores = [:]
+        playerScores = [[:]]
+        playerThemes = [Self.defaultTheme(for: 0)]
+        currentPlayerIndex = 0
+    }
+
+    var playerCount: Int {
+        playerScores.count
+    }
+
+    var playerNames: [String] {
+        (0..<playerCount).map { "P\($0 + 1)" }
+    }
+
+    var currentPlayerName: String {
+        playerNames[currentPlayerIndex]
+    }
+
+    var hasStarted: Bool {
+        rollsRemaining < rollsPerTurn || playerScores.contains { !$0.isEmpty }
+    }
+
+    var canEditPlayers: Bool {
+        !hasStarted
     }
 
     var isGameOver: Bool {
-        scores.count == ScoreCategory.allCases.count
+        playerScores.allSatisfy { $0.count == ScoreCategory.allCases.count }
     }
 
-    var upperSubtotal: Int {
-        scores.compactMap { entry in
-            guard entry.key.isUpperSection else { return nil }
-            return entry.value
-        }.reduce(0, +)
+    var winnerIndices: [Int] {
+        guard isGameOver else { return [] }
+        let totals = (0..<playerCount).map { totalScore(for: $0) }
+        guard let maxScore = totals.max() else { return [] }
+        return totals.enumerated().compactMap { index, score in
+            score == maxScore ? index : nil
+        }
     }
 
-    var upperBonus: Int {
-        upperSubtotal >= upperBonusThreshold ? upperBonusValue : 0
-    }
-
-    var totalScore: Int {
-        let base = scores.values.reduce(0, +)
-        return base + upperBonus
+    var winnerNames: [String] {
+        winnerIndices.map { "P\($0 + 1)" }
     }
 
     var canScore: Bool {
         rollsRemaining < rollsPerTurn && !isGameOver
     }
 
+    var nextPlayerThemeType: Theme.ThemeType {
+        Self.defaultTheme(for: playerCount)
+    }
+
+    func scores(for playerIndex: Int) -> [ScoreCategory: Int] {
+        guard playerScores.indices.contains(playerIndex) else { return [:] }
+        return playerScores[playerIndex]
+    }
+
+    func themeType(for playerIndex: Int) -> Theme.ThemeType {
+        guard playerThemes.indices.contains(playerIndex) else { return .midnight }
+        return playerThemes[playerIndex]
+    }
+
+    func upperSubtotal(for playerIndex: Int) -> Int {
+        scores(for: playerIndex).compactMap { entry in
+            guard entry.key.isUpperSection else { return nil }
+            return entry.value
+        }.reduce(0, +)
+    }
+
+    func upperBonus(for playerIndex: Int) -> Int {
+        upperSubtotal(for: playerIndex) >= upperBonusThreshold ? upperBonusValue : 0
+    }
+
+    func totalScore(for playerIndex: Int) -> Int {
+        let base = scores(for: playerIndex).values.reduce(0, +)
+        return base + upperBonus(for: playerIndex)
+    }
+
+    func isWinner(_ playerIndex: Int) -> Bool {
+        winnerIndices.contains(playerIndex)
+    }
+
+    func addPlayer() {
+        guard canEditPlayers else { return }
+        let newIndex = playerScores.count
+        playerScores.append([:])
+        playerThemes.append(Self.defaultTheme(for: newIndex))
+    }
+
+    func removePlayer(at index: Int) {
+        guard canEditPlayers, playerScores.count > 1, index > 0 else { return }
+        playerScores.remove(at: index)
+        if playerThemes.indices.contains(index) {
+            playerThemes.remove(at: index)
+        }
+        if currentPlayerIndex >= playerScores.count {
+            currentPlayerIndex = max(0, playerScores.count - 1)
+        }
+    }
+
     func resetGame() {
         diceValues = Array(repeating: 1, count: diceCount)
         held = Array(repeating: false, count: diceCount)
         rollsRemaining = rollsPerTurn
-        scores = [:]
+        playerScores = Array(repeating: [:], count: playerCount)
+        currentPlayerIndex = 0
+    }
+
+    func setTheme(_ theme: Theme.ThemeType, for playerIndex: Int) {
+        guard canEditPlayers, playerThemes.indices.contains(playerIndex) else { return }
+        playerThemes[playerIndex] = theme
     }
 
     func toggleHold(at index: Int) {
@@ -112,14 +192,18 @@ final class GameModel {
     }
 
     func score(category: ScoreCategory) {
-        guard scores[category] == nil else { return }
-        scores[category] = scoreValue(for: category)
-        beginNextTurn()
+        guard playerScores.indices.contains(currentPlayerIndex) else { return }
+        guard playerScores[currentPlayerIndex][category] == nil else { return }
+        playerScores[currentPlayerIndex][category] = scoreValue(for: category)
+        if !isGameOver {
+            beginNextTurn()
+        }
     }
 
-    func suggestedScores() -> [ScoreCategory: Int] {
+    func suggestedScores(for playerIndex: Int) -> [ScoreCategory: Int] {
+        guard playerScores.indices.contains(playerIndex) else { return [:] }
         var result: [ScoreCategory: Int] = [:]
-        for category in ScoreCategory.allCases where scores[category] == nil {
+        for category in ScoreCategory.allCases where playerScores[playerIndex][category] == nil {
             result[category] = scoreValue(for: category)
         }
         return result
@@ -128,6 +212,20 @@ final class GameModel {
     private func beginNextTurn() {
         held = Array(repeating: false, count: diceCount)
         rollsRemaining = rollsPerTurn
+        currentPlayerIndex = (currentPlayerIndex + 1) % playerCount
+    }
+
+    private static func defaultTheme(for index: Int) -> Theme.ThemeType {
+        let order: [Theme.ThemeType] = [
+            .midnight,
+            .blossom,
+            .ember,
+            .forest,
+            .ocean,
+            .sunset,
+            .paper
+        ]
+        return order[index % order.count]
     }
 
     private func scoreValue(for category: ScoreCategory) -> Int {
