@@ -1,6 +1,6 @@
-# Pentara — APP_ICON.md
+# SyFive — APP_ICON.md
 
-Pentara’s icon should feel like it came from the same “calm, premium, modern” design lineage as Sydoku — not a loud casino app. Think *cozy evening tabletop*, lamp-on, quiet, intentional. Minimal composition, high readability at small sizes, and a refined midnight palette.
+SyFive’s icon should feel like it came from the same “calm, premium, modern” design lineage as Sydoku — not a loud casino app. Think *cozy evening tabletop*, lamp-on, quiet, intentional. Minimal composition, high readability at small sizes, and a refined midnight palette.
 
 ---
 
@@ -73,7 +73,7 @@ The die should **dominate the canvas**:
 ### Overall Aesthetic
 **Calm. Premium. Modern. Minimal.**
 
-Pentara is *not* Vegas. It’s *night table*.
+SyFive is *not* Vegas. It’s *night table*.
 
 ---
 

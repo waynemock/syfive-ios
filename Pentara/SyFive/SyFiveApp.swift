@@ -1,6 +1,6 @@
 //
-//  PentaraApp.swift
-//  Pentara
+//  SyFiveApp.swift
+//  SyFive
 //
 //  Created by Wayne Mock on 2/22/26.
 //
@@ -9,7 +9,7 @@ import SwiftUI
 import SwiftData
 
 @main
-struct PentaraApp: App {
+struct SyFiveApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,

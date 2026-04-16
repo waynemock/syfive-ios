@@ -34,7 +34,7 @@ final class GameModel {
             case .fullHouse: return "Full House"
             case .smallStraight: return "Small Straight"
             case .largeStraight: return "Large Straight"
-            case .yahtzee: return "Yahtzee"
+            case .yahtzee: return "Yatzy"
             case .chance: return "Chance"
             }
         }
@@ -113,9 +113,22 @@ final class GameModel {
         rollsRemaining < rollsPerTurn && !isGameOver
     }
 
+    var totalRounds: Int {
+        ScoreCategory.allCases.count
+    }
+
+    var currentRound: Int {
+        let scoredCount = scores(for: currentPlayerIndex).count
+        return min(scoredCount + 1, totalRounds)
+    }
+
+    var isLastRound: Bool {
+        currentRound == totalRounds
+    }
+
     var nextPlayerThemeType: Theme.ThemeType {
         Self.defaultTheme(for: playerCount)
-    }
+    } 
 
     func scores(for playerIndex: Int) -> [ScoreCategory: Int] {
         guard playerScores.indices.contains(playerIndex) else { return [:] }

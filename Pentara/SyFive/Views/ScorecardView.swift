@@ -3,63 +3,75 @@ import Observation
 
 struct ScorecardView: View {
     @Bindable var model: GameModel
+    let availableWidth: CGFloat
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.sizeCategory) private var sizeCategory
-    @State private var availableWidth: CGFloat = 0
     @State private var addPlayerMinY: CGFloat = 0
 
-    private let scoreColumnWidth: CGFloat = 72
+    private let scoreColumnWidth: CGFloat = 64
     private let scoreRowHeight: CGFloat = 32
     private let headerRowHeight: CGFloat = 28
     private let scoreSectionSpacing: CGFloat = 14
     private let scoreRowSpacing: CGFloat = 6
     private let cardEdgeInset: CGFloat = 24
+    private let logger = AppLogger(category: "ScorecardView")
 
     var body: some View {
         let cardWidth = singleCardWidth(for: availableWidth)
-        ScrollView(.vertical, showsIndicators: false) {
-            ScrollViewReader { scrollProxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: 16) {
-                        ForEach(0..<model.playerCount, id: \.self) { index in
-                            playerScoreCard(for: index)
-                                .frame(width: cardWidth)
-                                .id(index)
+        ScrollViewReader { verticalProxy in
+            ScrollView(.vertical, showsIndicators: false) {
+                Color.clear
+                    .frame(height: 0)
+                    .id("scorecard-top")
+                ScrollViewReader { scrollProxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        LazyHStack(alignment: .top, spacing: 16) {
+                            ForEach(0..<model.playerCount, id: \.self) { index in
+                                playerScoreCard(for: index)
+                                    .frame(width: cardWidth)
+                                    .id(index)
+                            }
+                            if model.canEditPlayers {
+                                addPlayerCard
+                                    .offset(y: max(0, -addPlayerMinY))
+                                    .background(
+                                        GeometryReader { proxy in
+                                            Color.clear
+                                                .preference(
+                                                    key: AddPlayerMinYKey.self,
+                                                    value: proxy.frame(in: .named("scorecardVertical")).minY
+                                                )
+                                        }
+                                    )
+                                    .id("add-player")
+                            }
                         }
-                        if model.canEditPlayers {
-                            addPlayerCard
-                                .offset(y: max(0, -addPlayerMinY))
-                                .background(
-                                    GeometryReader { proxy in
-                                        Color.clear
-                                            .preference(
-                                                key: AddPlayerMinYKey.self,
-                                                value: proxy.frame(in: .named("scorecardVertical")).minY
-                                            )
-                                    }
-                                )
-                                .id("add-player")
-                        }
+                        .padding(.horizontal, cardEdgeInset)
                     }
-                    .padding(.horizontal, cardEdgeInset)
+                    .onAppear {
+                        scrollToCurrentPlayer(using: scrollProxy)
+                    }
+                    .onChange(of: model.currentPlayerIndex) {
+                        scrollToCurrentPlayer(using: scrollProxy)
+                    }
                 }
-                .onAppear {
-                    scrollToCurrentPlayer(using: scrollProxy)
-                }
-                .onChange(of: model.currentPlayerIndex) {
-                    scrollToCurrentPlayer(using: scrollProxy)
+            }
+            .onChange(of: model.currentPlayerIndex) {
+                let delay = 0.3
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        verticalProxy.scrollTo("scorecard-top", anchor: .top)
+                    }
                 }
             }
         }
         .coordinateSpace(name: "scorecardVertical")
-        .background(
-            GeometryReader { proxy in
-                Color.clear
-                    .preference(key: ScorecardWidthKey.self, value: proxy.size.width)
-            }
-        )
-        .onPreferenceChange(ScorecardWidthKey.self) { width in
-            availableWidth = width
+        .onChange(of: availableWidth) { _, width in
+            let computed = singleCardWidth(for: width)
+            logger.debug(
+                self,
+                "width update: available=\(width), computed=\(computed), players=\(model.playerCount), canEdit=\(model.canEditPlayers), sizeCategory=\(sizeCategory)"
+            )
         }
         .onPreferenceChange(AddPlayerMinYKey.self) { minY in
             addPlayerMinY = minY
@@ -76,7 +88,7 @@ struct ScorecardView: View {
             HStack(alignment: .center, spacing: 8) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(model.playerNames[playerIndex])
-                        .font(.headline)
+                        .font(.title3)
                     Text("Total \(totalScore)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -90,7 +102,7 @@ struct ScorecardView: View {
                         .foregroundStyle(.secondary)
                         .background(
                             Capsule(style: .continuous)
-                                .fill(theme.primaryAccent.opacity(0.15))
+                                .fill(theme.primaryAccent.opacity(0.2))
                         )
                 }
                 if model.canEditPlayers {
@@ -143,24 +155,52 @@ struct ScorecardView: View {
             scoreSection(
                 title: "Upper",
                 categories: GameModel.ScoreCategory.allCases.filter { $0.isUpperSection },
-                playerIndex: playerIndex
+                playerIndex: playerIndex,
+                theme: theme
             )
+            .padding(.top, 8)
             scoreSection(
                 title: "Lower",
                 categories: GameModel.ScoreCategory.allCases.filter { !$0.isUpperSection },
-                playerIndex: playerIndex
+                playerIndex: playerIndex,
+                theme: theme
             )
         }
         .frame(maxHeight: .infinity, alignment: .top)
-        .padding(16)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 16)
+        .padding(.top, 12)
         .tint(theme.primaryAccent)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(theme.cellBackgroundColor)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(cardHighlightColor(isWinner: isWinner, isCurrentPlayer: isCurrentPlayer, theme: theme))
+            RoundedRectangle(
+                cornerRadius: 16,
+                style: .continuous
+            )
+            .fill(theme.cellBackgroundColor)
+            .overlay(
+                RoundedRectangle(
+                    cornerRadius: 16,
+                    style: .continuous
                 )
+                .fill(cardHighlightColor(isWinner: isWinner, isCurrentPlayer: isCurrentPlayer, theme: theme))
+            )
+            .overlay(alignment: .top) {
+                UnevenRoundedRectangle(
+                    topLeadingRadius: 16,
+                    bottomLeadingRadius: 0,
+                    bottomTrailingRadius: 0,
+                    topTrailingRadius: 16,
+                    style: .continuous
+                )
+                .fill(theme.primaryAccent.opacity(0.18))
+                .frame(height: headerRowHeight + 32)
+                .mask(
+                    VStack(spacing: 0) {
+                        Rectangle()
+                        Spacer(minLength: 0)
+                    }
+                )
+            }
         )
     }
 
@@ -189,32 +229,67 @@ struct ScorecardView: View {
     private func scoreSection(
         title: String,
         categories: [GameModel.ScoreCategory],
-        playerIndex: Int
+        playerIndex: Int,
+        theme: Theme
     ) -> some View {
         VStack(alignment: .leading, spacing: scoreRowSpacing) {
             Text(title)
-                .font(.subheadline.weight(.semibold))
+                .font(.headline.weight(.semibold))
                 .frame(height: headerRowHeight, alignment: .leading)
 
             ForEach(categories) { category in
                 scoreRow(for: playerIndex, category: category)
             }
+
+            if title == "Upper" {
+                summaryRow(title: "Subtotal", value: model.upperSubtotal(for: playerIndex))
+                summaryRow(title: "Bonus", value: model.upperBonus(for: playerIndex))
+            } else {
+                summaryRow(title: "Subtotal", value: lowerSubtotal(for: playerIndex))
+            }
         }
     }
 
     private func scoreRow(for playerIndex: Int, category: GameModel.ScoreCategory) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 2) {
             Text(category.displayName)
                 .font(.subheadline)
                 .foregroundStyle(.primary)
-            Spacer(minLength: 8)
+            Spacer()
             ScoreRow(
                 players: [playerCell(for: category, playerIndex: playerIndex)],
                 columnWidth: scoreColumnWidth,
-                rowHeight: scoreRowHeight
+                rowHeight: scoreRowHeight,
+                rowAction: rowAction(for: category, playerIndex: playerIndex)
             )
         }
         .frame(height: scoreRowHeight)
+    }
+
+    private func summaryRow(title: String, value: Int) -> some View {
+        HStack(spacing: 2) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(value, format: .number)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: scoreColumnWidth, height: scoreRowHeight)
+                .background(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color.secondary.opacity(0.08))
+                )
+        }
+        .frame(height: scoreRowHeight)
+    }
+
+    private func lowerSubtotal(for playerIndex: Int) -> Int {
+        model.scores(for: playerIndex)
+            .compactMap { entry in
+                entry.key.isUpperSection ? nil : entry.value
+            }
+            .reduce(0, +)
     }
 
     private func playerCell(for category: GameModel.ScoreCategory, playerIndex: Int) -> ScoreRow.PlayerCell {
@@ -233,6 +308,11 @@ struct ScorecardView: View {
         ) {
             model.score(category: category)
         }
+    }
+
+    private func rowAction(for category: GameModel.ScoreCategory, playerIndex: Int) -> (() -> Void)? {
+        let cell = playerCell(for: category, playerIndex: playerIndex)
+        return (cell.isAvailable && cell.canScore) ? cell.onSelect : nil
     }
 
     private func scrollToCurrentPlayer(using proxy: ScrollViewProxy) {
@@ -256,13 +336,26 @@ struct ScorecardView: View {
         let resolvedWidth = availableWidth == 0 ? 320 : availableWidth
         let usableWidth = max(0, resolvedWidth - (cardEdgeInset * 2))
         let isLargeType = sizeCategory.isAccessibilityCategory
+        let computed: CGFloat
+        let reason: String
+
         if model.canEditPlayers {
-            return max(220, (usableWidth - 16) / 2)
+            computed = max(220, (usableWidth - 16) / 2)
+            reason = "canEditPlayers"
+        } else if isLargeType || model.playerCount == 1 {
+            computed = max(220, usableWidth)
+            reason = "largeTypeOrSinglePlayer"
+        } else {
+            computed = max(220, ((usableWidth - 16) / 2) * 1.5)
+            reason = "default"
         }
-        if isLargeType || model.playerCount == 1 {
-            return max(220, usableWidth)
-        }
-        return max(220, (usableWidth - 16) / 2)
+
+        logger.debug(
+            self,
+            "singleCardWidth: available=\(availableWidth), resolved=\(resolvedWidth), usable=\(usableWidth), isLargeType=\(isLargeType), players=\(model.playerCount), canEdit=\(model.canEditPlayers), reason=\(reason), result=\(computed)"
+        )
+
+        return computed
     }
 
     private func themeBinding(for playerIndex: Int) -> Binding<Theme.ThemeType> {
@@ -282,14 +375,6 @@ struct ScorecardView: View {
 
 }
 
-private struct ScorecardWidthKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
-
 private struct AddPlayerMinYKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
 
@@ -300,5 +385,5 @@ private struct AddPlayerMinYKey: PreferenceKey {
 
 
 #Preview {
-    ScorecardView(model: GameModel())
+    ScorecardView(model: GameModel(), availableWidth: 360)
 }

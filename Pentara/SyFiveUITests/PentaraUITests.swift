@@ -1,13 +1,13 @@
 //
-//  PentaraUITests.swift
-//  PentaraUITests
+//  SyFiveUITests.swift
+//  SyFiveUITests
 //
 //  Created by Wayne Mock on 2/22/26.
 //
 
 import XCTest
 
-final class PentaraUITests: XCTestCase {
+final class SyFiveUITests: XCTestCase {
 
     override func setUpWithError() throws {
         // Put setup code here. This method is called before the invocation of each test method in the class.

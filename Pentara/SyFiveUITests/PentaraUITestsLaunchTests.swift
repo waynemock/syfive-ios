@@ -1,13 +1,13 @@
 //
-//  PentaraUITestsLaunchTests.swift
-//  PentaraUITests
+//  SyFiveUITestsLaunchTests.swift
+//  SyFiveUITests
 //
 //  Created by Wayne Mock on 2/22/26.
 //
 
 import XCTest
 
-final class PentaraUITestsLaunchTests: XCTestCase {
+final class SyFiveUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true

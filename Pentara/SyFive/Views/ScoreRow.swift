@@ -1,6 +1,6 @@
 //
 //  ScoreRow.swift
-//  Pentara
+//  SyFive
 //
 //  Created by Wayne Mock on 2/22/26.
 //
@@ -23,13 +23,25 @@ struct ScoreRow: View {
     let players: [PlayerCell]
     let columnWidth: CGFloat
     let rowHeight: CGFloat
+    let rowAction: (() -> Void)?
 
     var body: some View {
-        HStack(spacing: 12) {
+        let rowContent = HStack(spacing: 12) {
             ForEach(players) { player in
                 scoreCell(for: player)
-                    .frame(width: columnWidth, height: rowHeight)
+                    .frame(width: columnWidth)
+                    .frame(minHeight: rowHeight)
             }
+        }
+
+        if let rowAction {
+            Button(action: rowAction) {
+                rowContent
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        } else {
+            rowContent
         }
     }
 
@@ -41,7 +53,7 @@ struct ScoreRow: View {
             .strokeBorder(Color.accentColor.opacity(player.isAvailable && player.canScore ? 0.7 : 0), lineWidth: 1.5)
             .shadow(color: Color.accentColor.opacity(player.isAvailable && player.canScore ? 0.35 : 0), radius: 4, x: 0, y: 0)
 
-        if player.isAvailable && player.canScore {
+        if rowAction == nil, player.isAvailable && player.canScore {
             Button(action: player.onSelect) {
                 scoreText(for: player)
             }
@@ -64,7 +76,7 @@ struct ScoreRow: View {
                 Text(player.suggested, format: .number)
                     .foregroundStyle(.secondary)
             } else {
-                Text("—")
+                Text("--")
                     .foregroundStyle(.tertiary)
             }
         }
@@ -85,3 +97,41 @@ struct ScoreRow: View {
         return Color.clear
     }
 }
+#Preview {
+    ScoreRow(
+        players: [
+            ScoreRow.PlayerCell(
+                id: 0,
+                value: nil,
+                suggested: 12,
+                isAvailable: true,
+                canScore: true,
+                isCurrentPlayer: true,
+                isWinner: false
+            ) {},
+            ScoreRow.PlayerCell(
+                id: 1,
+                value: 18,
+                suggested: 0,
+                isAvailable: false,
+                canScore: false,
+                isCurrentPlayer: false,
+                isWinner: false
+            ) {},
+            ScoreRow.PlayerCell(
+                id: 2,
+                value: nil,
+                suggested: 24,
+                isAvailable: true,
+                canScore: false,
+                isCurrentPlayer: false,
+                isWinner: false
+            ) {}
+        ],
+        columnWidth: 64,
+        rowHeight: 32,
+        rowAction: nil
+    )
+    .padding()
+}
+

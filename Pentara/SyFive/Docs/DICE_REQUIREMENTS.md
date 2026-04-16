@@ -1,5 +1,5 @@
 # dice_requirements.md
-Pentara — RealityKit Dice System (Fair, Physical, Testable)
+SyFive — RealityKit Dice System (Fair, Physical, Testable)
 
 ## Goal
 Create dice rolls that *feel* like real tabletop dice while staying **statistically fair** (unloaded) and **repeatably testable**. Use RealityKit 3D dice as the primary roll experience (the “moon shot”), starting with an MVP that is shippable and expandable.
@@ -148,7 +148,7 @@ This enables “Replay this roll” for debugging claims of bias.
 
 ### Phase 4 — Advanced realism (optional)
 - Dice cup / shake gesture.
-- Table materials / themes (match Pentara midnight).
+- Table materials / themes (match SyFive midnight).
 - Per-theme tray lighting presets.
 - “Tilt table” subtle: tiny randomized gravity tilt (small enough not to bias; must be tested).
 
@@ -314,7 +314,7 @@ Top face identification must be robust and not “flip-flop” near settling.
 
 ## Nice-to-Have (post-1.0)
 - Dice skins (midnight, blossom, ember variants)
-- Tray themes matching Pentara’s vibe
+- Tray themes matching SyFive’s vibe
 - Sound design: soft ceramic clicks / felt thuds
 - “Cup shake” gesture roll mode
 - Camera zoom preset (close vs wide)

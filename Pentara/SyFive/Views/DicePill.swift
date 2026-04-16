@@ -1,6 +1,6 @@
 //
 //  DicePill.swift
-//  Pentara
+//  SyFive
 //
 //  Created by Wayne Mock on 2/22/26.
 //
@@ -18,7 +18,7 @@ struct DicePill: View {
         Button(action: onTap) {
             Text("\(value)")
                 .font(.title3.weight(.semibold))
-                .frame(width: 52, height: 52)
+                .frame(width: 72, height: 72)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(isHeld ? Color.primary.opacity(0.15) : Color.primary.opacity(0.05))
