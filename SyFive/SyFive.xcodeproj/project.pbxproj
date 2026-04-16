@@ -199,7 +199,7 @@
 					};
 				};
 			};
-			buildConfigurationList = B09DE9082F4BBD400018F241 /* Build configuration list for PBXProject "Pentara" */;
+			buildConfigurationList = B09DE9082F4BBD400018F241 /* Build configuration list for PBXProject "SyFive" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -599,7 +599,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		B09DE9082F4BBD400018F241 /* Build configuration list for PBXProject "Pentara" */ = {
+		B09DE9082F4BBD400018F241 /* Build configuration list for PBXProject "SyFive" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				B09DE9342F4BBD410018F241 /* Debug */,
