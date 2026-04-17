@@ -27,7 +27,16 @@ struct ScorecardView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         LazyHStack(alignment: .top, spacing: 16) {
                             ForEach(0..<model.playerCount, id: \.self) { index in
-                                playerScoreCard(for: index)
+                                PlayerScoreCardView(
+                                    model: model,
+                                    playerIndex: index,
+                                    scoreColumnWidth: scoreColumnWidth,
+                                    scoreRowHeight: scoreRowHeight,
+                                    headerRowHeight: headerRowHeight,
+                                    scoreSectionSpacing: scoreSectionSpacing,
+                                    scoreRowSpacing: scoreRowSpacing,
+                                    layoutMode: playerCardLayoutMode(for: cardWidth)
+                                )
                                     .frame(width: cardWidth)
                                     .id(index)
                             }
@@ -78,132 +87,6 @@ struct ScorecardView: View {
         }
     }
 
-    private func playerScoreCard(for playerIndex: Int) -> some View {
-        let isCurrentPlayer = playerIndex == model.currentPlayerIndex
-        let totalScore = model.totalScore(for: playerIndex)
-        let isWinner = model.isWinner(playerIndex)
-        let theme = Theme(type: model.themeType(for: playerIndex), colorScheme: colorScheme)
-
-        return VStack(alignment: .leading, spacing: scoreSectionSpacing) {
-            HStack(alignment: .center, spacing: 8) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(model.playerNames[playerIndex])
-                        .font(.title3)
-                    Text("Total \(totalScore)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                if isCurrentPlayer && model.playerCount > 1 {
-                    Text("Current")
-                        .font(.caption2.weight(.semibold))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .foregroundStyle(.secondary)
-                        .background(
-                            Capsule(style: .continuous)
-                                .fill(theme.primaryAccent.opacity(0.2))
-                        )
-                }
-                if model.canEditPlayers {
-                    Menu {
-                        Picker("Card Color", selection: themeBinding(for: playerIndex)) {
-                            ForEach(Theme.ThemeType.allCases, id: \.self) { type in
-                                HStack(spacing: 8) {
-                                    Circle()
-                                        .fill(colorSwatch(for: type))
-                                        .frame(width: 12, height: 12)
-                                    Text(type.displayName)
-                                }
-                                .foregroundStyle(colorSwatch(for: type))
-                                .tag(type)
-                            }
-                        }
-                    } label: {
-                        Circle()
-                            .fill(theme.primaryAccent)
-                            .overlay(
-                                Circle()
-                                    .stroke(colorButtonBorder, lineWidth: 1.5)
-                            )
-                            .frame(width: 28, height: 28)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                }
-                if model.canEditPlayers && playerIndex > 0 {
-                    Button {
-                        model.removePlayer(at: playerIndex)
-                    } label: {
-                        Image(systemName: "trash")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .frame(width: 28, height: 28)
-                            .background(
-                                Circle()
-                                    .fill(theme.cellBackgroundColor)
-                            )
-                            .overlay(
-                                Circle()
-                                    .stroke(colorButtonBorder, lineWidth: 1.5)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-
-            scoreSection(
-                title: "Upper",
-                categories: GameModel.ScoreCategory.allCases.filter { $0.isUpperSection },
-                playerIndex: playerIndex,
-                theme: theme
-            )
-            .padding(.top, 8)
-            scoreSection(
-                title: "Lower",
-                categories: GameModel.ScoreCategory.allCases.filter { !$0.isUpperSection },
-                playerIndex: playerIndex,
-                theme: theme
-            )
-        }
-        .frame(maxHeight: .infinity, alignment: .top)
-        .padding(.horizontal, 16)
-        .padding(.bottom, 16)
-        .padding(.top, 12)
-        .tint(theme.primaryAccent)
-        .background(
-            RoundedRectangle(
-                cornerRadius: 16,
-                style: .continuous
-            )
-            .fill(theme.cellBackgroundColor)
-            .overlay(
-                RoundedRectangle(
-                    cornerRadius: 16,
-                    style: .continuous
-                )
-                .fill(cardHighlightColor(isWinner: isWinner, isCurrentPlayer: isCurrentPlayer, theme: theme))
-            )
-            .overlay(alignment: .top) {
-                UnevenRoundedRectangle(
-                    topLeadingRadius: 16,
-                    bottomLeadingRadius: 0,
-                    bottomTrailingRadius: 0,
-                    topTrailingRadius: 16,
-                    style: .continuous
-                )
-                .fill(theme.primaryAccent.opacity(0.18))
-                .frame(height: headerRowHeight + 32)
-                .mask(
-                    VStack(spacing: 0) {
-                        Rectangle()
-                        Spacer(minLength: 0)
-                    }
-                )
-            }
-        )
-    }
-
     private var addPlayerCard: some View {
         let theme = Theme(type: model.nextPlayerThemeType, colorScheme: colorScheme)
         return Button {
@@ -226,111 +109,11 @@ struct ScorecardView: View {
         )
     }
 
-    private func scoreSection(
-        title: String,
-        categories: [GameModel.ScoreCategory],
-        playerIndex: Int,
-        theme: Theme
-    ) -> some View {
-        VStack(alignment: .leading, spacing: scoreRowSpacing) {
-            Text(title)
-                .font(.headline.weight(.semibold))
-                .frame(height: headerRowHeight, alignment: .leading)
-
-            ForEach(categories) { category in
-                scoreRow(for: playerIndex, category: category)
-            }
-
-            if title == "Upper" {
-                summaryRow(title: "Subtotal", value: model.upperSubtotal(for: playerIndex))
-                summaryRow(title: "Bonus", value: model.upperBonus(for: playerIndex))
-            } else {
-                summaryRow(title: "Subtotal", value: lowerSubtotal(for: playerIndex))
-            }
-        }
-    }
-
-    private func scoreRow(for playerIndex: Int, category: GameModel.ScoreCategory) -> some View {
-        HStack(spacing: 2) {
-            Text(category.displayName)
-                .font(.subheadline)
-                .foregroundStyle(.primary)
-            Spacer()
-            ScoreRow(
-                players: [playerCell(for: category, playerIndex: playerIndex)],
-                theme: Theme(type: model.themeType(for: playerIndex), colorScheme: colorScheme),
-                columnWidth: scoreColumnWidth,
-                rowHeight: scoreRowHeight,
-                rowAction: rowAction(for: category, playerIndex: playerIndex)
-            )
-        }
-        .frame(height: scoreRowHeight)
-    }
-
-    private func summaryRow(title: String, value: Int) -> some View {
-        HStack(spacing: 2) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Spacer()
-            Text(value, format: .number)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: scoreColumnWidth, height: scoreRowHeight)
-                .background(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(Color.secondary.opacity(0.08))
-                )
-        }
-        .frame(height: scoreRowHeight)
-    }
-
-    private func lowerSubtotal(for playerIndex: Int) -> Int {
-        model.scores(for: playerIndex)
-            .compactMap { entry in
-                entry.key.isUpperSection ? nil : entry.value
-            }
-            .reduce(0, +)
-    }
-
-    private func playerCell(for category: GameModel.ScoreCategory, playerIndex: Int) -> ScoreRow.PlayerCell {
-        let assignedScore = model.scores(for: playerIndex)[category]
-        let suggested = model.suggestedScores(for: playerIndex)[category] ?? 0
-        let isCurrentPlayer = playerIndex == model.currentPlayerIndex
-        let canScore = model.canScore && isCurrentPlayer
-        return ScoreRow.PlayerCell(
-            id: playerIndex,
-            value: assignedScore,
-            suggested: suggested,
-            isAvailable: assignedScore == nil,
-            canScore: canScore,
-            isCurrentPlayer: isCurrentPlayer,
-            isWinner: model.isWinner(playerIndex)
-        ) {
-            model.score(category: category)
-        }
-    }
-
-    private func rowAction(for category: GameModel.ScoreCategory, playerIndex: Int) -> (() -> Void)? {
-        let cell = playerCell(for: category, playerIndex: playerIndex)
-        return (cell.isAvailable && cell.canScore) ? cell.onSelect : nil
-    }
-
     private func scrollToCurrentPlayer(using proxy: ScrollViewProxy) {
         guard model.playerCount > 0 else { return }
         withAnimation(.easeInOut(duration: 0.3)) {
             proxy.scrollTo(model.currentPlayerIndex, anchor: .center)
         }
-    }
-
-    private func cardHighlightColor(isWinner: Bool, isCurrentPlayer: Bool, theme: Theme) -> Color {
-        if isWinner {
-            return theme.successColor.opacity(0.18)
-        }
-        if isCurrentPlayer {
-            return theme.primaryAccent.opacity(0.12)
-        }
-        return Color.clear
     }
 
     private func singleCardWidth(for availableWidth: CGFloat) -> CGFloat {
@@ -359,19 +142,9 @@ struct ScorecardView: View {
         return computed
     }
 
-    private func themeBinding(for playerIndex: Int) -> Binding<Theme.ThemeType> {
-        Binding(
-            get: { model.themeType(for: playerIndex) },
-            set: { model.setTheme($0, for: playerIndex) }
-        )
-    }
-
-    private func colorSwatch(for type: Theme.ThemeType) -> Color {
-        Theme(type: type, colorScheme: colorScheme).primaryAccent
-    }
-
-    private var colorButtonBorder: Color {
-        colorScheme == .dark ? Color.white.opacity(0.45) : Color.black.opacity(0.18)
+    private func playerCardLayoutMode(for cardWidth: CGFloat) -> PlayerScoreCardView.LayoutMode {
+        guard !sizeCategory.isAccessibilityCategory else { return .stacked }
+        return cardWidth >= 320 ? .sideBySide : .stacked
     }
 
 }

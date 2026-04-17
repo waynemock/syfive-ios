@@ -7,6 +7,7 @@ import UIKit
 @MainActor
 final class DiceEntity {
     private var theme: Theme
+    private var isPinnedForPresentation = false
 
     // MARK: - Constants
 
@@ -230,6 +231,7 @@ final class DiceEntity {
         coneHalfAngle: Float = 0.70,
         using rng: inout DiceRandSource
     ) -> DiceRollRecipe.DieLaunchParams {
+        isPinnedForPresentation = false
         entity.position = spawnPos
 
         // Random initial orientation — fully random quaternion for varied starting face
@@ -281,6 +283,24 @@ final class DiceEntity {
         )
     }
 
+    func present(value: Int, at position: SIMD3<Float>, isHeld: Bool) {
+        entity.isEnabled = true
+        isPinnedForPresentation = true
+        entity.position = position
+
+        if let targetNormal = Self.faceNormals.first(where: { $0.value == value })?.normal {
+            entity.orientation = Self.quaternionAligning(targetNormal, to: SIMD3<Float>(0, 1, 0))
+        }
+
+        var motion = PhysicsMotionComponent()
+        motion.linearVelocity = .zero
+        motion.angularVelocity = .zero
+        entity.components.set(motion)
+
+        self.isHeld = isHeld
+        applyPhysicsMode()
+    }
+
     // MARK: - Private helpers
 
     private func randomUnitVector(using rng: inout DiceRandSource) -> SIMD3<Float> {
@@ -294,7 +314,7 @@ final class DiceEntity {
 
     private func applyPhysicsMode() {
         if var body = entity.components[PhysicsBodyComponent.self] {
-            body.mode = isHeld ? .kinematic : .dynamic
+            body.mode = (isHeld || isPinnedForPresentation) ? .kinematic : .dynamic
             entity.components.set(body)
         }
         rebuildAppearance()

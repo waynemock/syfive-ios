@@ -253,6 +253,39 @@ final class DiceRoller {
         currentHeld = held
     }
 
+    func clearDice() {
+        isRolling = false
+        pendingResults = nil
+        currentHeld = Array(repeating: false, count: diceCount)
+        settleCounters = Array(repeating: 0, count: diceCount)
+        rollTime = 0
+
+        for die in diceEntities {
+            die.isHeld = false
+            die.entity.isEnabled = false
+        }
+    }
+
+    func restoreDice(values: [Int], held: [Bool]) {
+        guard !diceEntities.isEmpty else { return }
+
+        isRolling = false
+        pendingResults = nil
+        currentHeld = held
+        settleCounters = Array(repeating: 0, count: diceCount)
+        rollTime = 0
+
+        let presentationY = (DiceEntity.dieSize / 2) + 0.001
+
+        for (index, die) in diceEntities.enumerated() {
+            let offset = Self.spawnGrid[index % Self.spawnGrid.count]
+            let value = index < values.count ? values[index] : 1
+            let isHeld = index < held.count ? held[index] : false
+            let position = SIMD3<Float>(offset.x, presentationY, offset.y)
+            die.present(value: value, at: position, isHeld: isHeld)
+        }
+    }
+
     // MARK: - Per-frame tick
 
     private func tick(deltaTime: Float) {

@@ -4,6 +4,21 @@ import SwiftUI
 
 @Observable
 final class GameModel {
+    struct UndoRestoration {
+        let diceValues: [Int]
+        let held: [Bool]
+    }
+
+    private struct LastScoreSnapshot {
+        let diceValues: [Int]
+        let held: [Bool]
+        let rollsRemaining: Int
+        let playerScores: [[ScoreCategory: Int]]
+        let playerYahtzeeBonuses: [Int]
+        let currentPlayerIndex: Int
+        let isRolling: Bool
+    }
+
     enum ScoreCategory: String, CaseIterable, Identifiable {
         case ones
         case twos
@@ -60,16 +75,19 @@ final class GameModel {
     private(set) var held: [Bool]
     private(set) var rollsRemaining: Int
     private(set) var playerScores: [[ScoreCategory: Int]]
+    private(set) var playerYahtzeeBonuses: [Int]
     private(set) var playerThemes: [Theme.ThemeType]
     private(set) var currentPlayerIndex: Int
     /// True while physics dice are mid-roll (between beginRoll and receiveDiceResults).
     private(set) var isRolling: Bool = false
+    private var lastScoreSnapshot: LastScoreSnapshot?
 
     init() {
         diceValues = Array(repeating: 1, count: diceCount)
         held = Array(repeating: false, count: diceCount)
         rollsRemaining = rollsPerTurn
         playerScores = [[:]  ]
+        playerYahtzeeBonuses = [0]
         playerThemes = [Self.defaultTheme(for: 0)]
         currentPlayerIndex = 0
     }
@@ -111,6 +129,14 @@ final class GameModel {
         winnerIndices.map { "P\($0 + 1)" }
     }
 
+    var winnerScore: Int? {
+        guard isGameOver else { return nil }
+        if let first = winnerIndices.first {
+            return totalScore(for: first)
+        }
+        return nil
+    }
+    
     var canScore: Bool {
         rollsRemaining < rollsPerTurn && !isGameOver && !isRolling
     }
@@ -130,6 +156,19 @@ final class GameModel {
 
     var nextPlayerThemeType: Theme.ThemeType {
         Self.defaultTheme(for: playerCount)
+    }
+
+    var canUndoLastScore: Bool {
+        lastScoreSnapshot != nil
+    }
+
+    var undoPlayerIndex: Int? {
+        lastScoreSnapshot?.currentPlayerIndex
+    }
+
+    var undoThemeType: Theme.ThemeType? {
+        guard let playerIndex = undoPlayerIndex else { return nil }
+        return themeType(for: playerIndex)
     }
 
     func scores(for playerIndex: Int) -> [ScoreCategory: Int] {
@@ -155,7 +194,7 @@ final class GameModel {
 
     func totalScore(for playerIndex: Int) -> Int {
         let base = scores(for: playerIndex).values.reduce(0, +)
-        return base + upperBonus(for: playerIndex)
+        return base + upperBonus(for: playerIndex) + yahtzeeBonus(for: playerIndex)
     }
 
     func isWinner(_ playerIndex: Int) -> Bool {
@@ -164,14 +203,18 @@ final class GameModel {
 
     func addPlayer() {
         guard canEditPlayers else { return }
+        clearUndoState()
         let newIndex = playerScores.count
         playerScores.append([:])
+        playerYahtzeeBonuses.append(0)
         playerThemes.append(Self.defaultTheme(for: newIndex))
     }
 
     func removePlayer(at index: Int) {
         guard canEditPlayers, playerScores.count > 1, index > 0 else { return }
+        clearUndoState()
         playerScores.remove(at: index)
+        playerYahtzeeBonuses.remove(at: index)
         if playerThemes.indices.contains(index) {
             playerThemes.remove(at: index)
         }
@@ -185,8 +228,10 @@ final class GameModel {
         held = Array(repeating: false, count: diceCount)
         rollsRemaining = rollsPerTurn
         playerScores = Array(repeating: [:], count: playerCount)
+        playerYahtzeeBonuses = Array(repeating: 0, count: playerCount)
         currentPlayerIndex = 0
         isRolling = false
+        clearUndoState()
     }
 
     func setTheme(_ theme: Theme.ThemeType, for playerIndex: Int) {
@@ -204,6 +249,7 @@ final class GameModel {
     /// Call before launching physics dice. Decrements rollsRemaining and marks isRolling.
     func beginRoll() {
         guard rollsRemaining > 0, !isGameOver, !isRolling else { return }
+        clearUndoState()
         rollsRemaining -= 1
         isRolling = true
     }
@@ -223,10 +269,38 @@ final class GameModel {
     func score(category: ScoreCategory) {
         guard playerScores.indices.contains(currentPlayerIndex) else { return }
         guard playerScores[currentPlayerIndex][category] == nil else { return }
+        lastScoreSnapshot = LastScoreSnapshot(
+            diceValues: diceValues,
+            held: held,
+            rollsRemaining: rollsRemaining,
+            playerScores: playerScores,
+            playerYahtzeeBonuses: playerYahtzeeBonuses,
+            currentPlayerIndex: currentPlayerIndex,
+            isRolling: isRolling
+        )
+        if qualifiesForExtraYahtzeeBonus(for: currentPlayerIndex) {
+            playerYahtzeeBonuses[currentPlayerIndex] += 100
+        }
         playerScores[currentPlayerIndex][category] = scoreValue(for: category)
         if !isGameOver {
             beginNextTurn()
         }
+    }
+
+    @discardableResult
+    func undoLastScore() -> UndoRestoration? {
+        guard let snapshot = lastScoreSnapshot else { return nil }
+
+        diceValues = snapshot.diceValues
+        held = snapshot.held
+        rollsRemaining = snapshot.rollsRemaining
+        playerScores = snapshot.playerScores
+        playerYahtzeeBonuses = snapshot.playerYahtzeeBonuses
+        currentPlayerIndex = snapshot.currentPlayerIndex
+        isRolling = snapshot.isRolling
+        lastScoreSnapshot = nil
+
+        return UndoRestoration(diceValues: snapshot.diceValues, held: snapshot.held)
     }
 
     func suggestedScores(for playerIndex: Int) -> [ScoreCategory: Int] {
@@ -238,10 +312,25 @@ final class GameModel {
         return result
     }
 
+    func yahtzeeBonus(for playerIndex: Int) -> Int {
+        guard playerYahtzeeBonuses.indices.contains(playerIndex) else { return 0 }
+        return playerYahtzeeBonuses[playerIndex]
+    }
+
     private func beginNextTurn() {
         held = Array(repeating: false, count: diceCount)
         rollsRemaining = rollsPerTurn
         currentPlayerIndex = (currentPlayerIndex + 1) % playerCount
+    }
+
+    private func clearUndoState() {
+        lastScoreSnapshot = nil
+    }
+
+    private func qualifiesForExtraYahtzeeBonus(for playerIndex: Int) -> Bool {
+        guard isYahtzeeRoll else { return false }
+        guard scores(for: playerIndex)[.yahtzee] == 50 else { return false }
+        return true
     }
 
     private static func defaultTheme(for index: Int) -> Theme.ThemeType {
@@ -305,5 +394,9 @@ final class GameModel {
     private func isLargeStraight() -> Bool {
         let unique = Set(diceValues)
         return unique == [1, 2, 3, 4, 5] || unique == [2, 3, 4, 5, 6]
+    }
+
+    private var isYahtzeeRoll: Bool {
+        Set(diceValues).count == 1
     }
 }
