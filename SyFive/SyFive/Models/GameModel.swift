@@ -62,12 +62,14 @@ final class GameModel {
     private(set) var playerScores: [[ScoreCategory: Int]]
     private(set) var playerThemes: [Theme.ThemeType]
     private(set) var currentPlayerIndex: Int
+    /// True while physics dice are mid-roll (between beginRoll and receiveDiceResults).
+    private(set) var isRolling: Bool = false
 
     init() {
         diceValues = Array(repeating: 1, count: diceCount)
         held = Array(repeating: false, count: diceCount)
         rollsRemaining = rollsPerTurn
-        playerScores = [[:]]
+        playerScores = [[:]  ]
         playerThemes = [Self.defaultTheme(for: 0)]
         currentPlayerIndex = 0
     }
@@ -110,7 +112,7 @@ final class GameModel {
     }
 
     var canScore: Bool {
-        rollsRemaining < rollsPerTurn && !isGameOver
+        rollsRemaining < rollsPerTurn && !isGameOver && !isRolling
     }
 
     var totalRounds: Int {
@@ -128,7 +130,7 @@ final class GameModel {
 
     var nextPlayerThemeType: Theme.ThemeType {
         Self.defaultTheme(for: playerCount)
-    } 
+    }
 
     func scores(for playerIndex: Int) -> [ScoreCategory: Int] {
         guard playerScores.indices.contains(playerIndex) else { return [:] }
@@ -184,6 +186,7 @@ final class GameModel {
         rollsRemaining = rollsPerTurn
         playerScores = Array(repeating: [:], count: playerCount)
         currentPlayerIndex = 0
+        isRolling = false
     }
 
     func setTheme(_ theme: Theme.ThemeType, for playerIndex: Int) {
@@ -192,16 +195,29 @@ final class GameModel {
     }
 
     func toggleHold(at index: Int) {
-        guard diceValues.indices.contains(index), !isGameOver else { return }
+        guard diceValues.indices.contains(index), !isGameOver, canScore else { return }
         held[index].toggle()
     }
 
-    func roll() {
-        guard rollsRemaining > 0, !isGameOver else { return }
-        for index in diceValues.indices where !held[index] {
-            diceValues[index] = Int.random(in: 1...sides)
-        }
+    // MARK: - Physics roll interface
+
+    /// Call before launching physics dice. Decrements rollsRemaining and marks isRolling.
+    func beginRoll() {
+        guard rollsRemaining > 0, !isGameOver, !isRolling else { return }
         rollsRemaining -= 1
+        isRolling = true
+    }
+
+    /// Call when physics dice have settled. Updates diceValues for non-held positions.
+    /// `values` must have one entry per die (5 total); held dice entries are ignored.
+    func receiveDiceResults(_ values: [Int]) {
+        guard isRolling else { return }
+        for i in diceValues.indices where !held[i] {
+            if i < values.count {
+                diceValues[i] = values[i]
+            }
+        }
+        isRolling = false
     }
 
     func score(category: ScoreCategory) {
@@ -230,13 +246,7 @@ final class GameModel {
 
     private static func defaultTheme(for index: Int) -> Theme.ThemeType {
         let order: [Theme.ThemeType] = [
-            .midnight,
-            .blossom,
-            .ember,
-            .forest,
-            .ocean,
-            .sunset,
-            .paper
+            .midnight, .blossom, .ember, .forest, .ocean, .sunset, .paper
         ]
         return order[index % order.count]
     }
@@ -288,11 +298,7 @@ final class GameModel {
 
     private func isSmallStraight() -> Bool {
         let unique = Set(diceValues)
-        let sequences: [Set<Int>] = [
-            [1, 2, 3, 4],
-            [2, 3, 4, 5],
-            [3, 4, 5, 6]
-        ]
+        let sequences: [Set<Int>] = [[1, 2, 3, 4], [2, 3, 4, 5], [3, 4, 5, 6]]
         return sequences.contains { $0.isSubset(of: unique) }
     }
 

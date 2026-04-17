@@ -127,10 +127,33 @@ struct Theme {
             return colorScheme == .dark ? Color(red: 0.50, green: 0.50, blue: 0.50) : Color(red: 0.45, green: 0.45, blue: 0.45)
         }
     }
-    
+
+    var heldAccent: Color { type == .forest ? errorColor : successColor }
+
+    var oppositeTheme: Theme {
+        switch type {
+        case .blossom:
+            return Theme(type: .midnight, colorScheme: colorScheme)
+        case .ember:
+            return Theme(type: .sunset, colorScheme: colorScheme)
+        case .forest:
+            return Theme(type: .ocean, colorScheme: colorScheme)
+        case .midnight:
+            return Theme(type: .blossom, colorScheme: colorScheme)
+        case .ocean:
+            return Theme(type: .forest, colorScheme: colorScheme)
+        case .paper:
+            return Theme(type: .midnight, colorScheme: colorScheme)
+        case .sunset:
+            return Theme(type: .ember, colorScheme: colorScheme)
+        }
+    }
     /// Color for text on primary surfaces.
     var primaryText: Color {
-        colorScheme == .dark ? Color.white : Color.black
+        if type == .paper {
+            return .black
+        }
+        return colorScheme == .dark ? Color.white : Color.black
     }
     
     /// Color for secondary/subtle text.
@@ -215,4 +238,3 @@ extension EnvironmentValues {
         set { self[ThemeKey.self] = newValue }
     }
 }
-

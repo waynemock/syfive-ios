@@ -21,6 +21,7 @@ struct ScoreRow: View {
     }
 
     let players: [PlayerCell]
+    let theme: Theme
     let columnWidth: CGFloat
     let rowHeight: CGFloat
     let rowAction: (() -> Void)?
@@ -39,7 +40,7 @@ struct ScoreRow: View {
                 rowContent
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(CardButtonStyle())
         } else {
             rowContent
         }
@@ -50,16 +51,16 @@ struct ScoreRow: View {
         let background = RoundedRectangle(cornerRadius: 6, style: .continuous)
             .fill(cellHighlight(for: player))
         let outline = RoundedRectangle(cornerRadius: 6, style: .continuous)
-            .strokeBorder(Color.accentColor.opacity(player.isAvailable && player.canScore ? 0.7 : 0), lineWidth: 1.5)
-            .shadow(color: Color.accentColor.opacity(player.isAvailable && player.canScore ? 0.35 : 0), radius: 4, x: 0, y: 0)
+            .strokeBorder(theme.primaryAccent.opacity(player.isAvailable && player.canScore ? 0.7 : 0), lineWidth: 1.5)
+            .shadow(color: theme.primaryAccent.opacity(player.isAvailable && player.canScore ? 0.35 : 0), radius: 4, x: 0, y: 0)
 
         if rowAction == nil, player.isAvailable && player.canScore {
             Button(action: player.onSelect) {
                 scoreText(for: player)
+                    .background(background)
+                    .overlay(outline)
             }
-            .buttonStyle(.plain)
-            .background(background)
-            .overlay(outline)
+            .buttonStyle(CardButtonStyle())
         } else {
             scoreText(for: player)
                 .background(background)
@@ -71,13 +72,13 @@ struct ScoreRow: View {
         Group {
             if let value = player.value {
                 Text(value, format: .number)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(scoreForeground(for: player))
             } else if player.canScore {
                 Text(player.suggested, format: .number)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(scoreForeground(for: player))
             } else {
                 Text("--")
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(scoreForeground(for: player))
             }
         }
         .font(.subheadline)
@@ -86,17 +87,37 @@ struct ScoreRow: View {
 
     private func cellHighlight(for player: PlayerCell) -> Color {
         if player.isAvailable && player.canScore {
-            return Color.accentColor.opacity(0.28)
+            return theme.primaryAccent.opacity(0.28)
         }
         if player.isWinner {
-            return Color.green.opacity(0.18)
+            return theme.successColor.opacity(0.18)
         }
         if player.isCurrentPlayer {
-            return Color.accentColor.opacity(0.12)
+            return theme.primaryAccent.opacity(0.12)
         }
         return Color.clear
     }
+
+    private func scoreForeground(for player: PlayerCell) -> Color {
+        if player.value != nil {
+            return theme.primaryAccent.opacity(0.78)
+        }
+        if player.canScore {
+            return theme.primaryAccent.opacity(0.9)
+        }
+        return theme.primaryAccent.opacity(0.45)
+    }
 }
+
+private struct CardButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.82 : 1)
+            .scaleEffect(configuration.isPressed ? 0.985 : 1)
+            .animation(.easeOut(duration: 0.16), value: configuration.isPressed)
+    }
+}
+
 #Preview {
     ScoreRow(
         players: [
@@ -128,10 +149,10 @@ struct ScoreRow: View {
                 isWinner: false
             ) {}
         ],
+        theme: Theme(),
         columnWidth: 64,
         rowHeight: 32,
         rowAction: nil
     )
     .padding()
 }
-

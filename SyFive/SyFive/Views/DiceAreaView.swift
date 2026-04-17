@@ -1,19 +1,29 @@
 import SwiftUI
 import Observation
+import RealityKit
 
 struct DiceAreaView: View {
     @Bindable var model: GameModel
+    @State private var diceRoller = DiceRoller()
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 8) {
             header
-            Spacer(minLength: 0)
-            diceRow
-            Spacer(minLength: 0)
+            trayView
             rollControls
+            #if DEBUG
+            if AppConfig.DebugDice.showPhysicsSliders {
+                physicsDebugPanel
+            }
+            if AppConfig.DebugDice.showHarness {
+                DiceDebugHUD(diceRoller: diceRoller)
+            }
+            #endif
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
+
+    // MARK: - Subviews
 
     private var header: some View {
         VStack(spacing: 6) {
@@ -30,71 +40,58 @@ struct DiceAreaView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private var diceRow: some View {
-        let isDiceInteractive = model.rollsRemaining < 3 && !model.isGameOver
-        return Group {
-            if model.hasStarted && model.rollsRemaining < 3 {
-                diceGrid(isDiceInteractive: isDiceInteractive)
+    /// 3D RealityKit tray — square, fills available width dynamically.
+    private var trayView: some View {
+        Color.clear
+            .frame(maxWidth: .infinity)
+            .aspectRatio(1, contentMode: .fit)
+            .overlay {
+                DiceRKView(diceRoller: diceRoller)
+                    .gesture(
+                        SpatialTapGesture()
+                            .targetedToAnyEntity()
+                            .onEnded { value in
+                                handleDiceTap(value.entity)
+                            }
+                    )
             }
-        }
-    }
-
-    private func diceGrid(isDiceInteractive: Bool) -> some View {
-        let spacing: CGFloat = 12
-        return VStack(spacing: spacing) {
-            HStack(spacing: spacing) {
-                dicePill(at: 0, isDiceInteractive: isDiceInteractive)
-                Spacer(minLength: 0)
-                dicePill(at: 1, isDiceInteractive: isDiceInteractive)
-            }
-            HStack(spacing: spacing) {
-                Spacer(minLength: 0)
-                dicePill(at: 2, isDiceInteractive: isDiceInteractive)
-                Spacer(minLength: 0)
-            }
-            HStack(spacing: spacing) {
-                dicePill(at: 3, isDiceInteractive: isDiceInteractive)
-                Spacer(minLength: 0)
-                dicePill(at: 4, isDiceInteractive: isDiceInteractive)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 32)
-        .opacity(isDiceInteractive ? 1 : 0.5)
-        .animation(.easeInOut(duration: 0.2), value: isDiceInteractive)
-    }
-
-    private func dicePill(at index: Int, isDiceInteractive: Bool) -> some View {
-        DicePill(
-            value: model.diceValues[index],
-            isHeld: model.held[index],
-            isEnabled: isDiceInteractive
-        ) {
-            model.toggleHold(at: index)
-        }
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private var rollControls: some View {
         VStack(spacing: 8) {
             Button {
-                model.roll()
+                model.beginRoll()
+                Task {
+                    await diceRoller.roll(held: model.held) { values in
+                        model.receiveDiceResults(values)
+                    }
+                }
             } label: {
                 Text(rollButtonTitle)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(model.rollsRemaining == 0 || model.isGameOver)
+            .disabled(!canRoll)
 
             VStack(spacing: 4) {
                 if model.hasStarted {
-                    if model.rollsRemaining == 3, let label = leadingPlayerLabel {
-                        Text(label)
-                            .font(.footnote.weight(.semibold))
+                    if model.isRolling {
+                        Text("Rolling…")
+                            .font(.footnote)
                             .foregroundStyle(.secondary)
-                    }
-                    if model.canScore {
+                    } else if model.canScore {
                         Text("Choose a category to score")
                             .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    } else if model.rollsRemaining == 0 {
+                        Text("No rolls remaining — choose a category")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    if !model.isRolling, let label = leadingPlayerLabel {
+                        Text(label)
+                            .font(.footnote.weight(.semibold))
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -102,18 +99,90 @@ struct DiceAreaView: View {
         }
     }
 
+    // MARK: - Actions
+
+    private func handleDiceTap(_ entity: Entity) {
+        guard model.canScore else { return }
+        guard let diceIndex = diceRoller.index(of: entity) else { return }
+        model.toggleHold(at: diceIndex)
+        diceRoller.setHeld(model.held)
+    }
+
+    // MARK: - Helpers
+
+    private var canRoll: Bool {
+        model.rollsRemaining > 0 && !model.isGameOver && !model.isRolling
+    }
+
     private var rollButtonTitle: String {
         if !model.hasStarted {
-            if model.playerCount == 1 {
-                return "Start game with 1 player"
-            }
-            return "Start game with \(model.playerCount) players"
+            return model.playerCount == 1
+                ? "Start game with 1 player"
+                : "Start game with \(model.playerCount) players"
         }
-        if model.rollsRemaining == 3 {
-            return "Start Turn"
-        }
+        if model.isRolling { return "Rolling…" }
+        if model.rollsRemaining == 3 { return "Start Turn" }
         return model.rollsRemaining > 0 ? "Roll (\(model.rollsRemaining) left)" : "Roll"
     }
+
+    // MARK: - Debug
+
+    #if DEBUG
+    /// Physics tuning sliders — only visible when `AppConfig.DebugDice.showPhysicsSliders == true`.
+    private var physicsDebugPanel: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Physics Tuning")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Group {
+                debugSlider(
+                    label: "Impulse max \(String(format: "%.2f", diceRoller.config.impulseMax))",
+                    value: Binding(
+                        get: { diceRoller.config.impulseMax },
+                        set: { diceRoller.config.impulseMax = $0 }
+                    ),
+                    in: 0.03...0.25
+                )
+                debugSlider(
+                    label: "Torque max \(String(format: "%.2f", diceRoller.config.torqueMax))",
+                    value: Binding(
+                        get: { diceRoller.config.torqueMax },
+                        set: { diceRoller.config.torqueMax = $0 }
+                    ),
+                    in: 0.02...0.35
+                )
+                debugSlider(
+                    label: "Cone angle \(String(format: "%.0f°", diceRoller.config.coneHalfAngle * 180 / .pi))",
+                    value: Binding(
+                        get: { diceRoller.config.coneHalfAngle },
+                        set: { diceRoller.config.coneHalfAngle = $0 }
+                    ),
+                    in: 0.1...1.2
+                )
+                debugSlider(
+                    label: "Spawn jitter \(String(format: "%.3f", diceRoller.config.spawnJitter))",
+                    value: Binding(
+                        get: { diceRoller.config.spawnJitter },
+                        set: { diceRoller.config.spawnJitter = $0 }
+                    ),
+                    in: 0...0.04
+                )
+            }
+        }
+        .padding(10)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .padding(.horizontal, 12)
+    }
+
+    private func debugSlider(label: String, value: Binding<Float>, in range: ClosedRange<Float>) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(label).font(.caption2).foregroundStyle(.secondary)
+            Slider(value: value, in: range)
+        }
+    }
+    #endif
 
     private var leadingPlayerLabel: String? {
         guard model.playerCount > 1 else { return nil }

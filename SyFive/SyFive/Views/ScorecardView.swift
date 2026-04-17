@@ -258,6 +258,7 @@ struct ScorecardView: View {
             Spacer()
             ScoreRow(
                 players: [playerCell(for: category, playerIndex: playerIndex)],
+                theme: Theme(type: model.themeType(for: playerIndex), colorScheme: colorScheme),
                 columnWidth: scoreColumnWidth,
                 rowHeight: scoreRowHeight,
                 rowAction: rowAction(for: category, playerIndex: playerIndex)

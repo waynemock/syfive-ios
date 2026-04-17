@@ -8,7 +8,7 @@ struct ContentView: View {
     private let logger = AppLogger(category: "ContentView")
 
     var body: some View {
-        let theme = Theme(type: .midnight, colorScheme: colorScheme)
+        let theme = Theme(type: .midnight , colorScheme: colorScheme)
         NavigationStack {
             GeometryReader { proxy in
                 let isPortrait = proxy.size.height >= proxy.size.width
