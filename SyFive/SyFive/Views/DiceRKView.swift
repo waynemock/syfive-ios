@@ -10,6 +10,11 @@ struct DiceRKView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     let diceRoller: DiceRoller
+    /// Current rendered size of this view — used to compute the camera FOV.
+    var viewSize: CGSize = .zero
+
+    // Persisted camera entity so the update closure can adjust FOV.
+    @State private var cameraEntity = Entity()
 
     var body: some View {
         RealityView { content in
@@ -23,6 +28,7 @@ struct DiceRKView: View {
             addTray(to: &content)
             diceRoller.setup(in: &content, theme: theme)
         } update: { _ in
+            updateCameraFOV()
             diceRoller.applyTheme(theme)
         }
         .background(theme.backgroundColor)
@@ -40,15 +46,62 @@ struct DiceRKView: View {
     // MARK: - Scene setup
 
     private func addCamera(to content: inout RealityViewCameraContent) {
-        let camera = Entity()
-        var camComponent = PerspectiveCameraComponent()
-        camComponent.near = 0.001
-        camComponent.far = 10
-        camComponent.fieldOfViewInDegrees = 62
-        camera.components.set(camComponent)
-        // Overhead view angled slightly forward, framing the full tray floor
-        camera.look(at: [0, 0.01, 0], from: [0, 0.34, 0.16], relativeTo: nil)
-        content.add(camera)
+        var comp = PerspectiveCameraComponent()
+        comp.near = 0.001
+        comp.far  = 10
+        comp.fieldOfViewInDegrees = trayFOV
+        cameraEntity.components.set(comp)
+        // Overhead view angled slightly forward, framing the full tray floor.
+        cameraEntity.look(at: [0, 0.01, 0], from: [0, 0.34, 0.16], relativeTo: nil)
+        content.add(cameraEntity)
+    }
+
+    private func updateCameraFOV() {
+        guard var comp = cameraEntity.components[PerspectiveCameraComponent.self] else { return }
+        comp.fieldOfViewInDegrees = trayFOV
+        cameraEntity.components.set(comp)
+    }
+
+    /// Vertical FOV (degrees) that frames the tray to fill ~90 % of the shorter
+    /// viewport dimension. Accounts for non-square aspect ratios automatically.
+    ///
+    /// Strategy: project all four tray floor corners into camera space, find the
+    /// largest required vertical half-FOV tan that keeps every corner in frame,
+    /// then back out the full-angle FOV with a fill factor applied.
+    private var trayFOV: Float {
+        let camPos: SIMD3<Float>  = [0, 0.34, 0.16]
+        let lookAt: SIMD3<Float>  = [0, 0.01,  0.00]
+        let half = DiceTrayEntity.halfSize
+
+        let fwd   = normalize(lookAt - camPos)
+        let right = normalize(cross(fwd, SIMD3<Float>(0, 1, 0)))
+        let up    = cross(right, fwd)
+
+        let aspect: Float = (viewSize.width > 0 && viewSize.height > 0)
+            ? Float(viewSize.width / viewSize.height) : 1
+
+        let corners: [SIMD3<Float>] = [
+            [-half, 0, -half], [ half, 0, -half],
+            [-half, 0,  half], [ half, 0,  half],
+        ]
+
+        var maxHalfTan: Float = 0
+        for c in corners {
+            let v = c - camPos
+            let d = dot(v, fwd)
+            guard d > 0 else { continue }
+            // Required vertical half-FOV tan: the larger of the vertical
+            // projection and the horizontal projection normalised by aspect.
+            let req = max(abs(dot(v, up))    / d,
+                         abs(dot(v, right)) / (d * aspect))
+            maxHalfTan = max(maxHalfTan, req)
+        }
+
+        guard maxHalfTan > 0 else { return 62 }
+
+        // fillFactor < 1 leaves a small margin around the tray edges.
+        let fillFactor: Float = 0.88
+        return 2 * atan(maxHalfTan / fillFactor) * (180 / .pi)
     }
 
     private func addLights(to content: inout RealityViewCameraContent) {

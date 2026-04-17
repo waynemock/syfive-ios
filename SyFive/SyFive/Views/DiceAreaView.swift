@@ -5,9 +5,10 @@ import RealityKit
 struct DiceAreaView: View {
     @Bindable var model: GameModel
     @State private var diceRoller = DiceRoller()
+    @State private var traySize: CGSize = .zero
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 0) {
             header
             trayView
             rollControls
@@ -43,8 +44,6 @@ struct DiceAreaView: View {
     /// 3D RealityKit tray — square, fills available width dynamically.
     private var trayView: some View {
         Color.clear
-            .frame(maxWidth: .infinity)
-            .aspectRatio(1, contentMode: .fit)
             .overlay {
                 DiceRKView(diceRoller: diceRoller)
                     .gesture(
@@ -75,25 +74,28 @@ struct DiceAreaView: View {
             .disabled(!canRoll)
 
             VStack(spacing: 4) {
-                if model.hasStarted {
-                    if model.isRolling {
-                        Text("Rolling…")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    } else if model.canScore {
-                        Text("Choose a category to score")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    } else if model.rollsRemaining == 0 {
-                        Text("No rolls remaining — choose a category")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                    if !model.isRolling, let label = leadingPlayerLabel {
-                        Text(label)
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                    }
+                if model.canScore {
+                    Text("Choose a category to score")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                } else if model.rollsRemaining == 0 {
+                    Text("No rolls remaining — choose a category")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("M") // keep space for this row of text
+                        .font(.footnote)
+                        .foregroundColor(.clear)
+                }
+
+                if let label = leadingPlayerLabel {
+                    Text(label)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                } else if model.playerCount > 1 {
+                    Text("M") // keep space for this row of text
+                        .font(.footnote.weight(.semibold))
+                        .foregroundColor(.clear)
                 }
             }
         }
@@ -122,7 +124,7 @@ struct DiceAreaView: View {
         }
         if model.isRolling { return "Rolling…" }
         if model.rollsRemaining == 3 { return "Start Turn" }
-        return model.rollsRemaining > 0 ? "Roll (\(model.rollsRemaining) left)" : "Roll"
+        return model.rollsRemaining > 0 ? "Roll (\(model.rollsRemaining) left)" : "No rolls remaining"
     }
 
     // MARK: - Debug

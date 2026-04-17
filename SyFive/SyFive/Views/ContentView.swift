@@ -16,28 +16,20 @@ struct ContentView: View {
                 let scorecardAvailableWidth = isPortrait
                     ? proxy.size.width
                     : max(0, (contentWidth - 20) / 2 + 48)
-                Group {
-                    if isPortrait {
-                        VStack(spacing: 12) {
-                            DiceAreaView(model: model)
-                                .background(debugColor(Color.red.opacity(0.25)))
-                                .frame(maxHeight: .infinity, alignment: .top)
-                            ScorecardView(model: model, availableWidth: scorecardAvailableWidth)
-                                .padding(.horizontal, -24)
-                                .background(debugColor(Color.green.opacity(0.25)))
-                                .frame(maxHeight: .infinity, alignment: .top)
-                        }
-                    } else {
-                        HStack(spacing: 20) {
-                            DiceAreaView(model: model)
-                                .background(debugColor(Color.red.opacity(0.25)))
-                                .frame(maxWidth: .infinity, alignment: .top)
-                            ScorecardView(model: model, availableWidth: scorecardAvailableWidth)
-                                .padding(.horizontal, -24)
-                                .background(debugColor(Color.green.opacity(0.25)))
-                                .frame(maxWidth: .infinity, alignment: .top)
-                        }
-                    }
+                // AnyLayout switches between VStack/HStack while preserving
+                // subview identity — this prevents DiceAreaView (and its
+                // embedded RealityView) from being destroyed on rotation.
+                let layout = isPortrait
+                    ? AnyLayout(VStackLayout(spacing: 12))
+                    : AnyLayout(HStackLayout(spacing: 20))
+                layout {
+                    DiceAreaView(model: model)
+                        .background(debugColor(Color.red.opacity(0.25)))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    ScorecardView(model: model, availableWidth: scorecardAvailableWidth)
+                        .padding(.horizontal, -24)
+                        .background(debugColor(Color.green.opacity(0.25)))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .padding(.horizontal, 24)
