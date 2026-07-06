@@ -12,7 +12,11 @@ import SwiftData
 struct SyFiveApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            PlayerModel.self,
+            TeamModel.self,
+            GameModel.self,
+            MatchModel.self,
+            ParticipantModel.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

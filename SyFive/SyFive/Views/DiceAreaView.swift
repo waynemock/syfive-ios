@@ -3,7 +3,7 @@ import Observation
 import RealityKit
 
 struct DiceAreaView: View {
-    @Bindable var model: GameModel
+    @Bindable var model: MatchController
     @State private var diceRoller = DiceRoller()
     @State private var traySize: CGSize = .zero
     @State private var suppressNextPlayerChangeDiceClear = false
@@ -244,5 +244,5 @@ struct DiceAreaView: View {
 }
 
 #Preview {
-    DiceAreaView(model: GameModel())
+    DiceAreaView(model: MatchController())
 }

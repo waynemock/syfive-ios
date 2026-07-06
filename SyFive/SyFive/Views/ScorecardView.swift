@@ -2,7 +2,7 @@ import SwiftUI
 import Observation
 
 struct ScorecardView: View {
-    @Bindable var model: GameModel
+    @Bindable var model: MatchController
     let availableWidth: CGFloat
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.sizeCategory) private var sizeCategory
@@ -177,5 +177,5 @@ private struct AddPlayerMinYKey: PreferenceKey {
 
 
 #Preview {
-    ScorecardView(model: GameModel(), availableWidth: 360)
+    ScorecardView(model: MatchController(), availableWidth: 360)
 }

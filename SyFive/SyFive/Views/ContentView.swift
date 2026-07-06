@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var model = GameModel()
+    @State private var model = MatchController()
     @State private var showsResetAlert = false
     @Environment(\.colorScheme) private var colorScheme
     private let showsDebugLayout = AppConfig.DebugLayout.isEnabled

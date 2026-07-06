@@ -3,7 +3,7 @@ import Observation
 import SwiftUI
 
 @Observable
-final class GameModel {
+final class MatchController {
     struct UndoRestoration {
         let diceValues: [Int]
         let held: [Bool]
@@ -13,68 +13,19 @@ final class GameModel {
         let diceValues: [Int]
         let held: [Bool]
         let rollsRemaining: Int
-        let playerScores: [[ScoreCategory: Int]]
+        let playerScores: [[YatzyCategory: Int]]
         let playerYahtzeeBonuses: [Int]
         let currentPlayerIndex: Int
         let isRolling: Bool
     }
 
-    enum ScoreCategory: String, CaseIterable, Identifiable {
-        case ones
-        case twos
-        case threes
-        case fours
-        case fives
-        case sixes
-        case threeOfAKind
-        case fourOfAKind
-        case fullHouse
-        case smallStraight
-        case largeStraight
-        case yahtzee
-        case chance
-
-        var id: String { rawValue }
-
-        var displayName: String {
-            switch self {
-            case .ones: return "Ones"
-            case .twos: return "Twos"
-            case .threes: return "Threes"
-            case .fours: return "Fours"
-            case .fives: return "Fives"
-            case .sixes: return "Sixes"
-            case .threeOfAKind: return "3 of a Kind"
-            case .fourOfAKind: return "4 of a Kind"
-            case .fullHouse: return "Full House"
-            case .smallStraight: return "Small Straight"
-            case .largeStraight: return "Large Straight"
-            case .yahtzee: return "Yatzy"
-            case .chance: return "Chance"
-            }
-        }
-
-        var isUpperSection: Bool {
-            switch self {
-            case .ones, .twos, .threes, .fours, .fives, .sixes:
-                return true
-            default:
-                return false
-            }
-        }
-    }
-
     private let diceCount = 5
-    private let sides = 6
     private let rollsPerTurn = 3
-
-    private let upperBonusThreshold = 63
-    private let upperBonusValue = 35
 
     private(set) var diceValues: [Int]
     private(set) var held: [Bool]
     private(set) var rollsRemaining: Int
-    private(set) var playerScores: [[ScoreCategory: Int]]
+    private(set) var playerScores: [[YatzyCategory: Int]]
     private(set) var playerYahtzeeBonuses: [Int]
     private(set) var playerThemes: [Theme.ThemeType]
     private(set) var currentPlayerIndex: Int
@@ -86,7 +37,7 @@ final class GameModel {
         diceValues = Array(repeating: 1, count: diceCount)
         held = Array(repeating: false, count: diceCount)
         rollsRemaining = rollsPerTurn
-        playerScores = [[:]  ]
+        playerScores = [[:]]
         playerYahtzeeBonuses = [0]
         playerThemes = [Self.defaultTheme(for: 0)]
         currentPlayerIndex = 0
@@ -113,7 +64,7 @@ final class GameModel {
     }
 
     var isGameOver: Bool {
-        playerScores.allSatisfy { $0.count == ScoreCategory.allCases.count }
+        (0..<playerCount).allSatisfy { isComplete(scorecard: yatzyScorecard(for: $0)) }
     }
 
     var winnerIndices: [Int] {
@@ -131,10 +82,7 @@ final class GameModel {
 
     var winnerScore: Int? {
         guard isGameOver else { return nil }
-        if let first = winnerIndices.first {
-            return totalScore(for: first)
-        }
-        return nil
+        return winnerIndices.first.map { totalScore(for: $0) }
     }
 
     var leaderIndices: [Int] {
@@ -150,25 +98,21 @@ final class GameModel {
     }
 
     var leaderScore: Int? {
-        guard let first = leaderIndices.first else { return nil }
-        return totalScore(for: first)
+        leaderIndices.first.map { totalScore(for: $0) }
     }
 
     var leadingPlayerLabel: String? {
         let names = leaderNames.joined(separator: ", ")
         guard playerCount > 1 && !names.isEmpty else { return nil }
-        if leaderIndices.count > 1 {
-            return "\(names) tied"
-        }
-        return "\(names) winning"
+        return leaderIndices.count > 1 ? "\(names) tied" : "\(names) winning"
     }
-    
+
     var canScore: Bool {
         rollsRemaining < rollsPerTurn && !isGameOver && !isRolling
     }
 
     var totalRounds: Int {
-        ScoreCategory.allCases.count
+        YatzyCategory.allCases.count
     }
 
     var currentRound: Int {
@@ -193,17 +137,16 @@ final class GameModel {
     }
 
     var undoThemeType: Theme.ThemeType? {
-        guard let playerIndex = undoPlayerIndex else { return nil }
-        return themeType(for: playerIndex)
+        undoPlayerIndex.map { themeType(for: $0) }
     }
 
-    func canScore(category: ScoreCategory, for playerIndex: Int) -> Bool {
+    func canScore(category: YatzyCategory, for playerIndex: Int) -> Bool {
         guard canScore else { return false }
         guard playerIndex == currentPlayerIndex else { return false }
         return legalScoreCategories(for: playerIndex).contains(category)
     }
 
-    func scores(for playerIndex: Int) -> [ScoreCategory: Int] {
+    func scores(for playerIndex: Int) -> [YatzyCategory: Int] {
         guard playerScores.indices.contains(playerIndex) else { return [:] }
         return playerScores[playerIndex]
     }
@@ -214,19 +157,20 @@ final class GameModel {
     }
 
     func upperSubtotal(for playerIndex: Int) -> Int {
-        scores(for: playerIndex).compactMap { entry in
-            guard entry.key.isUpperSection else { return nil }
-            return entry.value
-        }.reduce(0, +)
+        // Inline to avoid base-name collision with domain free function upperSubtotal(scorecard:)
+        let sc = yatzyScorecard(for: playerIndex)
+        return YatzyCategory.allCases
+            .filter { $0.isUpperSection }
+            .compactMap { sc[$0] }
+            .reduce(0) { $0 + NSDecimalNumber(decimal: $1).intValue }
     }
 
     func upperBonus(for playerIndex: Int) -> Int {
-        upperSubtotal(for: playerIndex) >= upperBonusThreshold ? upperBonusValue : 0
+        upperSubtotal(for: playerIndex) >= 63 ? 35 : 0
     }
 
     func totalScore(for playerIndex: Int) -> Int {
-        let base = scores(for: playerIndex).values.reduce(0, +)
-        return base + upperBonus(for: playerIndex) + yahtzeeBonus(for: playerIndex)
+        grandTotal(scorecard: yatzyScorecard(for: playerIndex), yahtzeeBonus: yahtzeeBonus(for: playerIndex))
     }
 
     func isWinner(_ playerIndex: Int) -> Bool {
@@ -298,7 +242,7 @@ final class GameModel {
         isRolling = false
     }
 
-    func score(category: ScoreCategory) {
+    func score(category: YatzyCategory) {
         guard playerScores.indices.contains(currentPlayerIndex) else { return }
         guard playerScores[currentPlayerIndex][category] == nil else { return }
         guard legalScoreCategories(for: currentPlayerIndex).contains(category) else { return }
@@ -311,7 +255,7 @@ final class GameModel {
             currentPlayerIndex: currentPlayerIndex,
             isRolling: isRolling
         )
-        if qualifiesForExtraYahtzeeBonus(for: currentPlayerIndex) {
+        if qualifiesForExtraYahtzeeBonus(dice: diceValues, scorecard: yatzyScorecard(for: currentPlayerIndex)) {
             playerYahtzeeBonuses[currentPlayerIndex] += 100
         }
         playerScores[currentPlayerIndex][category] = scoreValue(for: category, playerIndex: currentPlayerIndex)
@@ -323,7 +267,6 @@ final class GameModel {
     @discardableResult
     func undoLastScore() -> UndoRestoration? {
         guard let snapshot = lastScoreSnapshot else { return nil }
-
         diceValues = snapshot.diceValues
         held = snapshot.held
         rollsRemaining = snapshot.rollsRemaining
@@ -332,23 +275,22 @@ final class GameModel {
         currentPlayerIndex = snapshot.currentPlayerIndex
         isRolling = snapshot.isRolling
         lastScoreSnapshot = nil
-
         return UndoRestoration(diceValues: snapshot.diceValues, held: snapshot.held)
     }
 
-    func suggestedScores(for playerIndex: Int) -> [ScoreCategory: Int] {
+    func suggestedScores(for playerIndex: Int) -> [YatzyCategory: Int] {
         guard playerScores.indices.contains(playerIndex) else { return [:] }
-        var result: [ScoreCategory: Int] = [:]
-        for category in legalScoreCategories(for: playerIndex) {
+        return legalScoreCategories(for: playerIndex).reduce(into: [:]) { result, category in
             result[category] = scoreValue(for: category, playerIndex: playerIndex)
         }
-        return result
     }
 
     func yahtzeeBonus(for playerIndex: Int) -> Int {
         guard playerYahtzeeBonuses.indices.contains(playerIndex) else { return 0 }
         return playerYahtzeeBonuses[playerIndex]
     }
+
+    // MARK: - Private
 
     private func beginNextTurn() {
         held = Array(repeating: false, count: diceCount)
@@ -360,10 +302,21 @@ final class GameModel {
         lastScoreSnapshot = nil
     }
 
-    private func qualifiesForExtraYahtzeeBonus(for playerIndex: Int) -> Bool {
-        guard isYahtzeeRoll else { return false }
-        guard scores(for: playerIndex)[.yahtzee] == 50 else { return false }
-        return true
+    private func yatzyScorecard(for playerIndex: Int) -> YatzyScorecard {
+        guard playerScores.indices.contains(playerIndex) else { return [:] }
+        return playerScores[playerIndex].mapValues { Decimal($0) }
+    }
+
+    private func scoreValue(for category: YatzyCategory, playerIndex: Int) -> Int {
+        let scorecard = yatzyScorecard(for: playerIndex)
+        if let joker = jokerValue(of: category, dice: diceValues, scorecard: scorecard) {
+            return joker
+        }
+        return faceValue(of: category, dice: diceValues)
+    }
+
+    private func legalScoreCategories(for playerIndex: Int) -> [YatzyCategory] {
+        legalCategories(dice: diceValues, scorecard: yatzyScorecard(for: playerIndex))
     }
 
     private static func defaultTheme(for index: Int) -> Theme.ThemeType {
@@ -371,150 +324,5 @@ final class GameModel {
             .midnight, .blossom, .ember, .forest, .ocean, .sunset, .paper
         ]
         return order[index % order.count]
-    }
-
-    private func scoreValue(for category: ScoreCategory, playerIndex: Int) -> Int {
-        if let jokerScore = jokerScoreValue(for: category, playerIndex: playerIndex) {
-            return jokerScore
-        }
-
-        let counts = countByFace()
-        let sum = diceValues.reduce(0, +)
-
-        switch category {
-        case .ones: return counts[1, default: 0] * 1
-        case .twos: return counts[2, default: 0] * 2
-        case .threes: return counts[3, default: 0] * 3
-        case .fours: return counts[4, default: 0] * 4
-        case .fives: return counts[5, default: 0] * 5
-        case .sixes: return counts[6, default: 0] * 6
-        case .threeOfAKind:
-            return hasKind(of: 3, counts: counts) ? sum : 0
-        case .fourOfAKind:
-            return hasKind(of: 4, counts: counts) ? sum : 0
-        case .fullHouse:
-            return isFullHouse(counts: counts) ? 25 : 0
-        case .smallStraight:
-            return isSmallStraight() ? 30 : 0
-        case .largeStraight:
-            return isLargeStraight() ? 40 : 0
-        case .yahtzee:
-            return hasKind(of: 5, counts: counts) ? 50 : 0
-        case .chance:
-            return sum
-        }
-    }
-
-    private func legalScoreCategories(for playerIndex: Int) -> [ScoreCategory] {
-        guard playerScores.indices.contains(playerIndex) else { return [] }
-
-        let openCategories = ScoreCategory.allCases.filter { playerScores[playerIndex][$0] == nil }
-        guard !openCategories.isEmpty else { return [] }
-
-        guard isJokerRoll(for: playerIndex) else { return openCategories }
-        guard let matchingUpperCategory = matchingUpperCategory else { return openCategories }
-
-        if playerScores[playerIndex][matchingUpperCategory] == nil {
-            return [matchingUpperCategory]
-        }
-
-        let openLowerCategories = openCategories.filter { !$0.isUpperSection }
-        if !openLowerCategories.isEmpty {
-            return openLowerCategories
-        }
-
-        return openCategories.filter(\.isUpperSection)
-    }
-
-    private func jokerScoreValue(for category: ScoreCategory, playerIndex: Int) -> Int? {
-        guard isJokerRoll(for: playerIndex) else { return nil }
-        guard let matchingUpperCategory = matchingUpperCategory else { return nil }
-
-        if playerScores[playerIndex][matchingUpperCategory] == nil {
-            guard category == matchingUpperCategory else { return nil }
-            return diceValues.reduce(0, +)
-        }
-
-        let openLowerCategories = ScoreCategory.allCases.filter {
-            !$0.isUpperSection && playerScores[playerIndex][$0] == nil
-        }
-
-        if !openLowerCategories.isEmpty {
-            guard !category.isUpperSection else { return nil }
-            return jokerLowerSectionScore(for: category)
-        }
-
-        guard category.isUpperSection else { return nil }
-        return 0
-    }
-
-    private func jokerLowerSectionScore(for category: ScoreCategory) -> Int {
-        let sum = diceValues.reduce(0, +)
-
-        switch category {
-        case .threeOfAKind, .fourOfAKind, .chance:
-            return sum
-        case .fullHouse:
-            return 25
-        case .smallStraight:
-            return 30
-        case .largeStraight:
-            return 40
-        case .yahtzee:
-            return 50
-        default:
-            return 0
-        }
-    }
-
-    private func countByFace() -> [Int: Int] {
-        var counts: [Int: Int] = [:]
-        for value in diceValues {
-            counts[value, default: 0] += 1
-        }
-        return counts
-    }
-
-    private func hasKind(of size: Int, counts: [Int: Int]) -> Bool {
-        counts.values.contains { $0 >= size }
-    }
-
-    private func isFullHouse(counts: [Int: Int]) -> Bool {
-        let values = counts.values.sorted()
-        return values == [2, 3]
-    }
-
-    private func isSmallStraight() -> Bool {
-        let unique = Set(diceValues)
-        let sequences: [Set<Int>] = [[1, 2, 3, 4], [2, 3, 4, 5], [3, 4, 5, 6]]
-        return sequences.contains { $0.isSubset(of: unique) }
-    }
-
-    private func isLargeStraight() -> Bool {
-        let unique = Set(diceValues)
-        return unique == [1, 2, 3, 4, 5] || unique == [2, 3, 4, 5, 6]
-    }
-
-    private var isYahtzeeRoll: Bool {
-        Set(diceValues).count == 1
-    }
-
-    private var matchingUpperCategory: ScoreCategory? {
-        guard let faceValue = diceValues.first else { return nil }
-
-        switch faceValue {
-        case 1: return .ones
-        case 2: return .twos
-        case 3: return .threes
-        case 4: return .fours
-        case 5: return .fives
-        case 6: return .sixes
-        default: return nil
-        }
-    }
-
-    private func isJokerRoll(for playerIndex: Int) -> Bool {
-        guard isYahtzeeRoll else { return false }
-        return scores(for: playerIndex)[.yahtzee] != nil
     }
 }

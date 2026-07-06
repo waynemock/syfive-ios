@@ -7,7 +7,7 @@ struct PlayerScoreCardView: View {
         case sideBySide
     }
 
-    @Bindable var model: GameModel
+    @Bindable var model: MatchController
     let playerIndex: Int
     let scoreColumnWidth: CGFloat
     let scoreRowHeight: CGFloat
@@ -194,7 +194,7 @@ struct PlayerScoreCardView: View {
 
     private func scoreSection(
         title: String,
-        categories: [GameModel.ScoreCategory],
+        categories: [YatzyCategory],
         theme: Theme
     ) -> some View {
         VStack(alignment: .leading, spacing: scoreRowSpacing) {
@@ -218,15 +218,15 @@ struct PlayerScoreCardView: View {
         }
     }
 
-    private var upperCategories: [GameModel.ScoreCategory] {
-        GameModel.ScoreCategory.allCases.filter(\.isUpperSection)
+    private var upperCategories: [YatzyCategory] {
+        YatzyCategory.allCases.filter(\.isUpperSection)
     }
 
-    private var lowerCategories: [GameModel.ScoreCategory] {
-        GameModel.ScoreCategory.allCases.filter { !$0.isUpperSection }
+    private var lowerCategories: [YatzyCategory] {
+        YatzyCategory.allCases.filter { !$0.isUpperSection }
     }
 
-    private func scoreRow(for category: GameModel.ScoreCategory) -> some View {
+    private func scoreRow(for category: YatzyCategory) -> some View {
         HStack(spacing: 2) {
             Text(category.displayName)
                 .font(.subheadline)
@@ -281,7 +281,7 @@ struct PlayerScoreCardView: View {
         lowerSectionSubtotal + model.yahtzeeBonus(for: playerIndex)
     }
 
-    private func playerCell(for category: GameModel.ScoreCategory) -> ScoreRow.PlayerCell {
+    private func playerCell(for category: YatzyCategory) -> ScoreRow.PlayerCell {
         let assignedScore = model.scores(for: playerIndex)[category]
         let suggested = model.suggestedScores(for: playerIndex)[category] ?? 0
         let isCurrentPlayer = playerIndex == model.currentPlayerIndex
@@ -300,7 +300,7 @@ struct PlayerScoreCardView: View {
         }
     }
 
-    private func rowAction(for category: GameModel.ScoreCategory) -> (() -> Void)? {
+    private func rowAction(for category: YatzyCategory) -> (() -> Void)? {
         let cell = playerCell(for: category)
         return (cell.isAvailable && cell.canScore) ? cell.onSelect : nil
     }
@@ -368,8 +368,8 @@ private struct PlayerScoreCardPreviewContainer: View {
         }
     }
 
-    fileprivate static func makePreviewModel() -> GameModel {
-        let model = GameModel()
+    fileprivate static func makePreviewModel() -> MatchController {
+        let model = MatchController()
         model.addPlayer()
         model.setTheme(.forest, for: 1)
 
