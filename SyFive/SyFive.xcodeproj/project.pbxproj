@@ -33,6 +33,15 @@
 		B09DE9302F4BBD410018F241 /* Exceptions for "SyFive" folder in "SyFive" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Dice/Docs/DICE_FAIRNESS_RUN.csv,
+				Dice/Docs/DICE_FAIRNESS_TESTING.md,
+				Dice/Docs/DICE_IMPLEMENTATION_PLAN.md,
+				Dice/Docs/DICE_REQUIREMENTS.md,
+				Dice/Docs/DICE_RETROSPECTIVE.md,
+				Docs/APP_ICON.md,
+				Docs/DATAMODEL_DESIGN.md,
+				Docs/IMPLEMENTATION_STATUS.md,
+				Docs/REQUIREMENTS.md,
 				Info.plist,
 				Utilities/analyze_dice_fairness.py,
 			);

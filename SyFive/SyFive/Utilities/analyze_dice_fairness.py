@@ -6,7 +6,7 @@ Run from the repo root:
     python3 SyFive/SyFive/Utilities/analyze_dice_fairness.py
 
 Run against a specific export:
-    python3 SyFive/SyFive/Utilities/analyze_dice_fairness.py "SyFive/Docs/Dice Fairness.csv"
+    python3 SyFive/SyFive/Utilities/analyze_dice_fairness.py "SyFive/Dice/Docs/Dice Fairness.csv"
 
 Show command help:
     python3 SyFive/SyFive/Utilities/analyze_dice_fairness.py --help
@@ -122,13 +122,13 @@ def print_usage(script_name: str) -> None:
     print()
     print("Examples:")
     print(f"  python3 {script_name}")
-    print(f'  python3 {script_name} "SyFive/Docs/Dice Fairness.csv"')
+    print(f'  python3 {script_name} "SyFive/Dice/Docs/Dice Fairness.csv"')
     print()
-    print("If no CSV path is provided, the script reads SyFive/Docs/Dice Fairness.csv.")
+    print("If no CSV path is provided, the script reads SyFive/Dice/Docs/Dice Fairness.csv.")
 
 
 def main() -> int:
-    default_csv = Path(__file__).resolve().parent.parent / "Docs" / "Dice Fairness.csv"
+    default_csv = Path(__file__).resolve().parent.parent / "Dice" / "Docs" / "Dice Fairness.csv"
 
     if len(sys.argv) > 1 and sys.argv[1] in {"-h", "--help"}:
         print_usage(Path(sys.argv[0]).name)
