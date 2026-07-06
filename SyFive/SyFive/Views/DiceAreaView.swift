@@ -7,12 +7,12 @@ struct DiceAreaView: View {
     @State private var diceRoller = DiceRoller()
     @State private var traySize: CGSize = .zero
     @State private var suppressNextPlayerChangeDiceClear = false
+    @State private var isAwaitingInitialTurnStart = false
     @Environment(\.colorScheme) private var colorScheme
     private let rollControlHeight: CGFloat = 24
 
     var body: some View {
         VStack(spacing: 0) {
-            header
             trayView
             rollControls
             #if DEBUG
@@ -33,40 +33,15 @@ struct DiceAreaView: View {
             guard model.playerCount > 1 else { return }
             diceRoller.clearDice()
         }
+        .onChange(of: model.hasStarted) { _, hasStarted in
+            if !hasStarted {
+                isAwaitingInitialTurnStart = false
+                diceRoller.clearDice()
+            }
+        }
     }
 
     // MARK: - Subviews
-
-    private var winnerScore: String {
-        if let winner = model.winnerScore {
-            return " \(winner)"
-        } else {
-            return ""
-        }
-    }
-
-    private var winnerLabel: String {
-        let names = model.winnerNames
-        if names.count == 1 {
-            return "Winner: \(names.first!)\(winnerScore)"
-        }
-        return "Winners: \(names.joined(separator: ", ")) tied!\(winnerScore)"
-    }
-
-    private var header: some View {
-        VStack(spacing: 6) {
-            if model.isGameOver {
-                Text("Winner: \(model.winnerNames.joined(separator: ", "))\(winnerScore)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Button("New Game") {
-                    model.resetGame()
-                }
-                .buttonStyle(.bordered)
-            }
-        }
-        .frame(maxWidth: .infinity)
-    }
 
     /// 3D RealityKit tray — square, fills available width dynamically.
     private var trayView: some View {
@@ -88,6 +63,16 @@ struct DiceAreaView: View {
         VStack(spacing: 8) {
             HStack(spacing: 12) {
                 Button {
+                    if shouldPrimeInitialTurn {
+                        isAwaitingInitialTurnStart = true
+                        diceRoller.clearDice()
+                        return
+                    }
+
+                    if isAwaitingInitialTurnStart {
+                        isAwaitingInitialTurnStart = false
+                    }
+
                     model.beginRoll()
                     Task {
                         await diceRoller.roll(held: model.held) { values in
@@ -123,7 +108,11 @@ struct DiceAreaView: View {
             }
 
             VStack(spacing: 4) {
-                if model.canScore {
+                if let stuckMessage = diceRoller.stuckDiceMessage {
+                    Text(stuckMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                } else if model.canScore {
                     Text("Choose a category to score")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
@@ -136,16 +125,6 @@ struct DiceAreaView: View {
                         .font(.footnote)
                         .foregroundColor(.clear)
                 }
-
-                if let label = leadingPlayerLabel, !model.isGameOver {
-                    Text(label)
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                } else if model.playerCount > 1 {
-                    Text("M") // keep space for this row of text
-                        .font(.footnote.weight(.semibold))
-                        .foregroundColor(.clear)
-                }
             }
         }
     }
@@ -153,8 +132,23 @@ struct DiceAreaView: View {
     // MARK: - Actions
 
     private func handleDiceTap(_ entity: Entity) {
-        guard model.canScore else { return }
         guard let diceIndex = diceRoller.index(of: entity) else { return }
+
+        if diceRoller.hasStuckDice {
+            guard diceRoller.isStuckDie(index: diceIndex) else { return }
+            if diceRoller.isNudgeableDie(index: diceIndex) {
+                // Yellow die — nudge attempt: apply a physics push and let it try to settle.
+                diceRoller.nudgeStuckDie(at: diceIndex)
+            } else {
+                // Red die — nudge already failed, reroll from scratch.
+                Task {
+                    await diceRoller.rerollStuckDie(at: diceIndex)
+                }
+            }
+            return
+        }
+
+        guard model.canScore else { return }
         model.toggleHold(at: diceIndex)
         diceRoller.setHeld(model.held)
     }
@@ -165,7 +159,14 @@ struct DiceAreaView: View {
         model.rollsRemaining > 0 && !model.isGameOver && !model.isRolling
     }
 
+    private var shouldPrimeInitialTurn: Bool {
+        !model.hasStarted && model.playerCount > 1 && !isAwaitingInitialTurnStart
+    }
+
     private var rollButtonTitle: String {
+        if isAwaitingInitialTurnStart {
+            return "Start Turn"
+        }
         if !model.hasStarted {
             return model.playerCount == 1
                 ? "Start game with 1 player"
@@ -240,23 +241,6 @@ struct DiceAreaView: View {
     }
     #endif
 
-    private var leadingPlayerLabel: String? {
-        guard model.playerCount > 1 else { return nil }
-        let totals = (0..<model.playerCount).map { model.totalScore(for: $0) }
-        let maxScore = totals.max() ?? 0
-        guard maxScore > 0 else { return nil }
-        let leaders = totals.enumerated().compactMap { index, score in
-            score == maxScore ? index : nil
-        }
-        if leaders.count > 1 {
-            let names = leaders.map { "P\($0 + 1)" }.joined(separator: ", ")
-            return "Tied: \(names) (\(maxScore))"
-        }
-        if let index = leaders.first {
-            return "Leading: P\(index + 1) (\(maxScore))"
-        }
-        return nil
-    }
 }
 
 #Preview {

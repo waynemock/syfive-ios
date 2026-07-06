@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import UniformTypeIdentifiers
 
 /// Debug fairness HUD for the dice physics system.
 /// Enable via `AppConfig.DebugDice.showHarness = true`.
@@ -9,12 +10,13 @@ import Charts
 @MainActor
 struct DiceDebugHUD: View {
 
-    let diceRoller: DiceRoller
+    @Bindable var diceRoller: DiceRoller
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             headerRow
             distributionChart
+            rescueRow
             statsGrid
             Divider()
             batchControls
@@ -52,9 +54,8 @@ struct DiceDebugHUD: View {
                 .font(.caption)
                 .buttonStyle(.bordered)
             ShareLink(
-                item: stats.csvString(),
-                subject: Text("Dice Roll Statistics"),
-                message: Text("\(stats.totalSamples) samples")
+                item: CSVExport(content: stats.csvString()),
+                preview: SharePreview("Dice Fairness.csv")
             ) {
                 Label("CSV", systemImage: "square.and.arrow.up")
                     .font(.caption)
@@ -81,7 +82,7 @@ struct DiceDebugHUD: View {
                     .foregroundStyle(barColor(face: face))
                     .annotation(position: .top) {
                         if stats.totalSamples > 0 {
-                            Text(String(format: "%.0f%%",
+                            Text(String(format: "%.2f%%",
                                         (stats.faceFrequencies[face] ?? 0) * 100))
                                 .font(.system(size: 8))
                                 .foregroundStyle(.secondary)
@@ -106,6 +107,39 @@ struct DiceDebugHUD: View {
                 }
             }
             .chartYAxis(.hidden)
+        }
+    }
+
+    // MARK: - Rescue row
+
+    private var rescueRow: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Rescues per die")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            rescueDieRow(label: "rescue", counts: stats.rescueCountsPerDie, total: stats.totalRescues, color: .orange)
+            rescueDieRow(label: "nudge",  counts: stats.nudgeCountsPerDie,  total: stats.totalNudges,  color: .yellow)
+            rescueDieRow(label: "reroll", counts: stats.stuckRerollCountsPerDie, total: stats.totalStuckRerolls, color: .red)
+        }
+    }
+
+    private func rescueDieRow(label: String, counts: [Int: Int], total: Int, color: Color) -> some View {
+        HStack(spacing: 0) {
+            Text(label)
+                .font(.system(size: 9))
+                .foregroundStyle(.secondary)
+                .frame(width: 36, alignment: .leading)
+            ForEach(0..<5, id: \.self) { die in
+                let count = counts[die] ?? 0
+                Text("\(count)")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(count > 0 ? color : .secondary)
+                    .frame(maxWidth: .infinity)
+            }
+            Text("\(total)")
+                .font(.caption.monospacedDigit().weight(.semibold))
+                .foregroundStyle(total > 0 ? color : .secondary)
+                .frame(width: 28, alignment: .trailing)
         }
     }
 
@@ -173,14 +207,16 @@ struct DiceDebugHUD: View {
                     Button("Stop", role: .cancel) { diceRoller.stopBatch() }
                         .font(.caption).buttonStyle(.bordered)
                 } else {
-                    Button("100") { diceRoller.startBatch(count: 100) }
+                    Button("1000") { diceRoller.startBatch(count: 1_000) }
                         .font(.caption).buttonStyle(.bordered)
                         .disabled(diceRoller.isRolling)
-                    Button("500") { diceRoller.startBatch(count: 500) }
+                    Button("10000") { diceRoller.startBatch(count: 10_000) }
                         .font(.caption).buttonStyle(.bordered)
                         .disabled(diceRoller.isRolling)
                 }
             }
+
+            batchHoldControls
 
             if diceRoller.isBatchRunning {
                 VStack(alignment: .leading, spacing: 3) {
@@ -213,6 +249,19 @@ struct DiceDebugHUD: View {
         }
     }
 
+    private var batchHoldControls: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Toggle("Auto-hold dice between rolls", isOn: $diceRoller.batchHoldModeEnabled)
+                .font(.caption)
+
+            if diceRoller.batchHoldModeEnabled {
+                Text("Each roll adds one new random held die. After 4 are held, the pattern resets, runs one fully free roll, then starts over.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
     // MARK: - Helpers
 
     private var stats: DiceStatistics { diceRoller.statistics }
@@ -222,6 +271,16 @@ struct DiceDebugHUD: View {
         let freq = stats.faceFrequencies[face] ?? 0
         let deviation = abs(freq - 1.0 / 6.0) / (1.0 / 6.0)
         return deviation > 0.15 ? .orange : .blue
+    }
+}
+
+private struct CSVExport: Transferable {
+    let content: String
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .commaSeparatedText) { export in
+            Data(export.content.utf8)
+        }
+        .suggestedFileName("Dice Fairness")
     }
 }
 

@@ -34,6 +34,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
+				Utilities/analyze_dice_fairness.py,
 			);
 			target = B09DE90C2F4BBD400018F241 /* SyFive */;
 		};

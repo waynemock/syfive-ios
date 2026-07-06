@@ -90,7 +90,7 @@ struct ScoreRow: View {
             return theme.primaryAccent.opacity(0.28)
         }
         if player.isWinner {
-            return theme.successColor.opacity(0.18)
+            return theme.primaryAccent.opacity(0.18)
         }
         if player.isCurrentPlayer {
             return theme.primaryAccent.opacity(0.12)

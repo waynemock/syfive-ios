@@ -12,9 +12,17 @@ final class DiceEntity {
     // MARK: - Constants
 
     static let dieSize: Float = 0.042
+    /// Heuristic support radius used for rescue / proximity checks only.
+    /// This is intentionally softer than the cube half-extent but not a full sphere.
+    static let supportHeuristicRadius: Float = dieSize * 0.62
+    /// Fuller radius used when deciding whether a tilted die is effectively crowding a tray wall.
+    /// This is based on the die's containing sphere, not the softer support heuristic.
+    static let wallHeuristicRadius: Float = dieSize * 0.8660254
 
     private var normalTint: UIColor { UIColor(theme.primaryAccent) }
     private var heldTint: UIColor { UIColor(theme.heldAccent) }
+    private var nudgeableTint: UIColor { .systemYellow }  // yellow — first stuck, tap to nudge
+    private var stuckTint: UIColor { UIColor(theme.errorColor) } // red — nudge failed, tap to reroll
     private var pipTint: UIColor { UIColor(.black) }
 
     /// Local-space face normals → pip value (standard Western die layout).
@@ -29,8 +37,12 @@ final class DiceEntity {
 
     // MARK: - Underlying entity
 
-    /// The actual RealityKit entity added to the scene.
+    /// The actual RealityKit entity added to the scene — carries physics, collision, and input target.
+    /// Has no model; all rendering is done by the child `visualEntity`.
     let entity: ModelEntity
+
+    /// Chamfered visual die mesh + pips — purely cosmetic, no physics. Child of `entity`.
+    private let visualEntity = ModelEntity()
 
     // MARK: - State
 
@@ -39,10 +51,23 @@ final class DiceEntity {
         didSet { applyPhysicsMode() }
     }
 
+    var isStuck: Bool = false {
+        didSet { rebuildAppearance() }
+    }
+
+    var isNudgeable: Bool = false {
+        didSet { rebuildAppearance() }
+    }
+
     // MARK: - Computed
 
     /// Pip value of the face currently pointing most upward in world space.
     var topFaceValue: Int {
+        topFaceMeasurement.value
+    }
+
+    /// The best upward-facing face and its alignment with world up.
+    var topFaceMeasurement: (value: Int, alignment: Float) {
         let worldUp = SIMD3<Float>(0, 1, 0)
         let rot = entity.transform.rotation
         var bestDot: Float = -2
@@ -52,7 +77,7 @@ final class DiceEntity {
             let d = simd_dot(worldNormal, worldUp)
             if d > bestDot { bestDot = d; best = value }
         }
-        return best
+        return (best, bestDot)
     }
 
     var linearSpeed: Float {
@@ -63,11 +88,21 @@ final class DiceEntity {
         simd_length(entity.physicsMotion?.angularVelocity ?? .zero)
     }
 
+    var topFaceAlignment: Float {
+        topFaceMeasurement.alignment
+    }
+
+    /// Height of the die center above the tray floor plane.
+    var centerHeightAboveTrayFloor: Float {
+        entity.position.y
+    }
+
     // MARK: - Init
 
     init(theme: Theme) {
         self.theme = theme
         entity = ModelEntity()
+        entity.addChild(visualEntity)
         buildMesh()
         buildPhysics()
         buildPips()
@@ -83,12 +118,22 @@ final class DiceEntity {
     private func buildMesh() {
         let s = Self.dieSize
         let mesh = MeshResource.generateBox(size: .init(s, s, s), cornerRadius: 0.005)
-        entity.model = ModelComponent(mesh: mesh, materials: [makeMaterial(held: false)])
+        visualEntity.model = ModelComponent(mesh: mesh, materials: [makeMaterial(held: false, stuck: false, nudgeable: false)])
     }
 
-    private func makeMaterial(held: Bool) -> SimpleMaterial {
+    private func makeMaterial(held: Bool, stuck: Bool, nudgeable: Bool) -> SimpleMaterial {
         var mat = SimpleMaterial()
-        mat.color = .init(tint: held ? heldTint : normalTint)
+        let tint: UIColor
+        if stuck {
+            tint = stuckTint
+        } else if nudgeable {
+            tint = nudgeableTint
+        } else if held {
+            tint = heldTint
+        } else {
+            tint = normalTint
+        }
+        mat.color = .init(tint: tint)
         mat.roughness = .float(held ? 0.15 : 0.35)
         mat.metallic  = .float(held ? 0.35 : 0.10)
         return mat
@@ -96,10 +141,15 @@ final class DiceEntity {
 
     private func buildPhysics() {
         let s = Self.dieSize
-        let shape = ShapeResource.generateBox(size: .init(s, s, s))
+        // Convex hull of the chamfered visual mesh: no sharp edges, so the physics engine
+        // generates point contacts instead of edge-line contacts. Edge-line contacts created
+        // artificial friction torque that held the die in stable tilted equilibria; point
+        // contacts have no such torque and the die self-rights naturally.
+        let chamferedMesh = MeshResource.generateBox(size: .init(s, s, s), cornerRadius: 0.005)
+        let shape = ShapeResource.generateConvex(from: chamferedMesh)
         let physMat = PhysicsMaterialResource.generate(
-            staticFriction: 0.50,
-            dynamicFriction: 0.40,
+            staticFriction: 0.30,
+            dynamicFriction: 0.25,
             restitution: 0.30
         )
         var body = PhysicsBodyComponent(shapes: [shape], mass: 0.02, material: physMat, mode: .dynamic)
@@ -151,7 +201,7 @@ final class DiceEntity {
                     + tangent   * (u * spread)
                     + bitangent * (v * spread)
                 pip.orientation = orientation
-                entity.addChild(pip)
+                visualEntity.addChild(pip)
             }
         }
     }
@@ -234,15 +284,17 @@ final class DiceEntity {
         isPinnedForPresentation = false
         entity.position = spawnPos
 
-        // Random initial orientation — fully random quaternion for varied starting face
-        let angle = Float.random(in: 0 ..< (.pi * 2), using: &rng)
-        let rawAxis = SIMD3<Float>(
-            Float.random(in: -1...1, using: &rng),
-            Float.random(in: -1...1, using: &rng),
-            Float.random(in: -1...1, using: &rng)
+        // Uniform random rotation via Shoemake (1992) — avoids the identity-clustering
+        // bias that arises from (uniform angle, normalized-cube axis) parameterisation.
+        let u1 = Float.random(in: 0..<1, using: &rng)
+        let u2 = Float.random(in: 0..<1, using: &rng)
+        let u3 = Float.random(in: 0..<1, using: &rng)
+        entity.orientation = simd_quatf(
+            ix: sqrt(1 - u1) * sin(2 * .pi * u2),
+            iy: sqrt(1 - u1) * cos(2 * .pi * u2),
+            iz: sqrt(u1)     * sin(2 * .pi * u3),
+            r:  sqrt(u1)     * cos(2 * .pi * u3)
         )
-        let safeAxis = simd_length(rawAxis) > 0.001 ? simd_normalize(rawAxis) : .init(0, 1, 0)
-        entity.orientation = simd_quatf(angle: angle, axis: safeAxis)
 
         // Zero existing motion
         var motion = PhysicsMotionComponent()
@@ -287,6 +339,7 @@ final class DiceEntity {
         entity.isEnabled = true
         isPinnedForPresentation = true
         entity.position = position
+        self.isStuck = false
 
         if let targetNormal = Self.faceNormals.first(where: { $0.value == value })?.normal {
             entity.orientation = Self.quaternionAligning(targetNormal, to: SIMD3<Float>(0, 1, 0))
@@ -312,6 +365,114 @@ final class DiceEntity {
         return simd_length(raw) > 0.001 ? simd_normalize(raw) : .init(0, 1, 0)
     }
 
+    func applyFlatnessRecovery() {
+        let measurement = topFaceMeasurement
+        let targetNormal = Self.faceNormals.first { $0.value == measurement.value }?.normal ?? SIMD3<Float>(0, 1, 0)
+        let worldNormal = entity.transform.rotation.act(targetNormal)
+        let worldUp = SIMD3<Float>(0, 1, 0)
+        let tiltAxis = simd_cross(worldNormal, worldUp)
+        let tiltLength = simd_length(tiltAxis)
+
+        let upwardBias: Float = 0.006
+        let lateralBias: Float = 0.003
+
+        entity.addForce(.init(0, upwardBias, 0), relativeTo: nil)
+
+        guard tiltLength > 0.0001 else { return }
+
+        let normalizedTiltAxis = tiltAxis / tiltLength
+        let correctiveTorque = normalizedTiltAxis * 0.02
+        let inwardDirection = safeNormalizedDirection(
+            SIMD3<Float>(-entity.position.x, 0, -entity.position.z),
+            fallback: SIMD3<Float>(0, 0, 1)
+        )
+        let inwardForce = inwardDirection * lateralBias
+
+        applyVelocityKick(linear: SIMD3<Float>(0, upwardBias, 0) + inwardForce, angular: correctiveTorque)
+    }
+
+    func applyStackedRescue(separationDirection: SIMD3<Float>) {
+        let upwardBias: Float = 0.000
+        let lateralBias: Float = 0.010
+        let fallback = SIMD3<Float>(entity.position.x, 0, entity.position.z)
+        let safeDirection = safeNormalizedDirection(separationDirection, fallback: fallback)
+        let linearKick = SIMD3<Float>(0, upwardBias, 0) + safeDirection * lateralBias
+        let angularKick = SIMD3<Float>(safeDirection.z, 0, -safeDirection.x) * 0.015
+        applyVelocityKick(linear: linearKick, angular: angularKick)
+    }
+
+    /// Returns the axis the die should rotate about to reach its nearest flat-face orientation.
+    /// Called once per stuck episode — the caller stores the result and reuses it every frame
+    /// so the direction stays fixed and doesn't oscillate as the die rocks.
+    /// Returns nil if the die is already aligned. On a near-perfect balance tie, picks a random axis.
+    func flatteningAxis(using rng: inout DiceRandSource) -> SIMD3<Float>? {
+        let measurement = topFaceMeasurement
+        guard let targetNormal = Self.faceNormals.first(where: { $0.value == measurement.value })?.normal else { return nil }
+        let worldNormal = entity.transform.rotation.act(targetNormal)
+        let tiltAxis = simd_cross(worldNormal, SIMD3<Float>(0, 1, 0))
+        let tiltLength = simd_length(tiltAxis)
+
+        if tiltLength < 0.05 {
+            let angle = Float.random(in: 0 ..< (.pi * 2), using: &rng)
+            return SIMD3<Float>(cos(angle), 0, sin(angle))
+        }
+        return tiltAxis / tiltLength
+    }
+
+    /// Applies a single angular impulse along a pre-computed axis toward flat.
+    func applyFlatteningNudge(axis: SIMD3<Float>, magnitude: Float) {
+        var motion = entity.physicsMotion ?? PhysicsMotionComponent()
+        motion.angularVelocity += axis * magnitude
+        entity.components.set(motion)
+    }
+
+    /// World-space normal of the face that is currently pointing most upward.
+    /// Recomputed each call so it tracks the die as it tilts — use for per-frame force direction.
+    func topFaceWorldNormal() -> SIMD3<Float>? {
+        let measurement = topFaceMeasurement
+        guard let targetNormal = Self.faceNormals.first(where: { $0.value == measurement.value })?.normal else { return nil }
+        return entity.transform.rotation.act(targetNormal)
+    }
+
+    func applyFloorEdgeRescue(centerDirection: SIMD3<Float>, gentle: Bool) {
+        let safeDirection = safeNormalizedDirection(centerDirection, fallback: SIMD3<Float>(0, 0, 1))
+        let verticalKick: Float = gentle ? -0.100 : 0.500
+        let lateralKick: Float = gentle ? 0.0000 : 0.000
+        let rollKick: Float = gentle ? 0.0000 : 0.000
+        let linearKick = SIMD3<Float>(0, verticalKick, 0) + safeDirection * lateralKick
+        let angularKick = SIMD3<Float>(safeDirection.z, 0, -safeDirection.x) * rollKick
+        if gentle {
+            var motion = entity.physicsMotion ?? PhysicsMotionComponent()
+            motion.linearVelocity += linearKick
+            motion.angularVelocity += angularKick
+            entity.components.set(motion)
+            entity.addForce(linearKick, relativeTo: nil)
+            entity.addTorque(angularKick, relativeTo: nil)
+        } else {
+            applyVelocityKick(linear: linearKick, angular: angularKick)
+        }
+    }
+
+    private func safeNormalizedDirection(_ vector: SIMD3<Float>, fallback: SIMD3<Float>) -> SIMD3<Float> {
+        if simd_length_squared(vector) > 0.0001 {
+            return simd_normalize(vector)
+        }
+        if simd_length_squared(fallback) > 0.0001 {
+            return simd_normalize(fallback)
+        }
+        return SIMD3<Float>(1, 0, 0)
+    }
+
+    private func applyVelocityKick(linear: SIMD3<Float>, angular: SIMD3<Float>) {
+        var motion = entity.physicsMotion ?? PhysicsMotionComponent()
+        motion.linearVelocity += linear
+        motion.angularVelocity += angular
+        entity.components.set(motion)
+
+        entity.addForce(linear, relativeTo: nil)
+        entity.addTorque(angular, relativeTo: nil)
+    }
+
     private func applyPhysicsMode() {
         if var body = entity.components[PhysicsBodyComponent.self] {
             body.mode = (isHeld || isPinnedForPresentation) ? .kinematic : .dynamic
@@ -321,8 +482,8 @@ final class DiceEntity {
     }
 
     private func rebuildAppearance() {
-        entity.model?.materials = [makeMaterial(held: isHeld)]
-        for child in entity.children {
+        visualEntity.model?.materials = [makeMaterial(held: isHeld, stuck: isStuck, nudgeable: isNudgeable)]
+        for child in visualEntity.children {
             guard let modelEntity = child as? ModelEntity else { continue }
             modelEntity.model?.materials = [UnlitMaterial(color: pipTint)]
         }

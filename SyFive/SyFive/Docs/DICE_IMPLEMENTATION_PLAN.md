@@ -206,6 +206,84 @@ ContentView
 
 ---
 
+## Stability Remediation Pass — Settling, Overlap, and Cocked Dice
+
+**Goal:** Make five-die rolls terminate cleanly and read like real tabletop dice: every die settles flat, no die finishes stacked on another, and no die remains jammed against walls or neighbors.
+
+### Problems To Address
+1. Some dice never fully settle flat before result capture or timeout.
+2. Some dice finish partially or fully on top of other dice.
+3. Some dice finish cocked against tray walls or neighboring dice.
+
+### Likely Root Causes
+- Spawn positions or held-dice staging can place dynamic dice too close to walls or other colliders before the roll begins.
+- Simultaneous launch impulses create high-energy early collisions that produce stacking or wedging.
+- Settle detection can accept "low velocity but bad pose" states, which allows cocked dice to count as settled.
+- Rescue nudges may be too weak, too late, or not targeted to the specific failure mode.
+
+### Remediation Tasks
+1. **Add spawn-space guarantees**
+   - Reserve a clear launch zone for every unheld die before physics starts.
+   - Enforce minimum die-to-die and die-to-wall separation at spawn time.
+   - When held dice are staged, mark their occupied footprint so new launch positions cannot intersect that footprint.
+   - Reject and resample any spawn candidate that violates clearance rules.
+
+2. **Reduce early collision chaos**
+   - Launch unheld dice with a slightly wider spread so they do not rise and land on the same spot.
+   - Cap the strongest upward and lateral impulses that are producing stacking behavior.
+   - Keep the existing staggered release, but make the offsets deterministic enough to avoid burst collisions while still feeling random.
+   - Consider a short collision warmup where dice begin separated and drop into the tray instead of spawning in immediate contact.
+
+3. **Add pose-quality checks to settle detection**
+   - Do not treat a die as settled solely because linear and angular velocity are below threshold.
+   - Require the winning face normal to be sufficiently aligned with world up before accepting the die as flat.
+   - Detect suspicious support states:
+     - die center resting above normal floor height
+     - excessive tilt angle
+     - contact state indicating support from another die or wall instead of the tray floor
+   - If pose quality fails, keep the die in a recovery state rather than finalizing the roll.
+
+4. **Add targeted recovery behaviors**
+   - For stacked dice: apply a tiny separating impulse away from the supporting die, then re-evaluate.
+   - For cocked wall states: apply a small impulse inward from the wall normal plus a slight downward settle bias.
+   - For near-flat but stuck dice: apply a short corrective torque to help the die fall onto a face.
+   - Limit rescue attempts per die and log every intervention for fairness review.
+
+5. **Tune physical parameters for stable final rests**
+   - Revisit die/tray friction, restitution, and damping with the specific aim of reducing edge-balanced outcomes.
+   - Validate that wall restitution is low enough to discourage repeated pinballing into jammed poses.
+   - Check whether collision shape size should be slightly conservative relative to the visual mesh to reduce snagging.
+
+6. **Instrument bad outcomes explicitly**
+   - Track counts for:
+     - stacked finishes
+     - cocked finishes
+     - timeout rescues
+     - non-flat final poses
+   - Capture the roll recipe plus failure classification whenever a remediation path is triggered.
+   - Add these counters to the debug HUD so tuning changes can be evaluated quickly.
+
+### Validation Plan
+1. Run repeated 5-die batches and verify:
+   - no die overlaps at rest
+   - no die remains visibly tilted beyond the flatness threshold
+   - no die is supported by another die at result capture
+   - roll completion remains within the target feel window for typical rolls
+2. Add targeted regression scenarios:
+   - all five dice unheld
+   - several held dice staged along the tray edge
+   - low-energy rolls
+   - high-energy rolls
+3. Export failure counts before and after each physics tuning pass so improvements are measurable, not subjective.
+
+### Exit Criteria
+- [ ] Dice no longer finalize while visibly cocked or stacked.
+- [ ] Spawn and launch logic prevents initial interpenetration and obvious overlap setups.
+- [ ] Rescue logic resolves jammed states without creating visible bias or endless roll loops.
+- [ ] Batch validation shows these failure modes are rare enough to be considered fixed for shipping.
+
+---
+
 ## Phase 4 — Debug Test Harness
 
 **Goal:** Validate fairness with measurable statistics.

@@ -136,6 +136,32 @@ final class GameModel {
         }
         return nil
     }
+
+    var leaderIndices: [Int] {
+        let totals = (0..<playerCount).map { totalScore(for: $0) }
+        guard let maxScore = totals.max(), maxScore > 0 else { return [] }
+        return totals.enumerated().compactMap { index, score in
+            score == maxScore ? index : nil
+        }
+    }
+
+    var leaderNames: [String] {
+        leaderIndices.map { "P\($0 + 1)" }
+    }
+
+    var leaderScore: Int? {
+        guard let first = leaderIndices.first else { return nil }
+        return totalScore(for: first)
+    }
+
+    var leadingPlayerLabel: String? {
+        let names = leaderNames.joined(separator: ", ")
+        guard playerCount > 1 && !names.isEmpty else { return nil }
+        if leaderIndices.count > 1 {
+            return "\(names) tied"
+        }
+        return "\(names) winning"
+    }
     
     var canScore: Bool {
         rollsRemaining < rollsPerTurn && !isGameOver && !isRolling
@@ -169,6 +195,12 @@ final class GameModel {
     var undoThemeType: Theme.ThemeType? {
         guard let playerIndex = undoPlayerIndex else { return nil }
         return themeType(for: playerIndex)
+    }
+
+    func canScore(category: ScoreCategory, for playerIndex: Int) -> Bool {
+        guard canScore else { return false }
+        guard playerIndex == currentPlayerIndex else { return false }
+        return legalScoreCategories(for: playerIndex).contains(category)
     }
 
     func scores(for playerIndex: Int) -> [ScoreCategory: Int] {
@@ -269,6 +301,7 @@ final class GameModel {
     func score(category: ScoreCategory) {
         guard playerScores.indices.contains(currentPlayerIndex) else { return }
         guard playerScores[currentPlayerIndex][category] == nil else { return }
+        guard legalScoreCategories(for: currentPlayerIndex).contains(category) else { return }
         lastScoreSnapshot = LastScoreSnapshot(
             diceValues: diceValues,
             held: held,
@@ -281,7 +314,7 @@ final class GameModel {
         if qualifiesForExtraYahtzeeBonus(for: currentPlayerIndex) {
             playerYahtzeeBonuses[currentPlayerIndex] += 100
         }
-        playerScores[currentPlayerIndex][category] = scoreValue(for: category)
+        playerScores[currentPlayerIndex][category] = scoreValue(for: category, playerIndex: currentPlayerIndex)
         if !isGameOver {
             beginNextTurn()
         }
@@ -306,8 +339,8 @@ final class GameModel {
     func suggestedScores(for playerIndex: Int) -> [ScoreCategory: Int] {
         guard playerScores.indices.contains(playerIndex) else { return [:] }
         var result: [ScoreCategory: Int] = [:]
-        for category in ScoreCategory.allCases where playerScores[playerIndex][category] == nil {
-            result[category] = scoreValue(for: category)
+        for category in legalScoreCategories(for: playerIndex) {
+            result[category] = scoreValue(for: category, playerIndex: playerIndex)
         }
         return result
     }
@@ -340,7 +373,11 @@ final class GameModel {
         return order[index % order.count]
     }
 
-    private func scoreValue(for category: ScoreCategory) -> Int {
+    private func scoreValue(for category: ScoreCategory, playerIndex: Int) -> Int {
+        if let jokerScore = jokerScoreValue(for: category, playerIndex: playerIndex) {
+            return jokerScore
+        }
+
         let counts = countByFace()
         let sum = diceValues.reduce(0, +)
 
@@ -365,6 +402,68 @@ final class GameModel {
             return hasKind(of: 5, counts: counts) ? 50 : 0
         case .chance:
             return sum
+        }
+    }
+
+    private func legalScoreCategories(for playerIndex: Int) -> [ScoreCategory] {
+        guard playerScores.indices.contains(playerIndex) else { return [] }
+
+        let openCategories = ScoreCategory.allCases.filter { playerScores[playerIndex][$0] == nil }
+        guard !openCategories.isEmpty else { return [] }
+
+        guard isJokerRoll(for: playerIndex) else { return openCategories }
+        guard let matchingUpperCategory = matchingUpperCategory else { return openCategories }
+
+        if playerScores[playerIndex][matchingUpperCategory] == nil {
+            return [matchingUpperCategory]
+        }
+
+        let openLowerCategories = openCategories.filter { !$0.isUpperSection }
+        if !openLowerCategories.isEmpty {
+            return openLowerCategories
+        }
+
+        return openCategories.filter(\.isUpperSection)
+    }
+
+    private func jokerScoreValue(for category: ScoreCategory, playerIndex: Int) -> Int? {
+        guard isJokerRoll(for: playerIndex) else { return nil }
+        guard let matchingUpperCategory = matchingUpperCategory else { return nil }
+
+        if playerScores[playerIndex][matchingUpperCategory] == nil {
+            guard category == matchingUpperCategory else { return nil }
+            return diceValues.reduce(0, +)
+        }
+
+        let openLowerCategories = ScoreCategory.allCases.filter {
+            !$0.isUpperSection && playerScores[playerIndex][$0] == nil
+        }
+
+        if !openLowerCategories.isEmpty {
+            guard !category.isUpperSection else { return nil }
+            return jokerLowerSectionScore(for: category)
+        }
+
+        guard category.isUpperSection else { return nil }
+        return 0
+    }
+
+    private func jokerLowerSectionScore(for category: ScoreCategory) -> Int {
+        let sum = diceValues.reduce(0, +)
+
+        switch category {
+        case .threeOfAKind, .fourOfAKind, .chance:
+            return sum
+        case .fullHouse:
+            return 25
+        case .smallStraight:
+            return 30
+        case .largeStraight:
+            return 40
+        case .yahtzee:
+            return 50
+        default:
+            return 0
         }
     }
 
@@ -398,5 +497,24 @@ final class GameModel {
 
     private var isYahtzeeRoll: Bool {
         Set(diceValues).count == 1
+    }
+
+    private var matchingUpperCategory: ScoreCategory? {
+        guard let faceValue = diceValues.first else { return nil }
+
+        switch faceValue {
+        case 1: return .ones
+        case 2: return .twos
+        case 3: return .threes
+        case 4: return .fours
+        case 5: return .fives
+        case 6: return .sixes
+        default: return nil
+        }
+    }
+
+    private func isJokerRoll(for playerIndex: Int) -> Bool {
+        guard isYahtzeeRoll else { return false }
+        return scores(for: playerIndex)[.yahtzee] != nil
     }
 }

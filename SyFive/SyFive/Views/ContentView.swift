@@ -54,10 +54,10 @@ struct ContentView: View {
                 logger.debug(self, "content size: \(size.width)x\(size.height), isPortrait=\(isPortrait)")
                 logger.debug(self, "scorecard width from GeometryReader: \(size.width)")
             }
-            .navigationTitle(model.hasStarted ? "Round \(model.currentRound) of \(model.totalRounds)" : "SyFive")
+            .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarLeading) {
                     Button {
                         if model.hasStarted && !model.isGameOver {
                             showsResetAlert = true
@@ -65,7 +65,7 @@ struct ContentView: View {
                             model.resetGame()
                         }
                     } label: {
-                        Image(systemName: "plus")
+                        Image(systemName: model.hasStarted && !model.isGameOver ? "arrow.clockwise" : "plus")
                     }
                     .accessibilityLabel("New Game")
                 }
@@ -85,6 +85,21 @@ struct ContentView: View {
 
     private func debugColor(_ color: Color) -> Color {
         showsDebugLayout ? color : Color.clear
+    }
+
+    private var navigationTitle: String {
+        if model.isGameOver {
+            let names = model.winnerNames.joined(separator: ", ")
+            return names.isEmpty ? "SyFive" : "\(names) Wins"
+        }
+        if model.hasStarted {
+            if let names = model.leadingPlayerLabel, !names.isEmpty {
+                return "\(names) • Turn \(model.currentRound)/\(model.totalRounds)"
+            }
+
+            return "Turn \(model.currentRound)/\(model.totalRounds)"
+        }
+        return "SyFive"
     }
 
 }

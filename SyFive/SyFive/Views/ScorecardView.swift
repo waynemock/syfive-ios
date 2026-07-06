@@ -63,6 +63,10 @@ struct ScorecardView: View {
                     .onChange(of: model.currentPlayerIndex) {
                         scrollToCurrentPlayer(using: scrollProxy)
                     }
+                    .onChange(of: model.isGameOver) { _, isGameOver in
+                        guard isGameOver else { return }
+                        celebrateWinningPlayer(using: scrollProxy, verticalProxy: verticalProxy)
+                    }
                 }
             }
             .onChange(of: model.currentPlayerIndex) {
@@ -113,6 +117,20 @@ struct ScorecardView: View {
         guard model.playerCount > 0 else { return }
         withAnimation(.easeInOut(duration: 0.3)) {
             proxy.scrollTo(model.currentPlayerIndex, anchor: .center)
+        }
+    }
+
+    private func celebrateWinningPlayer(using horizontalProxy: ScrollViewProxy, verticalProxy: ScrollViewProxy) {
+        guard let winningPlayerIndex = model.winnerIndices.first else { return }
+
+        withAnimation(.easeInOut(duration: 0.35)) {
+            verticalProxy.scrollTo("scorecard-top", anchor: .top)
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) {
+                horizontalProxy.scrollTo(winningPlayerIndex, anchor: .center)
+            }
         }
     }
 

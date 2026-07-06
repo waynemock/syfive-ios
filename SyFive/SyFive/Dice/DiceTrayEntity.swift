@@ -13,7 +13,7 @@ final class DiceTrayEntity: Entity {
     /// Height of the visible rendered walls.
     static let visibleWallHeight: Float = 0.06
     /// Height of the invisible collision walls (and lid height) — keeps dice fully contained.
-    static let collisionWallHeight: Float = 1
+    static let collisionWallHeight: Float = visibleWallHeight * 4
     static let wallThickness: Float = 0.010
     static let floorThickness: Float = 0.006
 
@@ -30,6 +30,8 @@ final class DiceTrayEntity: Entity {
         addFloor()
         addVisibleWalls()
         addInvisibleWalls()
+        addWallChamfers()
+        addCornerChamfers()
         addLid()
     }
 
@@ -123,24 +125,68 @@ final class DiceTrayEntity: Entity {
         attachStaticPhysics(
             to: wall,
             size: size,
-            friction: (static: 0.50, dynamic: 0.40),
-            restitution: 0.15
+            friction: (static: 0.0, dynamic: 0.0),
+            restitution: 0.40
         )
         addChild(wall)
     }
 
-    private func addInvisibleCollider(size: SIMD3<Float>, position: SIMD3<Float>) {
+    private func addInvisibleCollider(
+        size: SIMD3<Float>,
+        position: SIMD3<Float>,
+        rotation: simd_quatf = simd_quatf(ix: 0, iy: 0, iz: 0, r: 1)
+    ) {
         let collider = Entity()
         collider.position = position
+        collider.orientation = rotation
         let shape = ShapeResource.generateBox(size: size)
         let physMat = PhysicsMaterialResource.generate(
-            staticFriction: 0.50,
-            dynamicFriction: 0.40,
-            restitution: 0.15
+            staticFriction: 0.0,
+            dynamicFriction: 0.0,
+            restitution: 0.40
         )
         collider.components.set(CollisionComponent(shapes: [shape]))
         collider.components.set(PhysicsBodyComponent(shapes: [shape], mass: 1, material: physMat, mode: .static))
         addChild(collider)
+    }
+
+    /// Invisible 45° ramps along the base of all four walls so a die resting
+    /// against a flat wall face gets deflected inward and upward.
+    private func addWallChamfers() {
+        let half = Self.halfSize
+        let interior = half * 2
+        let s: Float = 0.030
+
+        // Front / back walls (run along X)
+        for (z, angle) in [(half, Float.pi / 4), (-half, -Float.pi / 4)] as [(Float, Float)] {
+            addInvisibleCollider(
+                size: SIMD3<Float>(interior, s, s),
+                position: SIMD3<Float>(0, s / 2, z),
+                rotation: simd_quatf(angle: angle, axis: [1, 0, 0])
+            )
+        }
+
+        // Left / right walls (run along Z)
+        for (x, angle) in [(half, -Float.pi / 4), (-half, Float.pi / 4)] as [(Float, Float)] {
+            addInvisibleCollider(
+                size: SIMD3<Float>(s, s, interior),
+                position: SIMD3<Float>(x, s / 2, 0),
+                rotation: simd_quatf(angle: angle, axis: [0, 0, 1])
+            )
+        }
+    }
+
+    /// Invisible 45° wedges in all four corners to deflect dice toward the centre
+    /// instead of letting them lodge in the 90° corner gap.
+    private func addCornerChamfers() {
+        let half = Self.halfSize
+        let h = Self.collisionWallHeight
+        let chamferSize = SIMD3<Float>(0.030, h, 0.030)
+        let rot45 = simd_quatf(angle: .pi / 4, axis: [0, 1, 0])
+
+        for (cx, cz) in [(half, half), (-half, half), (half, -half), (-half, -half)] as [(Float, Float)] {
+            addInvisibleCollider(size: chamferSize, position: [cx, h / 2, cz], rotation: rot45)
+        }
     }
 
     private func attachStaticPhysics(
