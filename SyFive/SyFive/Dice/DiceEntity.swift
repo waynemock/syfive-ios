@@ -23,7 +23,7 @@ final class DiceEntity {
     private var heldTint: UIColor { UIColor(theme.heldAccent) }
     private var nudgeableTint: UIColor { .systemYellow }  // yellow — first stuck, tap to nudge
     private var stuckTint: UIColor { UIColor(theme.errorColor) } // red — nudge failed, tap to reroll
-    private var pipTint: UIColor { UIColor(.black) }
+    private var pipTint: UIColor { UIColor(theme.pipColor) }
 
     /// Local-space face normals → pip value (standard Western die layout).
     static let faceNormals: [(normal: SIMD3<Float>, value: Int)] = [

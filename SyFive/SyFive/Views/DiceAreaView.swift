@@ -168,6 +168,7 @@ struct DiceAreaView: View {
             return "Start Turn"
         }
         if !model.hasStarted {
+            if model.playerCount == 0 { return "Add players to begin" }
             return model.playerCount == 1
                 ? "Start game with 1 player"
                 : "Start game with \(model.playerCount) players"

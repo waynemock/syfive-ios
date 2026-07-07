@@ -171,6 +171,14 @@ struct Theme {
         secondaryAccent
     }
     
+    // The color of the dice pips
+    var pipColor: Color {
+        if type == .paper {
+            return colorScheme == .dark ? Color.black : Color.white
+        }
+        return Color.black
+    }
+    
     /// Color for error/conflict indicators.
     var errorColor: Color {
         Color.red

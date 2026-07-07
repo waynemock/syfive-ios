@@ -83,14 +83,19 @@ struct PlayerScoreCardView: View {
 
     private func header(theme: Theme, isCurrentPlayer: Bool, totalScore: Int) -> some View {
         HStack(alignment: .center, spacing: 8) {
-            HStack(alignment: .center, spacing: 8) {
+            initialsCircle(theme: theme)
+
+            HStack(alignment: .center, spacing: 6) {
                 Text(model.playerNames[playerIndex])
                     .font(.title3)
-                if isCurrentPlayer && model.playerCount > 1 && model.hasStarted {
+                    .lineLimit(1)
+                if isCurrentPlayer && model.playerCount > 1 && model.hasStarted && !model.isGameOver {
                     Image(systemName: "dice.fill")
                 }
             }
-            Spacer()
+
+            Spacer(minLength: 8)
+
             if model.hasStarted {
                 HStack(spacing: 6) {
                     Text("Total \(totalScore)")
@@ -100,53 +105,31 @@ struct PlayerScoreCardView: View {
                 }
                 .font(.headline)
                 .foregroundStyle(.secondary)
+                .layoutPriority(1)
             }
+            
             if model.canEditPlayers {
-                Menu {
-                    Picker("Card Color", selection: themeBinding) {
-                        ForEach(Theme.ThemeType.allCases, id: \.self) { type in
-                            HStack(spacing: 8) {
-                                Circle()
-                                    .fill(colorSwatch(for: type))
-                                    .frame(width: 12, height: 12)
-                                Text(type.displayName)
-                            }
-                            .foregroundStyle(colorSwatch(for: type))
-                            .tag(type)
-                        }
-                    }
-                } label: {
-                    Circle()
-                        .fill(theme.primaryAccent)
-                        .overlay(
-                            Circle()
-                                .stroke(colorButtonBorder, lineWidth: 1.5)
-                        )
-                        .frame(width: 28, height: 28)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-            }
-            if model.canEditPlayers && playerIndex > 0 {
                 Button {
                     model.removePlayer(at: playerIndex)
                 } label: {
-                    Image(systemName: "trash")
-                        .font(.caption.weight(.semibold))
+                    Image(systemName: "x.circle.fill")
+                        .font(.title3)
                         .foregroundStyle(.secondary)
-                        .frame(width: 28, height: 28)
-                        .background(
-                            Circle()
-                                .fill(theme.cellBackgroundColor)
-                        )
-                        .overlay(
-                            Circle()
-                                .stroke(colorButtonBorder, lineWidth: 1.5)
-                        )
                 }
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    private func initialsCircle(theme: Theme) -> some View {
+        ZStack {
+            Circle().fill(theme.primaryAccent)
+            Text(model.playerInitials(for: playerIndex))
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.white)
+        }
+        .overlay(Circle().stroke(colorButtonBorder, lineWidth: 1.5))
+        .frame(width: 28, height: 28)
     }
 
     @ViewBuilder

@@ -7,6 +7,7 @@ struct ScorecardView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.sizeCategory) private var sizeCategory
     @State private var addPlayerMinY: CGFloat = 0
+    @State private var showsPlayerPicker = false
 
     private let scoreColumnWidth: CGFloat = 64
     private let scoreRowHeight: CGFloat = 32
@@ -26,7 +27,7 @@ struct ScorecardView: View {
                 ScrollViewReader { scrollProxy in
                     ScrollView(.horizontal, showsIndicators: false) {
                         LazyHStack(alignment: .top, spacing: 16) {
-                            ForEach(0..<model.playerCount, id: \.self) { index in
+                            ForEach(Array(model.slotIDs.enumerated()), id: \.element) { index, _ in
                                 PlayerScoreCardView(
                                     model: model,
                                     playerIndex: index,
@@ -37,8 +38,8 @@ struct ScorecardView: View {
                                     scoreRowSpacing: scoreRowSpacing,
                                     layoutMode: playerCardLayoutMode(for: cardWidth)
                                 )
-                                    .frame(width: cardWidth)
-                                    .id(index)
+                                .frame(width: cardWidth)
+                                .id(index)
                             }
                             if model.canEditPlayers {
                                 addPlayerCard
@@ -89,12 +90,20 @@ struct ScorecardView: View {
         .onPreferenceChange(AddPlayerMinYKey.self) { minY in
             addPlayerMinY = minY
         }
+        .sheet(isPresented: $showsPlayerPicker) {
+            PlayerPickerSheet(model: model)
+        }
+        .onAppear {
+            if !model.hasStarted {
+                showsPlayerPicker = true
+            }
+        }
     }
 
     private var addPlayerCard: some View {
         let theme = Theme(type: model.nextPlayerThemeType, colorScheme: colorScheme)
         return Button {
-            model.addPlayer()
+            showsPlayerPicker = true
         } label: {
             VStack(spacing: 8) {
                 Image(systemName: "plus.circle.fill")

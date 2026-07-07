@@ -1,9 +1,11 @@
 import SwiftUI
+import SwiftData
 
 struct ContentView: View {
     @State private var model = MatchController()
     @State private var showsResetAlert = false
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.modelContext) private var modelContext
     private let showsDebugLayout = AppConfig.DebugLayout.isEnabled
     private let logger = AppLogger(category: "ContentView")
 
@@ -62,6 +64,7 @@ struct ContentView: View {
                         if model.hasStarted && !model.isGameOver {
                             showsResetAlert = true
                         } else {
+                            model.abandonMatch(in: modelContext)
                             model.resetGame()
                         }
                     } label: {
@@ -73,6 +76,7 @@ struct ContentView: View {
             .alert("Start a new game?", isPresented: $showsResetAlert) {
                 Button("Cancel", role: .cancel) {}
                 Button("Start Over", role: .destructive) {
+                    model.abandonMatch(in: modelContext)
                     model.resetGame()
                 }
             } message: {
@@ -81,6 +85,70 @@ struct ContentView: View {
         }
         .tint(theme.primaryAccent)
         .environment(\.theme, theme)
+        .onAppear {
+            seedYatzyGameIfNeeded()
+            loadMatchIfNeeded()
+        }
+        .onChange(of: model.playerCount) { saveMatch() }
+        .onChange(of: model.playerScores) { saveMatch() }
+    }
+
+    private func loadMatchIfNeeded() {
+        // Resume an in-progress match.
+        var inProgress = FetchDescriptor<MatchModel>(
+            predicate: #Predicate { $0.statusRaw == "inProgress" },
+            sortBy: [SortDescriptor(\MatchModel.startedAt, order: .reverse)]
+        )
+        inProgress.fetchLimit = 1
+        if let matchModel = (try? modelContext.fetch(inProgress))?.first,
+           !matchModel.participants.isEmpty {
+            model.load(from: matchModel)
+            return
+        }
+
+        // No in-progress game — pre-populate players from the most recent completed game
+        // so the user can start a rematch without re-selecting everyone.
+        var completed = FetchDescriptor<MatchModel>(
+            predicate: #Predicate { $0.statusRaw == "completed" },
+            sortBy: [SortDescriptor(\MatchModel.startedAt, order: .reverse)]
+        )
+        completed.fetchLimit = 1
+        guard let lastMatch = (try? modelContext.fetch(completed))?.first else { return }
+        for p in lastMatch.participants.sorted(by: { $0.seat < $1.seat }) {
+            model.restorePlayer(
+                displayName: p.displayName,
+                displayInitials: p.displayInitials,
+                themeID: p.displayThemeID,
+                playerID: p.playerID
+            )
+        }
+    }
+
+    private func saveMatch() {
+        guard model.playerCount > 0 else { return }
+        let gameDescriptor = FetchDescriptor<GameModel>(
+            predicate: #Predicate { $0.scoringSystemID == "yatzy" }
+        )
+        guard let gameID = (try? modelContext.fetch(gameDescriptor))?.first?.id else { return }
+        model.save(to: modelContext, gameID: gameID)
+        try? modelContext.save()
+    }
+
+    private func seedYatzyGameIfNeeded() {
+        let descriptor = FetchDescriptor<GameModel>(
+            predicate: #Predicate { $0.scoringSystemID == "yatzy" }
+        )
+        let existing = (try? modelContext.fetch(descriptor)) ?? []
+        guard existing.isEmpty else { return }
+        let game = GameModel()
+        game.name = "Yatzy"
+        game.scoringSystemID = "yatzy"
+        game.scoringSystemVersion = 1
+        game.isBuiltIn = true
+        game.supportsTeams = false
+        game.maxParticipants = 0
+        game.sortOrder = 0
+        modelContext.insert(game)
     }
 
     private func debugColor(_ color: Color) -> Color {

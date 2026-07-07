@@ -9,8 +9,8 @@ struct AppConfig {
         /// Show physics tuning sliders in `DiceAreaView`. Flip to `true` to tune feel.
         static let showPhysicsSliders = false
         /// Show the Phase 4 fairness HUD (distribution chart, stats, batch roll, replay).
-        static let showHarness = true
+        static let showHarness = false
         /// Emit verbose diagnostics for roll lifecycle, stuck states, and rescue behavior.
-        static let logRollDiagnostics = true
+        static let logRollDiagnostics = false
     }
 }

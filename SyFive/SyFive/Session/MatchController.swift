@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import SwiftUI
+import SwiftData
 
 @Observable
 final class MatchController {
@@ -28,6 +29,18 @@ final class MatchController {
     private(set) var playerScores: [[YatzyCategory: Int]]
     private(set) var playerYahtzeeBonuses: [Int]
     private(set) var playerThemes: [Theme.ThemeType]
+    private(set) var playerDisplayNames: [String]
+    private(set) var playerDisplayInitials: [String]
+    // UUID of the roster Player behind each slot; nil for anonymous/default players.
+    private(set) var playerIDs: [UUID?]
+    // Stable identity per slot — survives reorder and reset; used for ForEach animation.
+    private(set) var slotIDs: [UUID]
+    // Stable identity per participant across incremental saves; refreshed on resetGame.
+    private(set) var participantIDs: [UUID]
+    // Set when first persisted; nil before first save or after reset.
+    private(set) var persistedMatchID: UUID?
+    private var matchStartedAt: Date?
+    private var matchCompletedAt: Date?
     private(set) var currentPlayerIndex: Int
     /// True while physics dice are mid-roll (between beginRoll and receiveDiceResults).
     private(set) var isRolling: Bool = false
@@ -37,31 +50,34 @@ final class MatchController {
         diceValues = Array(repeating: 1, count: diceCount)
         held = Array(repeating: false, count: diceCount)
         rollsRemaining = rollsPerTurn
-        playerScores = [[:]]
-        playerYahtzeeBonuses = [0]
-        playerThemes = [Self.defaultTheme(for: 0)]
+        playerScores = []
+        playerYahtzeeBonuses = []
+        playerThemes = []
+        playerDisplayNames = []
+        playerDisplayInitials = []
+        playerIDs = []
+        slotIDs = []
+        participantIDs = []
+        persistedMatchID = nil
+        matchStartedAt = nil
+        matchCompletedAt = nil
         currentPlayerIndex = 0
     }
 
-    var playerCount: Int {
-        playerScores.count
-    }
+    var playerCount: Int { playerScores.count }
 
-    var playerNames: [String] {
-        (0..<playerCount).map { "P\($0 + 1)" }
-    }
+    var playerNames: [String] { playerDisplayNames }
 
     var currentPlayerName: String {
-        playerNames[currentPlayerIndex]
+        guard playerDisplayNames.indices.contains(currentPlayerIndex) else { return "" }
+        return playerDisplayNames[currentPlayerIndex]
     }
 
     var hasStarted: Bool {
         rollsRemaining < rollsPerTurn || playerScores.contains { !$0.isEmpty }
     }
 
-    var canEditPlayers: Bool {
-        !hasStarted
-    }
+    var canEditPlayers: Bool { !hasStarted }
 
     var isGameOver: Bool {
         (0..<playerCount).allSatisfy { isComplete(scorecard: yatzyScorecard(for: $0)) }
@@ -71,14 +87,10 @@ final class MatchController {
         guard isGameOver else { return [] }
         let totals = (0..<playerCount).map { totalScore(for: $0) }
         guard let maxScore = totals.max() else { return [] }
-        return totals.enumerated().compactMap { index, score in
-            score == maxScore ? index : nil
-        }
+        return totals.enumerated().compactMap { index, score in score == maxScore ? index : nil }
     }
 
-    var winnerNames: [String] {
-        winnerIndices.map { "P\($0 + 1)" }
-    }
+    var winnerNames: [String] { winnerIndices.map { playerDisplayNames[$0] } }
 
     var winnerScore: Int? {
         guard isGameOver else { return nil }
@@ -88,18 +100,12 @@ final class MatchController {
     var leaderIndices: [Int] {
         let totals = (0..<playerCount).map { totalScore(for: $0) }
         guard let maxScore = totals.max(), maxScore > 0 else { return [] }
-        return totals.enumerated().compactMap { index, score in
-            score == maxScore ? index : nil
-        }
+        return totals.enumerated().compactMap { index, score in score == maxScore ? index : nil }
     }
 
-    var leaderNames: [String] {
-        leaderIndices.map { "P\($0 + 1)" }
-    }
+    var leaderNames: [String] { leaderIndices.map { playerDisplayNames[$0] } }
 
-    var leaderScore: Int? {
-        leaderIndices.first.map { totalScore(for: $0) }
-    }
+    var leaderScore: Int? { leaderIndices.first.map { totalScore(for: $0) } }
 
     var leadingPlayerLabel: String? {
         let names = leaderNames.joined(separator: ", ")
@@ -111,33 +117,28 @@ final class MatchController {
         rollsRemaining < rollsPerTurn && !isGameOver && !isRolling
     }
 
-    var totalRounds: Int {
-        YatzyCategory.allCases.count
-    }
+    var totalRounds: Int { YatzyCategory.allCases.count }
 
     var currentRound: Int {
         let scoredCount = scores(for: currentPlayerIndex).count
         return min(scoredCount + 1, totalRounds)
     }
 
-    var isLastRound: Bool {
-        currentRound == totalRounds
-    }
+    var isLastRound: Bool { currentRound == totalRounds }
 
     var nextPlayerThemeType: Theme.ThemeType {
         Self.defaultTheme(for: playerCount)
     }
 
-    var canUndoLastScore: Bool {
-        lastScoreSnapshot != nil
-    }
+    var canUndoLastScore: Bool { lastScoreSnapshot != nil }
 
-    var undoPlayerIndex: Int? {
-        lastScoreSnapshot?.currentPlayerIndex
-    }
+    var undoPlayerIndex: Int? { lastScoreSnapshot?.currentPlayerIndex }
 
-    var undoThemeType: Theme.ThemeType? {
-        undoPlayerIndex.map { themeType(for: $0) }
+    var undoThemeType: Theme.ThemeType? { undoPlayerIndex.map { themeType(for: $0) } }
+
+    func playerInitials(for playerIndex: Int) -> String {
+        guard playerDisplayInitials.indices.contains(playerIndex) else { return "" }
+        return playerDisplayInitials[playerIndex]
     }
 
     func canScore(category: YatzyCategory, for playerIndex: Int) -> Bool {
@@ -173,32 +174,76 @@ final class MatchController {
         grandTotal(scorecard: yatzyScorecard(for: playerIndex), yahtzeeBonus: yahtzeeBonus(for: playerIndex))
     }
 
-    func isWinner(_ playerIndex: Int) -> Bool {
-        winnerIndices.contains(playerIndex)
+    func isWinner(_ playerIndex: Int) -> Bool { winnerIndices.contains(playerIndex) }
+
+    // Adds a roster player to the current match, snapshotting display fields.
+    func addPlayer(from player: Player) {
+        guard canEditPlayers else { return }
+        clearUndoState()
+        let newIndex = playerScores.count
+        let theme = Theme.ThemeType(rawValue: player.themeID) ?? Self.defaultTheme(for: newIndex)
+        playerScores.append([:])
+        playerYahtzeeBonuses.append(0)
+        playerThemes.append(theme)
+        playerDisplayNames.append(player.name)
+        playerDisplayInitials.append(player.initials)
+        playerIDs.append(player.id)
+        slotIDs.append(UUID())
+        participantIDs.append(UUID())
     }
 
+    // Adds an anonymous player (no roster record) — used for solo/default play.
     func addPlayer() {
         guard canEditPlayers else { return }
         clearUndoState()
         let newIndex = playerScores.count
+        let n = newIndex + 1
         playerScores.append([:])
         playerYahtzeeBonuses.append(0)
         playerThemes.append(Self.defaultTheme(for: newIndex))
+        playerDisplayNames.append("Player \(n)")
+        playerDisplayInitials.append("P\(n)")
+        playerIDs.append(nil)
+        slotIDs.append(UUID())
+        participantIDs.append(UUID())
     }
 
     func removePlayer(at index: Int) {
-        guard canEditPlayers, playerScores.count > 1, index > 0 else { return }
+        guard canEditPlayers, playerScores.indices.contains(index) else { return }
         clearUndoState()
         playerScores.remove(at: index)
         playerYahtzeeBonuses.remove(at: index)
-        if playerThemes.indices.contains(index) {
-            playerThemes.remove(at: index)
-        }
+        playerDisplayNames.remove(at: index)
+        playerDisplayInitials.remove(at: index)
+        playerIDs.remove(at: index)
+        if slotIDs.indices.contains(index) { slotIDs.remove(at: index) }
+        if participantIDs.indices.contains(index) { participantIDs.remove(at: index) }
+        if playerThemes.indices.contains(index) { playerThemes.remove(at: index) }
         if currentPlayerIndex >= playerScores.count {
             currentPlayerIndex = max(0, playerScores.count - 1)
         }
     }
 
+    func movePlayer(from source: Int, to destination: Int) {
+        guard canEditPlayers, source != destination else { return }
+        guard playerScores.indices.contains(source) && playerScores.indices.contains(destination) else { return }
+
+        func reorder<T>(in array: inout [T]) {
+            let item = array.remove(at: source)
+            array.insert(item, at: destination)
+        }
+
+        reorder(in: &playerScores)
+        reorder(in: &playerYahtzeeBonuses)
+        reorder(in: &playerThemes)
+        reorder(in: &playerDisplayNames)
+        reorder(in: &playerDisplayInitials)
+        reorder(in: &playerIDs)
+        reorder(in: &slotIDs)
+        reorder(in: &participantIDs)
+    }
+
+    // Resets scores only — player identity (names, initials, themes) persists for a rematch.
     func resetGame() {
         diceValues = Array(repeating: 1, count: diceCount)
         held = Array(repeating: false, count: diceCount)
@@ -207,7 +252,135 @@ final class MatchController {
         playerYahtzeeBonuses = Array(repeating: 0, count: playerCount)
         currentPlayerIndex = 0
         isRolling = false
+        // Fresh participant IDs so the new game doesn't collide with the previous one.
+        participantIDs = (0..<playerCount).map { _ in UUID() }
+        persistedMatchID = nil
+        matchStartedAt = nil
+        matchCompletedAt = nil
         clearUndoState()
+    }
+
+    func updatePlayer(at index: Int, name: String, initials: String, themeType: Theme.ThemeType) {
+        guard playerDisplayNames.indices.contains(index) else { return }
+        playerDisplayNames[index] = name
+        playerDisplayInitials[index] = initials
+        if playerThemes.indices.contains(index) {
+            playerThemes[index] = themeType
+        }
+    }
+
+    /// Re-adds a player from a completed match's participant data without a full PlayerModel lookup.
+    /// Used to pre-populate the next game with the previous game's roster.
+    func restorePlayer(displayName: String, displayInitials: String, themeID: String, playerID: UUID?) {
+        guard canEditPlayers else { return }
+        clearUndoState()
+        let themeType = Theme.ThemeType(rawValue: themeID) ?? Self.defaultTheme(for: playerScores.count)
+        playerScores.append([:])
+        playerYahtzeeBonuses.append(0)
+        playerThemes.append(themeType)
+        playerDisplayNames.append(displayName)
+        playerDisplayInitials.append(displayInitials)
+        playerIDs.append(playerID)
+        slotIDs.append(UUID())
+        participantIDs.append(UUID())
+    }
+
+    // MARK: - Persistence
+
+    /// Writes the current match state to SwiftData. Creates a new row on first call;
+    /// subsequent calls update the same row using its UUID. Safe to call on every score.
+    func save(to context: ModelContext, gameID: UUID) {
+        guard playerCount > 0 else { return }
+
+        let matchModel: MatchModel
+        if let mid = persistedMatchID {
+            let descriptor = FetchDescriptor<MatchModel>(predicate: #Predicate { $0.id == mid })
+            matchModel = (try? context.fetch(descriptor))?.first ?? {
+                let m = MatchModel(); context.insert(m); return m
+            }()
+        } else {
+            matchModel = MatchModel()
+            context.insert(matchModel)
+            persistedMatchID = matchModel.id
+        }
+
+        if matchStartedAt == nil { matchStartedAt = matchModel.startedAt }
+        if isGameOver && matchCompletedAt == nil { matchCompletedAt = Date() }
+
+        let match = Match(
+            id: matchModel.id,
+            gameID: gameID,
+            scoringSystemID: "yatzy",
+            scoringSystemVersion: 1,
+            status: isGameOver ? .completed : .inProgress,
+            startedAt: matchStartedAt ?? Date(),
+            completedAt: isGameOver ? matchCompletedAt : nil,
+            participants: buildParticipants()
+        )
+        matchModel.hydrate(from: match, context: context)
+    }
+
+    /// Restores match state from a persisted MatchModel in-place, preserving view identity.
+    func load(from matchModel: MatchModel) {
+        playerScores = []
+        playerYahtzeeBonuses = []
+        playerThemes = []
+        playerDisplayNames = []
+        playerDisplayInitials = []
+        playerIDs = []
+        participantIDs = []
+        slotIDs = []
+
+        persistedMatchID = matchModel.id
+        matchStartedAt = matchModel.startedAt
+        matchCompletedAt = matchModel.completedAt
+
+        for p in matchModel.participants.sorted(by: { $0.seat < $1.seat }) {
+            let themeType = Theme.ThemeType(rawValue: p.displayThemeID) ?? .midnight
+            let scores: [YatzyCategory: Int] = Dictionary(
+                uniqueKeysWithValues: p.scoreEntries.compactMap { entry in
+                    guard let cat = YatzyCategory(rawValue: entry.slotKey),
+                          let val = entry.value else { return nil }
+                    return (cat, NSDecimalNumber(decimal: val).intValue)
+                }
+            )
+            playerScores.append(scores)
+            playerYahtzeeBonuses.append(p.yahtzeeBonus)
+            playerThemes.append(themeType)
+            playerDisplayNames.append(p.displayName)
+            playerDisplayInitials.append(p.displayInitials)
+            playerIDs.append(p.playerID)
+            participantIDs.append(p.id)
+            slotIDs.append(UUID())
+        }
+
+        // Derive whose turn it is: seat with fewest scored categories wins ties by seat order.
+        let minScored = playerScores.map(\.count).min() ?? 0
+        currentPlayerIndex = playerScores.firstIndex(where: { $0.count == minScored }) ?? 0
+        rollsRemaining = rollsPerTurn
+        held = Array(repeating: false, count: diceCount)
+        diceValues = Array(repeating: 1, count: diceCount)
+        isRolling = false
+        clearUndoState()
+    }
+
+    /// Marks the current match as abandoned (or deletes it if no scoring has occurred).
+    /// Call before resetGame() when the user explicitly starts a new game.
+    func abandonMatch(in context: ModelContext) {
+        guard let mid = persistedMatchID else { return }
+        let descriptor = FetchDescriptor<MatchModel>(predicate: #Predicate { $0.id == mid })
+        if let match = (try? context.fetch(descriptor))?.first, !isGameOver {
+            if hasStarted {
+                match.status = .abandoned
+                match.completedAt = Date()
+            } else {
+                context.delete(match)
+            }
+        }
+        try? context.save()
+        persistedMatchID = nil
+        matchStartedAt = nil
+        matchCompletedAt = nil
     }
 
     func setTheme(_ theme: Theme.ThemeType, for playerIndex: Int) {
@@ -235,9 +408,7 @@ final class MatchController {
     func receiveDiceResults(_ values: [Int]) {
         guard isRolling else { return }
         for i in diceValues.indices where !held[i] {
-            if i < values.count {
-                diceValues[i] = values[i]
-            }
+            if i < values.count { diceValues[i] = values[i] }
         }
         isRolling = false
     }
@@ -259,9 +430,7 @@ final class MatchController {
             playerYahtzeeBonuses[currentPlayerIndex] += 100
         }
         playerScores[currentPlayerIndex][category] = scoreValue(for: category, playerIndex: currentPlayerIndex)
-        if !isGameOver {
-            beginNextTurn()
-        }
+        if !isGameOver { beginNextTurn() }
     }
 
     @discardableResult
@@ -292,15 +461,40 @@ final class MatchController {
 
     // MARK: - Private
 
+    private func buildParticipants() -> [Participant] {
+        (0..<playerCount).map { i in
+            let entries = playerScores[i].map { (cat, val) in
+                ScoreEntry(slotKey: cat.slotKey, value: Decimal(val), metadata: nil, recordedAt: nil)
+            }
+            return Participant(
+                id: participantIDs[i],
+                seat: i,
+                finalScore: Decimal(totalScore(for: i)),
+                rank: isGameOver ? computeRank(for: i) : 0,
+                yahtzeeBonus: playerYahtzeeBonuses[i],
+                playerID: playerIDs[i],
+                teamID: nil,
+                displayName: playerDisplayNames[i],
+                displayInitials: playerDisplayInitials[i],
+                displayThemeID: playerThemes[i].rawValue,
+                scoreEntries: entries
+            )
+        }
+    }
+
+    private func computeRank(for playerIndex: Int) -> Int {
+        let myScore = totalScore(for: playerIndex)
+        let betterCount = (0..<playerCount).filter { totalScore(for: $0) > myScore }.count
+        return betterCount + 1
+    }
+
     private func beginNextTurn() {
         held = Array(repeating: false, count: diceCount)
         rollsRemaining = rollsPerTurn
         currentPlayerIndex = (currentPlayerIndex + 1) % playerCount
     }
 
-    private func clearUndoState() {
-        lastScoreSnapshot = nil
-    }
+    private func clearUndoState() { lastScoreSnapshot = nil }
 
     private func yatzyScorecard(for playerIndex: Int) -> YatzyScorecard {
         guard playerScores.indices.contains(playerIndex) else { return [:] }
@@ -319,7 +513,7 @@ final class MatchController {
         legalCategories(dice: diceValues, scorecard: yatzyScorecard(for: playerIndex))
     }
 
-    private static func defaultTheme(for index: Int) -> Theme.ThemeType {
+    static func defaultTheme(for index: Int) -> Theme.ThemeType {
         let order: [Theme.ThemeType] = [
             .midnight, .blossom, .ember, .forest, .ocean, .sunset, .paper
         ]
