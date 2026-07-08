@@ -68,7 +68,7 @@ struct PlayerPickerSheet: View {
                     }
                 }
             }
-            .navigationTitle("Players")
+            .navigationTitle("New Game")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

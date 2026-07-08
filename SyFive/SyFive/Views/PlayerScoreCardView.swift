@@ -2,11 +2,6 @@ import SwiftUI
 import Observation
 
 struct PlayerScoreCardView: View {
-    enum LayoutMode {
-        case stacked
-        case sideBySide
-    }
-
     @Bindable var model: MatchController
     let playerIndex: Int
     let scoreColumnWidth: CGFloat
@@ -14,9 +9,11 @@ struct PlayerScoreCardView: View {
     let headerRowHeight: CGFloat
     let scoreSectionSpacing: CGFloat
     let scoreRowSpacing: CGFloat
-    let layoutMode: LayoutMode
+    var horizontalPadding: CGFloat = 16
+    var sectionGap: CGFloat = 14
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.sizeCategory) private var sizeCategory
     @State private var isWinnerHighlightExpanded = false
 
     var body: some View {
@@ -32,14 +29,15 @@ struct PlayerScoreCardView: View {
         return AnyView(
             VStack(alignment: .leading, spacing: scoreSectionSpacing) {
                 header(theme: theme, isCurrentPlayer: isCurrentPlayer, totalScore: totalScore)
-
-                scoreContent(theme: theme)
-                    .padding(.top, 8)
+                if !model.canEditPlayers {
+                    scoreContent(theme: theme)
+                } else {
+                    statsContent(theme: theme)
+                }
             }
             .frame(maxHeight: .infinity, alignment: .top)
-            .padding(.horizontal, 16)
-            .padding(.bottom, 16)
-            .padding(.top, 12)
+            .padding(.horizontal, horizontalPadding)
+            .padding(.vertical, 12)
             .tint(theme.primaryAccent)
             .background(
                 RoundedRectangle(
@@ -71,6 +69,10 @@ struct PlayerScoreCardView: View {
                         }
                     )
                 }
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(theme.primaryAccent, lineWidth: 2)
+                )
             )
             .onAppear {
                 updateWinnerHighlightAnimation(isWinner: isWinner)
@@ -113,8 +115,8 @@ struct PlayerScoreCardView: View {
                     model.removePlayer(at: playerIndex)
                 } label: {
                     Image(systemName: "x.circle.fill")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
+                        .font(.title)
+                        .foregroundStyle(theme.secondaryAccent)
                 }
                 .buttonStyle(.plain)
             }
@@ -134,69 +136,54 @@ struct PlayerScoreCardView: View {
 
     @ViewBuilder
     private func scoreContent(theme: Theme) -> some View {
-        VStack(alignment: .leading, spacing: scoreSectionSpacing) {
-            switch layoutMode {
-            case .stacked:
-                VStack(alignment: .leading, spacing: scoreSectionSpacing) {
-                    scoreSection(
-                        title: "Upper",
-                        categories: upperCategories,
-                        theme: theme
-                    )
-                    scoreSection(
-                        title: "Lower",
-                        categories: lowerCategories,
-                        theme: theme
-                    )
-                }
-            case .sideBySide:
-                HStack(alignment: .top, spacing: max(12, scoreSectionSpacing)) {
-                    scoreSection(
-                        title: "Upper",
-                        categories: upperCategories,
-                        theme: theme
-                    )
-                    .fixedSize(horizontal: true, vertical: true)
-
-                    Spacer(minLength: 0)
-
-                    scoreSection(
-                        title: "Lower",
-                        categories: lowerCategories,
-                        theme: theme
-                    )
-                    .fixedSize(horizontal: true, vertical: true)
-
-                    if model.playerCount == 1 {
-                        Spacer(minLength: 0)
-                    }
-                }
+        if sizeCategory.isAccessibilityCategory {
+            VStack(alignment: .leading, spacing: scoreSectionSpacing) {
+                scoreSection(title: "Upper", isUpper: true, categories: upperCategories, theme: theme)
+                scoreSection(title: "Lower", isUpper: false, categories: lowerCategories, theme: theme)
+            }
+        } else {
+            HStack(alignment: .top, spacing: sectionGap) {
+                scoreSection(title: "Upper", isUpper: true, categories: upperCategories, theme: theme)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                scoreSection(title: "Lower", isUpper: false, categories: lowerCategories, theme: theme)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
 
+    @ViewBuilder
+    private func statsContent(theme: Theme) -> some View {
+        VStack(alignment: .leading, spacing: scoreSectionSpacing) {
+            Text("PvP stats will go here")
+        }
+        
+    }
+    
     private func scoreSection(
         title: String,
+        isUpper: Bool,
         categories: [YatzyCategory],
         theme: Theme
     ) -> some View {
-        VStack(alignment: .leading, spacing: scoreRowSpacing) {
-            Text(title)
+        VStack(alignment: .leading, spacing: 0) {
+            Text(title.localizedUppercase)
                 .font(.headline.weight(.semibold))
                 .frame(height: headerRowHeight, alignment: .leading)
 
-            ForEach(categories) { category in
-                scoreRow(for: category)
-            }
+            VStack(alignment: .leading, spacing: scoreRowSpacing) {
+                ForEach(categories) { category in
+                    scoreRow(for: category)
+                }
 
-            if title == "Upper" {
-                summaryRow(title: "Subtotal", value: upperSectionSubtotal)
-                summaryRow(title: "Bonus", value: model.upperBonus(for: playerIndex))
-                summaryRow(title: "Total", value: upperSectionTotal)
-            } else {
-                summaryRow(title: "Subtotal", value: lowerSectionSubtotal)
-                summaryRow(title: "Yatzy Bonus", value: model.yahtzeeBonus(for: playerIndex))
-                summaryRow(title: "Total", value: lowerSectionTotal)
+                if isUpper {
+                    summaryRow(title: "Subtotal", value: upperSectionSubtotal)
+                    summaryRow(title: "Bonus", value: model.upperBonus(for: playerIndex))
+                    summaryRow(title: "Total", value: upperSectionTotal)
+                } else {
+                    summaryRow(title: "Subtotal", value: lowerSectionSubtotal)
+                    summaryRow(title: "Yatzy Bonus", value: model.yahtzeeBonus(for: playerIndex))
+                    summaryRow(title: "Total", value: lowerSectionTotal)
+                }
             }
         }
     }
@@ -213,6 +200,8 @@ struct PlayerScoreCardView: View {
         HStack(spacing: 2) {
             Text(category.displayName)
                 .font(.subheadline)
+                .minimumScaleFactor(0.75)
+                .lineLimit(1)
                 .foregroundStyle(.primary)
             Spacer()
             ScoreRow(
@@ -346,7 +335,8 @@ private struct PlayerScoreCardPreviewContainer: View {
                 headerRowHeight: 28,
                 scoreSectionSpacing: 14,
                 scoreRowSpacing: 6,
-                layoutMode: .stacked
+                horizontalPadding: 14,
+                sectionGap: 12
             )
         }
     }
@@ -385,12 +375,13 @@ private struct PlayerScoreCardCompactPreviewContainer: View {
             PlayerScoreCardView(
                 model: model,
                 playerIndex: 1,
-                scoreColumnWidth: 58,
+                scoreColumnWidth: 64,
                 scoreRowHeight: 32,
                 headerRowHeight: 28,
                 scoreSectionSpacing: 14,
                 scoreRowSpacing: 6,
-                layoutMode: .sideBySide
+                horizontalPadding: 10,
+                sectionGap: 10
             )
         }
     }

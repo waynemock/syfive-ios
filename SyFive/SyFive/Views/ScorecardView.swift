@@ -6,8 +6,8 @@ struct ScorecardView: View {
     let availableWidth: CGFloat
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.sizeCategory) private var sizeCategory
-    @State private var addPlayerMinY: CGFloat = 0
     @State private var showsPlayerPicker = false
+    @State private var measuredLabelWidth: CGFloat = 0
 
     private let scoreColumnWidth: CGFloat = 64
     private let scoreRowHeight: CGFloat = 32
@@ -15,11 +15,48 @@ struct ScorecardView: View {
     private let scoreSectionSpacing: CGFloat = 14
     private let scoreRowSpacing: CGFloat = 6
     private let cardEdgeInset: CGFloat = 24
+    private let cardGap: CGFloat = 16
+    private let peekAmount: CGFloat = 20
     private let logger = AppLogger(category: "ScorecardView")
 
     var body: some View {
+        Group {
+            if model.canEditPlayers {
+                PreGameGridView(model: model) {
+                    showsPlayerPicker = true
+                }
+            } else {
+                inGameView
+            }
+        }
+        .background(
+            // Hidden probe: measures the widest label text at the user's actual
+            // Dynamic Type size. Rendered at natural size then clipped to 0×0
+            // so it has no effect on layout.
+            sectionLabelProbe
+                .fixedSize(horizontal: true, vertical: true)
+                .background(GeometryReader { geo in
+                    Color.clear.preference(key: LabelWidthKey.self, value: geo.size.width)
+                })
+                .frame(width: 0, height: 0)
+                .clipped()
+        )
+        .onPreferenceChange(LabelWidthKey.self) { width in
+            if width > 0 { measuredLabelWidth = width }
+        }
+        .sheet(isPresented: $showsPlayerPicker) {
+            PlayerPickerSheet(model: model)
+        }
+        .onAppear {
+            if !model.hasStarted {
+                showsPlayerPicker = true
+            }
+        }
+    }
+
+    private var inGameView: some View {
         let cardWidth = singleCardWidth(for: availableWidth)
-        ScrollViewReader { verticalProxy in
+        return ScrollViewReader { verticalProxy in
             ScrollView(.vertical, showsIndicators: false) {
                 Color.clear
                     .frame(height: 0)
@@ -28,6 +65,7 @@ struct ScorecardView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         LazyHStack(alignment: .top, spacing: 16) {
                             ForEach(Array(model.slotIDs.enumerated()), id: \.element) { index, _ in
+                                let metrics = cardMetrics(for: cardWidth)
                                 PlayerScoreCardView(
                                     model: model,
                                     playerIndex: index,
@@ -36,24 +74,11 @@ struct ScorecardView: View {
                                     headerRowHeight: headerRowHeight,
                                     scoreSectionSpacing: scoreSectionSpacing,
                                     scoreRowSpacing: scoreRowSpacing,
-                                    layoutMode: playerCardLayoutMode(for: cardWidth)
+                                    horizontalPadding: metrics.horizontalPadding,
+                                    sectionGap: metrics.sectionGap
                                 )
                                 .frame(width: cardWidth)
                                 .id(index)
-                            }
-                            if model.canEditPlayers {
-                                addPlayerCard
-                                    .offset(y: max(0, -addPlayerMinY))
-                                    .background(
-                                        GeometryReader { proxy in
-                                            Color.clear
-                                                .preference(
-                                                    key: AddPlayerMinYKey.self,
-                                                    value: proxy.frame(in: .named("scorecardVertical")).minY
-                                                )
-                                        }
-                                    )
-                                    .id("add-player")
                             }
                         }
                         .padding(.horizontal, cardEdgeInset)
@@ -84,42 +109,9 @@ struct ScorecardView: View {
             let computed = singleCardWidth(for: width)
             logger.debug(
                 self,
-                "width update: available=\(width), computed=\(computed), players=\(model.playerCount), canEdit=\(model.canEditPlayers), sizeCategory=\(sizeCategory)"
+                "width update: available=\(width), computed=\(computed), players=\(model.playerCount), sizeCategory=\(sizeCategory)"
             )
         }
-        .onPreferenceChange(AddPlayerMinYKey.self) { minY in
-            addPlayerMinY = minY
-        }
-        .sheet(isPresented: $showsPlayerPicker) {
-            PlayerPickerSheet(model: model)
-        }
-        .onAppear {
-            if !model.hasStarted {
-                showsPlayerPicker = true
-            }
-        }
-    }
-
-    private var addPlayerCard: some View {
-        let theme = Theme(type: model.nextPlayerThemeType, colorScheme: colorScheme)
-        return Button {
-            showsPlayerPicker = true
-        } label: {
-            VStack(spacing: 8) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.title2)
-                Text("Add Player")
-                    .font(.subheadline.weight(.semibold))
-            }
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(theme.primaryAccent)
-        .contentShape(Rectangle())
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(theme.cellBackgroundColor)
-        )
     }
 
     private func scrollToCurrentPlayer(using proxy: ScrollViewProxy) {
@@ -144,46 +136,72 @@ struct ScorecardView: View {
     }
 
     private func singleCardWidth(for availableWidth: CGFloat) -> CGFloat {
-        let resolvedWidth = availableWidth == 0 ? 320 : availableWidth
-        let usableWidth = max(0, resolvedWidth - (cardEdgeInset * 2))
-        let isLargeType = sizeCategory.isAccessibilityCategory
-        let computed: CGFloat
-        let reason: String
+        let resolved = availableWidth == 0 ? 393 : availableWidth
+        let usable = max(0, resolved - cardEdgeInset * 2)
 
-        if model.canEditPlayers {
-            computed = max(220, (usableWidth - 16) / 2)
-            reason = "canEditPlayers"
-        } else if isLargeType || model.playerCount == 1 {
-            computed = max(220, usableWidth)
-            reason = "largeTypeOrSinglePlayer"
+        if model.playerCount <= 1 {
+            // Single player: fill available space — no cap needed.
+            let result = max(280, usable)
+            logger.debug(self, "singleCardWidth(single): \(result)")
+            return result
+        }
+
+        // Multi-player: compute ideal card width from the probe-measured label
+        // width. This accounts for the user's Dynamic Type size automatically.
+        // Falls back to 82pt if the probe hasn't fired yet (first frame).
+        let labelWidth = measuredLabelWidth > 0 ? measuredLabelWidth : 82
+        // Per-section minimum: label + HStack spacing + score column + 4pt breathing room.
+        let idealSectionWidth = labelWidth + 2 + scoreColumnWidth + 4
+        // Full card: two sections + section gap (12) + horizontal padding each side (14×2=28).
+        let idealCardWidth = max(280, 2 * idealSectionWidth + 12 + 28)
+
+        // On wide screens where two content-sized cards fit simultaneously, use
+        // that width so the screen fills nicely (sections stretch via maxWidth:.infinity).
+        let twoCardFit = (usable - cardGap) / 2
+        let result: CGFloat
+        if twoCardFit >= 280 && twoCardFit >= idealCardWidth {
+            result = twoCardFit
         } else {
-            computed = max(220, ((usableWidth - 16) / 2) * 1.5)
-            reason = "default"
+            // Narrow screen: use content-driven width but cap so there's always a
+            // peek at the adjacent card, which tells the user they can scroll.
+            let peekedMax = max(280, resolved - cardEdgeInset - cardGap - peekAmount)
+            result = min(idealCardWidth, peekedMax)
         }
 
         logger.debug(
             self,
-            "singleCardWidth: available=\(availableWidth), resolved=\(resolvedWidth), usable=\(usableWidth), isLargeType=\(isLargeType), players=\(model.playerCount), canEdit=\(model.canEditPlayers), reason=\(reason), result=\(computed)"
+            "singleCardWidth(multi): label=\(labelWidth), ideal=\(idealCardWidth), twoCardFit=\(twoCardFit), result=\(result)"
         )
-
-        return computed
+        return result
     }
 
-    private func playerCardLayoutMode(for cardWidth: CGFloat) -> PlayerScoreCardView.LayoutMode {
-        guard !sizeCategory.isAccessibilityCategory else { return .stacked }
-        return cardWidth >= 320 ? .sideBySide : .stacked
+    // All category label texts + the longest summary label, stacked so SwiftUI
+    // sizes the VStack to the widest entry. Measured via a hidden 0×0 probe.
+    private var sectionLabelProbe: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(YatzyCategory.allCases) { category in
+                Text(category.displayName).font(.subheadline)
+            }
+            // Summary labels — semibold matches how they render in the card.
+            Text("Yatzy Bonus").font(.subheadline.weight(.semibold))
+            Text("Subtotal").font(.subheadline.weight(.semibold))
+        }
     }
 
+    private func cardMetrics(for cardWidth: CGFloat) -> (horizontalPadding: CGFloat, sectionGap: CGFloat) {
+        // Wider cards get slightly more breathing room.
+        cardWidth > 340
+            ? (horizontalPadding: 14, sectionGap: 12)
+            : (horizontalPadding: 10, sectionGap: 10)
+    }
 }
 
-private struct AddPlayerMinYKey: PreferenceKey {
+private struct LabelWidthKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
-
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
+        value = max(value, nextValue())
     }
 }
-
 
 #Preview {
     ScorecardView(model: MatchController(), availableWidth: 360)
