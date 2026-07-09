@@ -15,6 +15,7 @@ struct PlayerScoreCardView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.sizeCategory) private var sizeCategory
     @State private var isWinnerHighlightExpanded = false
+    @State private var showsProfile = false
 
     var body: some View {
         guard model.playerScores.indices.contains(playerIndex) else {
@@ -79,6 +80,15 @@ struct PlayerScoreCardView: View {
             }
             .onChange(of: isWinner) { _, newValue in
                 updateWinnerHighlightAnimation(isWinner: newValue)
+            }
+            .sheet(isPresented: $showsProfile) {
+                if let pid = model.playerIDs[playerIndex] {
+                    PlayerProfileView(
+                        playerID: pid,
+                        playerName: model.playerNames[playerIndex],
+                        themeType: model.themeType(for: playerIndex)
+                    )
+                }
             }
         )
     }
@@ -153,10 +163,40 @@ struct PlayerScoreCardView: View {
 
     @ViewBuilder
     private func statsContent(theme: Theme) -> some View {
-        VStack(alignment: .leading, spacing: scoreSectionSpacing) {
-            Text("PvP stats will go here")
+        let viewerID = model.playerIDs[playerIndex]
+
+        VStack(alignment: .leading, spacing: 10) {
+            if model.playerCount == 2,
+               let aID = viewerID,
+               let bIndex = (0..<model.playerCount).first(where: { $0 != playerIndex }),
+               let bID = model.playerIDs[bIndex] {
+                HeadToHeadCard(
+                    playerAID: aID,
+                    playerAName: model.playerNames[playerIndex],
+                    playerBID: bID,
+                    playerBName: model.playerNames[bIndex]
+                )
+            }
+
+            if viewerID != nil {
+                Button {
+                    showsProfile = true
+                } label: {
+                    HStack(spacing: 3) {
+                        Text("View profile")
+                        Image(systemName: "chevron.right")
+                            .font(.caption2)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(theme.primaryAccent.opacity(0.8))
+                }
+                .buttonStyle(.plain)
+            } else {
+                Text("Add to roster for stats")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
-        
     }
     
     private func scoreSection(

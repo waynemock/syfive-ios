@@ -4,6 +4,7 @@ import SwiftData
 struct ContentView: View {
     @State private var model = MatchController()
     @State private var showsResetAlert = false
+    @State private var showsHistory = false
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) private var modelContext
     private let showsDebugLayout = AppConfig.DebugLayout.isEnabled
@@ -72,6 +73,14 @@ struct ContentView: View {
                     }
                     .accessibilityLabel("New Game")
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showsHistory = true
+                    } label: {
+                        Image(systemName: "clock.fill")
+                    }
+                    .accessibilityLabel("Match History")
+                }
             }
             .alert("Start a new game?", isPresented: $showsResetAlert) {
                 Button("Cancel", role: .cancel) {}
@@ -91,6 +100,9 @@ struct ContentView: View {
         }
         .onChange(of: model.playerCount) { saveMatch() }
         .onChange(of: model.playerScores) { saveMatch() }
+        .sheet(isPresented: $showsHistory) {
+            MatchHistoryView()
+        }
     }
 
     private func loadMatchIfNeeded() {
