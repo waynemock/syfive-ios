@@ -57,7 +57,7 @@ struct PlacementDistributionChart: View {
 }
 
 #Preview("Placement — Dark") {
-    PlacementDistributionChart(distribution: Distribution(bins: [1: 5, 2: 2, 3: 1]))`
+    PlacementDistributionChart(distribution: Distribution(bins: [1: 5, 2: 2, 3: 1]))
         .frame(height: 200)
         .padding()
         .environment(\.theme, Theme(type: .midnight, colorScheme: .dark))

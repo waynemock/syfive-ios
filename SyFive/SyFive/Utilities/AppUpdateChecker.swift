@@ -19,17 +19,11 @@ actor AppUpdateChecker {
     /// Checks if an update is available on the App Store.
     /// Caches the result and only queries the App Store if the cache is stale.
     func isUpdateAvailable() async -> Bool {
-        let status = await updateStatus()
-        return status.available
-    }
-
-    /// Checks for updates and returns (available, storeVersion).
-    func updateStatus() async -> (available: Bool, storeVersion: String?) {
         if let cached = cachedResult,
            let lastCheck = lastCheckTime,
            Date().timeIntervalSince(lastCheck) < minimumCheckInterval {
             Self.logger.debug(Self.self, "Returning cached result: \(cached) (store=\(cachedStoreVersion ?? "n/a"))")
-            return (cached, cachedStoreVersion)
+            return cached
         }
 
         let (result, storeVersion) = await performUpdateCheck()
@@ -38,7 +32,7 @@ actor AppUpdateChecker {
         cachedStoreVersion = storeVersion
         lastCheckTime = Date()
 
-        return (result, storeVersion)
+        return result
     }
 
     /// Performs the actual App Store lookup.

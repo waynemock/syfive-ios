@@ -6,9 +6,9 @@
 
 ## Summary
 
-The core game loop is complete and polished. The dice are best-in-class — real physics, proven fair, better than the original spec. The scorecard is fully functional with multi-player support. Persistence is wired end-to-end (SwiftData models, domain conversion, MatchController session layer). The pre-game player roster grid is built. What remains is the stats layer (6 staged build-outs per `03_STATS_DESIGN.md`), audio, haptics, settings, and pre-submission.
+The core game loop, dice system, scorecard UX, persistence, and the full stats layer are all complete. The stats work spans both `03_STATS_DESIGN.md` (all 6 stages) and `05_PLAYER_INSIGHTS DESIGN.md` (consistency, proficiency, style signature, risk profile, clutch, and the plain-language player read). App surfaces include pre-game H2H cards, player profiles, and a match history browser with progression charts. What remains is audio, haptics, a settings screen, and pre-submission cleanup.
 
-**Overall progress: ~75% to 1.0 Definition of Done**
+**Overall progress: ~92% to 1.0 Definition of Done**
 
 ---
 
@@ -77,7 +77,7 @@ Multi-player was listed as a 1.1+ feature. It shipped ahead of schedule.
 | Scrolls to winner at game end | ✅ Done | Spring animation |
 | Leading player shown in nav title | ✅ Done | |
 | Pass-and-play multiplayer | ✅ Done | Works on single device |
-| Pre-game player grid | ✅ Done | `PreGameGridView` — card per player, adaptive columns, stats placeholder area |
+| Pre-game player grid | ✅ Done | `PreGameGridView` — card per player, adaptive columns, H2H card + profile link per card |
 
 ---
 
@@ -104,45 +104,51 @@ SwiftData models are defined and wired. Domain↔model conversion is implemented
 | Current game autosave | ✅ Done | Checkpoint flush at each scored category |
 | Completed games history | ✅ Done | `MatchModel` with `status == .completed` |
 | Player roster | ✅ Done | `PlayerModel`, persisted, survives app restart |
-| `recordedAt` on `ScoreEntry` | ⚠️ Needs hardening | Exists as `Date?`; must be stamped unconditionally at checkpoint (see Stats Stage 4) |
+| `recordedAt` on `ScoreEntry` | ✅ Done | Stamped unconditionally in `MatchController.score(category:)`; loaded back via `playerScoreTimestamps` |
 
 ---
 
-## Stats — NOT STARTED ❌
+## Stats — COMPLETE ✅
 
-Stats compute on demand from persisted matches (no aggregate tables). The design is fully specified in `03_STATS_DESIGN.md`. Stages are independently unit-testable against synthetic fixtures. **Build order matters: Stage 1 must be done before any other stage.**
+All six stages from `03_STATS_DESIGN.md` and the full Player Insights layer from `05_PLAYER_INSIGHTS DESIGN.md` are shipped. Stats compute on demand from persisted matches — no stored aggregates, no new schema.
 
-### Stats architecture (from `03_STATS_DESIGN.md`)
+### Architecture (preserved invariants)
 
-- **Tier 1 — Generic** (`Domain/Stats/Generic/`): Foundation-only. `PlayerSummary`, `HeadToHead`, `LineupRecord`, `RecordsBoard`, streak/trend helpers. Ships unchanged in SyLib.
-- **Tier 2 — Yatzy-specific** (`Domain/Stats/Yatzy/`): Reads `YatzyCategory` and calls Domain scoring functions. `CategoryStats`, `UpperSectionStats`, `YatzyStats`, `MatchProgression`.
-- **Series output** (`Domain/Stats/Series/`): Chart-ready plain value types (`DatedPoint`, `Distribution`, `SeriesPoint`). Domain never imports `Charts`.
-- **App surfaces** (`Views/Stats/`): Maps series to Swift Charts, applies theme. SwiftData fetch → `toDomain()` → stats function → series → chart.
+- **Tier 1 — Generic** (`Domain/Stats/Generic/`): Foundation-only. Extractable to SyLib unchanged.
+- **Tier 2 — Yatzy-specific** (`Domain/Stats/Yatzy/`): Reads `YatzyCategory`, calls Domain scoring functions.
+- **Series output** (`Domain/Stats/Series/`): Chart-ready plain value types. Domain never imports `Charts`.
+- **App surfaces** (`Views/Stats/`): SwiftData fetch → `toDomain()` → stats function → chart view.
 
-### Invariants (must not be broken)
+### Stage completion
 
-- Tier 1 imports **only Foundation** — this is the SyLib extraction plan.
-- No charting framework in the domain layer.
-- Stats are **compute-on-read** — no stored aggregates, no running totals.
-- Stats outputs are **not frozen schema** — they may change freely (never persisted).
-- `abandoned` and `inProgress` matches are **excluded** from every stat.
-- `rank == 1` = match win; ties share rank, credited to neither's win column.
-- Scratch rate tests `value == Decimal(0)`, never falsy; `nil` = unscored (data bug in a completed match).
-- Dice/roll telemetry stays with the dice engine — never a stats input, never in `ScoreEntry.metadata`.
-- Per-match progression **reuses the pure scoring functions** on entry prefixes — no reimplementation.
-- **Do not build `StatsProviding` protocol yet** — pure free functions until a second game exists.
-- **Elo deferred** — derivable retroactively; do not wire rating capture into the schema.
-
-### Build plan
-
-| Stage | What | Done when |
+| Stage | What shipped | Status |
 |---|---|---|
-| **1 — Scaffolding + fixtures** | Create `Domain/Stats/` (Foundation-only). Write a fixture set of completed `Match` values with known ranks/scores/scorecards. | `Domain/Stats/` compiles with only `import Foundation` + sibling domain. Fixtures load. |
-| **2 — Tier 1 generic core** | `PlayerSummary`, `HeadToHead`, `LineupRecord`, `RecordsBoard`, ordered-history helper (streaks, trends). Pure free functions. | Unit tests assert exact wins, win rate, pairwise-ahead, streaks, records against fixtures. |
-| **3 — Tier 2 Yatzy stats** | `CategoryStats`, `UpperSectionStats`, `YatzyStats`. Calls existing Domain scoring functions. | Scratch rate distinguishes `Decimal(0)` from `nil`; bonus counts match `yahtzeeBonus`. |
-| **4 — `recordedAt` hardening + progression replay** | Stamp `recordedAt` unconditionally at checkpoint flush. Build `MatchProgression` via prefix replay through existing pure scoring functions. | A fresh persisted match replays to a monotonic per-player series with correct running totals. A `nil`-timestamp fixture falls back cleanly with no crash. |
-| **5 — Series types + chart mapping** | Emit `DatedPoint` / `Distribution` / `SeriesPoint` from stats functions. Map to Swift Charts in `Views/Stats/`. | Domain imports no charting framework. App renders trend, distribution, and progression charts. |
-| **6 — App surfaces** | Pre-game H2H card (the signature moment), player profile, match history browser + per-match detail with progression chart, post-game diff ("New personal best"). | Two players starting see their record. Finished match shows progression. Post-game diff surfaces quietly. |
+| **1 — Scaffolding + fixtures** | `Domain/Stats/` structure, `StatsFixtures.swift` with known-outcome `Match` values | ✅ Done |
+| **2 — Tier 1 generic core** | `PlayerSummary`, `HeadToHead`, `LineupRecord`, `RecordsBoard`, `OrderedHistory`, `ScoreTrend` | ✅ Done |
+| **3 — Tier 2 Yatzy stats** | `CategoryStats`, `UpperSectionStats`, `YatzyStats`, `CategoryAverages` | ✅ Done |
+| **4 — `recordedAt` hardening + progression replay** | `MatchController` stamps timestamp unconditionally; `MatchProgression` prefix-replay | ✅ Done |
+| **5 — Series types + chart mapping** | `DatedPoint`, `Distribution`, `SeriesPoint`; `ScoreTrendChart`, `PlacementDistributionChart`, `MatchProgressionChart` | ✅ Done |
+| **6 — App surfaces** | `HeadToHeadCard` (pre-game), `PlayerProfileView`, `MatchHistoryView` + `MatchDetailView` | ✅ Done |
+
+### Player Insights (from `05_PLAYER_INSIGHTS DESIGN.md`)
+
+| Insight | File | Status |
+|---|---|---|
+| Consistency (spread, variability) | `Generic/ConsistencyProfile.swift` | ✅ Done |
+| Proficiency (strongest/coldest + upper-pace notes) | `Yatzy/Proficiency.swift` | ✅ Done |
+| Style signature (section lean, bonus approach, Yatzy turn, opening) | `Yatzy/StyleSignature.swift` | ✅ Done |
+| Risk profile (scratch rate, early/late zeros, Yatzy zeroed) | `Yatzy/RiskProfile.swift` | ✅ Done |
+| Clutch profile (back-half vs front-half, comebacks, surrendered leads) | `Yatzy/ClutchProfile.swift` | ✅ Done |
+| Plain-language read ("An upper-section specialist who...") | `Yatzy/PlayerInsights.swift` | ✅ Done — first-pass thresholds; calibrate on real data |
+
+**Open from `05` §6 (author decisions, not closed by implementation):**
+- Style signature placement (centerpiece vs. one section among equals)
+- Plain-language read timing (sentences now vs. calibrated later) — shipped first-pass
+- Read scope for 1.0 — shipped as part of `PlayerProfileView`
+
+### Unit test coverage
+
+`StatsTests.swift` asserts exact values for Stages 1–4 against synthetic fixtures. Charts and insight structs are covered by preview data and build-time type-checking; no dedicated chart tests.
 
 ---
 
@@ -220,7 +226,7 @@ From `REQUIREMENTS.md`:
 | Full game playable start-to-finish with correct scoring | ✅ Done |
 | Reliable roll/hold behavior | ✅ Done |
 | Clean scorecard UX + satisfying dice tray interactions | ✅ Done |
-| Basic history + best score | ❌ Needs stats layer (Stages 1–2 minimum) |
+| Basic history + best score | ✅ Done — match history browser, per-match detail, player profile with score trend |
 | Feels premium (the "Sydoku maker" bar) | ✅ Done |
 
 ---
@@ -229,10 +235,7 @@ From `REQUIREMENTS.md`:
 
 Ordered by dependency and user impact:
 
-1. **Stats — Stages 1–2** (scaffolding + fixtures, Tier 1 generic core) — enables the pre-game H2H card and basic history. Blocks Stage 6 surfaces.
-2. **`recordedAt` hardening** (Stats Stage 4, first half) — must ship before any new matches are played so replay works forward.
-3. **Stats — Stages 3–6** (Yatzy stats, progression replay, series/charts, app surfaces).
-4. **Settings screen** — Sound on/off, haptics on/off, suggested move toggle. Can be minimal.
-5. **Haptics** — 2–3 `UIFeedbackGenerator` callsites (hold toggle, settle, score confirm). Quick win.
-6. **Audio** — Write a concrete `DiceAudioControlling` implementation. Hook points are in place.
-7. **Pre-submission** — Flip `AppConfig.DebugDice.showHarness = false`, `logRollDiagnostics = false`, `DebugLayout.isEnabled = false`. Final QA pass, App Store assets.
+1. **Settings screen** — Sound on/off, haptics on/off, suggested move toggle. Can be minimal (one sheet off the toolbar).
+2. **Haptics** — 2–3 `UIFeedbackGenerator` callsites (hold toggle, settle, score confirm). Quick win; no blocker.
+3. **Audio** — Write a concrete `DiceAudioControlling` implementation using `AVAudioEngine` or `AVAudioPlayer` and assign it to `DiceRoller.audioController`. Hook points are already in place.
+4. **Pre-submission** — Flip `AppConfig.DebugDice.showHarness = false`, `logRollDiagnostics = false`, `DebugLayout.isEnabled = false`. Final QA pass, App Store assets.

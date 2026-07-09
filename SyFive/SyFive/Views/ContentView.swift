@@ -5,8 +5,13 @@ struct ContentView: View {
     @State private var model = MatchController()
     @State private var showsResetAlert = false
     @State private var showsHistory = false
+    @State private var showsSettings = false
+    @State private var showsAbout = false
+    @State private var isUpdateAvailable = false
+    @State private var updateBadgeAcknowledged = false
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.openURL) private var openURL
     private let showsDebugLayout = AppConfig.DebugLayout.isEnabled
     private let logger = AppLogger(category: "ContentView")
 
@@ -74,12 +79,35 @@ struct ContentView: View {
                     .accessibilityLabel("New Game")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showsHistory = true
+                    Menu {
+                        Button {
+                            showsHistory = true
+                        } label: {
+                            Label("History", systemImage: "clock")
+                        }
+                        Divider()
+                        Button {
+                            showsSettings = true
+                        } label: {
+                            Label("Settings", systemImage: "gearshape")
+                        }
+                        Divider()
+                        Button {
+                            showsAbout = true
+                        } label: {
+                            Label("About", systemImage: "info.circle")
+                        }
+                        Button {
+                            openSyzygyAppStore()
+                        } label: {
+                            Label("App Store", systemImage: "storefront.fill")
+                        }
                     } label: {
-                        Image(systemName: "clock.fill")
+                        MainMenuButton(showBadge: shouldShowUpdateBadge)
                     }
-                    .accessibilityLabel("Match History")
+                    .simultaneousGesture(TapGesture().onEnded {
+                        acknowledgeUpdateBadge()
+                    })
                 }
             }
             .alert("Start a new game?", isPresented: $showsResetAlert) {
@@ -94,6 +122,9 @@ struct ContentView: View {
         }
         .tint(theme.primaryAccent)
         .environment(\.theme, theme)
+        .task {
+            isUpdateAvailable = await AppUpdateChecker.shared.isUpdateAvailable()
+        }
         .onAppear {
             seedYatzyGameIfNeeded()
             loadMatchIfNeeded()
@@ -102,6 +133,18 @@ struct ContentView: View {
         .onChange(of: model.playerScores) { saveMatch() }
         .sheet(isPresented: $showsHistory) {
             MatchHistoryView()
+                .environment(\.theme, theme)
+        }
+        .sheet(isPresented: $showsSettings) {
+            Text("Settings")
+                .font(.largeTitle)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showsAbout) {
+            AboutView()
+                .environment(\.theme, theme)
         }
     }
 
@@ -161,6 +204,25 @@ struct ContentView: View {
         game.maxParticipants = 0
         game.sortOrder = 0
         modelContext.insert(game)
+    }
+
+    private var shouldShowUpdateBadge: Bool {
+        isUpdateAvailable && !updateBadgeAcknowledged
+    }
+
+    private func acknowledgeUpdateBadge() {
+        guard shouldShowUpdateBadge else { return }
+        updateBadgeAcknowledged = true
+    }
+
+    private func openAppStore() {
+        openURL(AboutView.appStoreURL)
+    }
+
+    /// Opens the App Store page for Syzygy
+    private func openSyzygyAppStore() {
+        guard let appStoreURL = URL(string: "https://apps.apple.com/us/developer/syzygy-softwerks-llc/id1118759442") else { return }
+        openURL(appStoreURL)
     }
 
     private func debugColor(_ color: Color) -> Color {

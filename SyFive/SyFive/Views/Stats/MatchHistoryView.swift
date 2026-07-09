@@ -2,8 +2,11 @@ import SwiftUI
 import SwiftData
 
 struct MatchHistoryView: View {
+    @Environment(\.dismiss) private var dismiss
+    
     @Query(filter: #Predicate<MatchModel> { $0.statusRaw == "completed" },
            sort: \MatchModel.startedAt, order: .reverse)
+    
     private var matchModels: [MatchModel]
 
     var body: some View {
@@ -18,6 +21,11 @@ struct MatchHistoryView: View {
                 }
             }
             .navigationTitle("History")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
             .overlay {
                 if matchModels.isEmpty {
                     ContentUnavailableView(
