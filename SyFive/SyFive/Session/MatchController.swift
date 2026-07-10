@@ -49,6 +49,7 @@ final class MatchController {
     /// True while physics dice are mid-roll (between beginRoll and receiveDiceResults).
     private(set) var isRolling: Bool = false
     private var lastScoreSnapshot: LastScoreSnapshot?
+    var commentaryEventSink: ((CommentaryEvent) -> Void)?
 
     init() {
         diceValues = Array(repeating: 1, count: diceCount)
@@ -447,12 +448,28 @@ final class MatchController {
             currentPlayerIndex: currentPlayerIndex,
             isRolling: isRolling
         )
-        if qualifiesForExtraYahtzeeBonus(dice: diceValues, scorecard: yatzyScorecard(for: currentPlayerIndex)) {
+        let scoringPlayerName = currentPlayerName
+        let scoringPlayerIndex = currentPlayerIndex
+        let previousLeaderIndices = leaderIndices
+        let hadUpperBonus = upperBonus(for: currentPlayerIndex) > 0
+        let earnedBonus = qualifiesForExtraYahtzeeBonus(dice: diceValues, scorecard: yatzyScorecard(for: currentPlayerIndex))
+        if earnedBonus {
             playerYahtzeeBonuses[currentPlayerIndex] += 100
         }
-        playerScores[currentPlayerIndex][category] = scoreValue(for: category, playerIndex: currentPlayerIndex)
+        let scoreVal = scoreValue(for: category, playerIndex: currentPlayerIndex)
+        playerScores[currentPlayerIndex][category] = scoreVal
         playerScoreTimestamps[currentPlayerIndex][category] = Date()
-        if !isGameOver { beginNextTurn() }
+        let gameJustEnded = isGameOver
+        if !gameJustEnded { beginNextTurn() }
+        if let sink = commentaryEventSink {
+            emitCommentaryEvent(sink: sink, category: category, scoreVal: scoreVal,
+                                scoringPlayerIndex: scoringPlayerIndex,
+                                scoringPlayerName: scoringPlayerName,
+                                previousLeaderIndices: previousLeaderIndices,
+                                hadUpperBonus: hadUpperBonus,
+                                earnedBonus: earnedBonus,
+                                gameJustEnded: gameJustEnded)
+        }
     }
 
     @discardableResult
@@ -549,6 +566,67 @@ final class MatchController {
 
     private func legalScoreCategories(for playerIndex: Int) -> [YatzyCategory] {
         legalCategories(dice: diceValues, scorecard: yatzyScorecard(for: playerIndex))
+    }
+
+    private func emitCommentaryEvent(
+        sink: (CommentaryEvent) -> Void,
+        category: YatzyCategory,
+        scoreVal: Int,
+        scoringPlayerIndex: Int,
+        scoringPlayerName: String,
+        previousLeaderIndices: [Int],
+        hadUpperBonus: Bool,
+        earnedBonus: Bool,
+        gameJustEnded: Bool
+    ) {
+        if gameJustEnded {
+            guard let winScore = (0..<playerCount).map({ totalScore(for: $0) }).max() else { return }
+            let winners = winnerIndices
+            if winners.count == 1, let w = winners.first {
+                let others = (0..<playerCount)
+                    .filter { $0 != w }
+                    .sorted { totalScore(for: $0) > totalScore(for: $1) }
+                let secondScore = others.first.map { totalScore(for: $0) } ?? 0
+                sink(CommentaryEvent(kind: .winnerDeclared,
+                                     winner: playerDisplayNames[w],
+                                     runnerUp: others.first.map { playerDisplayNames[$0] },
+                                     score: winScore,
+                                     margin: winScore - secondScore))
+            } else {
+                let names = winners.map { playerDisplayNames[$0] }.joined(separator: ", ")
+                sink(CommentaryEvent(kind: .winnerTie, winner: names, score: winScore))
+            }
+            return
+        }
+        // Primary event for this scoring action
+        if earnedBonus {
+            sink(CommentaryEvent(kind: .yahtzeeBonusEarned, player: scoringPlayerName))
+        } else if category == .yahtzee && scoreVal == 50 {
+            sink(CommentaryEvent(kind: .yatzyRolled, player: scoringPlayerName))
+        } else if category == .yahtzee && scoreVal == 0 {
+            sink(CommentaryEvent(kind: .yatzyScratched, player: scoringPlayerName))
+        } else if scoreVal == 0 {
+            sink(CommentaryEvent(kind: .categoryScratched, player: scoringPlayerName, category: category.displayName))
+        } else if scoreVal >= 25 {
+            sink(CommentaryEvent(kind: .bigTurn, player: scoringPlayerName, category: category.displayName, value: scoreVal))
+        } else {
+            sink(CommentaryEvent(kind: .categoryScored, player: scoringPlayerName, category: category.displayName, value: scoreVal))
+        }
+        // Upper bonus just earned this turn
+        if !hadUpperBonus && upperBonus(for: scoringPlayerIndex) > 0 {
+            sink(CommentaryEvent(kind: .upperBonusEarned, player: scoringPlayerName))
+        }
+        // Lead change (sole new leader different from before)
+        let newLeaders = leaderIndices
+        if newLeaders.count == 1 && newLeaders != previousLeaderIndices, let leader = newLeaders.first {
+            let byScore = (0..<playerCount).sorted { totalScore(for: $0) > totalScore(for: $1) }
+            let runnerUpIdx = byScore.first { $0 != leader }
+            sink(CommentaryEvent(kind: .leadChange,
+                                 runnerUp: runnerUpIdx.map { playerDisplayNames[$0] },
+                                 leader: playerDisplayNames[leader]))
+        }
+        // Turn start for the next player
+        sink(CommentaryEvent(kind: .turnStart, player: currentPlayerName))
     }
 
     static func defaultTheme(for index: Int) -> Theme.ThemeType {

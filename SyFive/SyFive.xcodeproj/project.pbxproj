@@ -51,6 +51,8 @@
 				Docs/Requirements/07_AUDIO_HAPTICS_DESIGN.md,
 				Docs/Requirements/08_CELEBRATIONS_DESIGN.md,
 				Docs/Requirements/09_COMMENTATOR_DESIGN.md,
+				Docs/Requirements/10_GAMENIGHT_COMMENTARY.md,
+				Docs/Requirements/11_GAMENIGHT_THEATER_FEEL.md,
 				Info.plist,
 				Utilities/analyze_dice_fairness.py,
 			);

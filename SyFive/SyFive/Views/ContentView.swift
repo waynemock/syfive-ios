@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import AVFoundation
 
 struct ContentView: View {
     @State private var model = MatchController()
@@ -10,6 +11,7 @@ struct ContentView: View {
     @State private var showsAbout = false
     @State private var showsFeelBoard = false
     @State private var celebrationCoordinator = CelebrationCoordinator()
+    @State private var commentaryEngine: CommentaryEngine? = nil
     @State private var isUpdateAvailable = false
     @State private var updateBadgeAcknowledged = false
     @Environment(\.colorScheme) private var colorScheme
@@ -160,11 +162,15 @@ struct ContentView: View {
             director.hapticsEnabled = appSettings?.hapticsEnabled ?? true
             // Warm up haptic engine before first roll to avoid first-event latency (§6.2).
             director.warmUpHaptics()
+            syncCommentaryEngine()
         }
         .onChange(of: model.playerCount) { saveMatch() }
         .onChange(of: model.playerScores) { saveMatch() }
         .onChange(of: appSettings?.soundEnabled)   { _, v in director.soundEnabled   = v ?? true }
         .onChange(of: appSettings?.hapticsEnabled) { _, v in director.hapticsEnabled = v ?? true }
+        .onChange(of: appSettings?.commentaryEnabled)      { _, _ in syncCommentaryEngine() }
+        .onChange(of: appSettings?.commentaryLevelRaw)     { _, _ in syncCommentaryEngine() }
+        .onChange(of: appSettings?.commentaryPersonalityID){ _, _ in syncCommentaryEngine() }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .background: director.stopAudioForBackground()
@@ -180,7 +186,7 @@ struct ContentView: View {
             MatchHistoryView()
                 .environment(\.theme, theme)
         }
-        .sheet(isPresented: $showsSettings) {
+        .sheet(isPresented: $showsSettings, onDismiss: { syncCommentaryEngine() }) {
             SettingsView()
                 .environment(\.theme, theme)
         }
@@ -191,6 +197,27 @@ struct ContentView: View {
         .sheet(isPresented: $showsFeelBoard) {
             FeelBoardView()
                 .environment(director)
+        }
+    }
+
+    private func syncCommentaryEngine() {
+        guard let settings = appSettings, settings.commentaryEnabled else {
+            commentaryEngine?.stopSpeaking()
+            commentaryEngine = nil
+            model.commentaryEventSink = nil
+            return
+        }
+        let personality = CommentaryPersonality.find(id: settings.commentaryPersonalityID)
+        let level = CommentaryLevel(rawValue: settings.commentaryLevelRaw) ?? .celebrations
+        let voiceID = UserDefaults.standard.string(forKey: "commentaryVoiceID")
+        let voice = voiceID.flatMap { AVSpeechSynthesisVoice(identifier: $0) }
+            ?? AVSpeechSynthesisVoice(language: Locale.current.language.languageCode?.identifier ?? "en")
+        if let engine = commentaryEngine {
+            engine.update(personality: personality, voice: voice, level: level)
+        } else {
+            let engine = CommentaryEngine(personality: personality, voice: voice, level: level)
+            commentaryEngine = engine
+            model.commentaryEventSink = { [weak engine] event in engine?.handle(event) }
         }
     }
 

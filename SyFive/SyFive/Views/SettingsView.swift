@@ -44,6 +44,17 @@ private struct SettingsForm: View {
             Section("Gameplay") {
                 Toggle("Suggested Move", isOn: $settings.suggestedMoveEnabled)
             }
+
+            Section("Commentary") {
+                Toggle("Commentary", isOn: $settings.commentaryEnabled)
+                if settings.commentaryEnabled {
+                    NavigationLink {
+                        CommentarySettingsView(settings: settings)
+                    } label: {
+                        Text("Voice, Personality & Level")
+                    }
+                }
+            }
         }
     }
 }

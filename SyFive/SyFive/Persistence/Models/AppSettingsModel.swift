@@ -29,17 +29,26 @@ enum AppColorScheme: String, CaseIterable, Codable {
     var soundEnabled: Bool
     var hapticsEnabled: Bool
     var suggestedMoveEnabled: Bool
+    var commentaryEnabled: Bool
+    var commentaryLevelRaw: String
+    var commentaryPersonalityID: String
 
     init(
         colorSchemeRaw: String = AppColorScheme.dark.rawValue,
         soundEnabled: Bool = true,
         hapticsEnabled: Bool = true,
-        suggestedMoveEnabled: Bool = true
+        suggestedMoveEnabled: Bool = true,
+        commentaryEnabled: Bool = false,
+        commentaryLevelRaw: String = CommentaryLevel.celebrations.rawValue,
+        commentaryPersonalityID: String = "steady"
     ) {
         self.colorSchemeRaw = colorSchemeRaw
         self.soundEnabled = soundEnabled
         self.hapticsEnabled = hapticsEnabled
         self.suggestedMoveEnabled = suggestedMoveEnabled
+        self.commentaryEnabled = commentaryEnabled
+        self.commentaryLevelRaw = commentaryLevelRaw
+        self.commentaryPersonalityID = commentaryPersonalityID
     }
 
     var colorScheme: AppColorScheme {
