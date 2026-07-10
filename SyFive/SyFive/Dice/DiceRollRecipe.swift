@@ -2,7 +2,7 @@ import Foundation
 import simd
 
 /// Full snapshot of one roll for deterministic debug replay.
-/// Stored in UserDefaults (last N rolls) so suspicious rolls can be reproduced.
+/// Held in memory as `lastRecipe` on `DiceRoller`; replay is in-session only.
 struct DiceRollRecipe: Codable {
     let seed: UInt64
     let appVersion: String

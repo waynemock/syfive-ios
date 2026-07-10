@@ -3,15 +3,18 @@ import SwiftData
 
 struct ContentView: View {
     @State private var model = MatchController()
+    @State private var director = FeelDirector(catalog: .syFive)
     @State private var showsResetAlert = false
     @State private var showsHistory = false
     @State private var showsSettings = false
     @State private var showsAbout = false
+    @State private var showsFeelBoard = false
     @State private var isUpdateAvailable = false
     @State private var updateBadgeAcknowledged = false
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) private var modelContext
     @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
     @Query private var settingsModels: [AppSettingsModel]
     private let showsDebugLayout = AppConfig.DebugLayout.isEnabled
     private let logger = AppLogger(category: "ContentView")
@@ -105,6 +108,16 @@ struct ContentView: View {
                         } label: {
                             Label("App Store", systemImage: "storefront.fill")
                         }
+                        #if DEBUG
+                        if AppConfig.DebugFeel.showFeelBoard {
+                            Divider()
+                            Button {
+                                showsFeelBoard = true
+                            } label: {
+                                Label("Feel Board", systemImage: "waveform")
+                            }
+                        }
+                        #endif
                     } label: {
                         MainMenuButton(showBadge: shouldShowUpdateBadge)
                     }
@@ -127,16 +140,32 @@ struct ContentView: View {
         .tint(theme.primaryAccent)
         .environment(\.theme, theme)
         .environment(\.suggestedMoveEnabled, appSettings?.suggestedMoveEnabled ?? true)
+        .environment(director)
         .task {
             isUpdateAvailable = await AppUpdateChecker.shared.isUpdateAvailable()
+            await director.warmUp()
         }
         .onAppear {
             seedSettingsIfNeeded()
             seedYatzyGameIfNeeded()
             loadMatchIfNeeded()
+            // Sync initial settings values (onChange won't fire for the first load).
+            director.soundEnabled   = appSettings?.soundEnabled   ?? true
+            director.hapticsEnabled = appSettings?.hapticsEnabled ?? true
+            // Warm up haptic engine before first roll to avoid first-event latency (§6.2).
+            director.warmUpHaptics()
         }
         .onChange(of: model.playerCount) { saveMatch() }
         .onChange(of: model.playerScores) { saveMatch() }
+        .onChange(of: appSettings?.soundEnabled)   { _, v in director.soundEnabled   = v ?? true }
+        .onChange(of: appSettings?.hapticsEnabled) { _, v in director.hapticsEnabled = v ?? true }
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .background: director.stopAudioForBackground()
+            case .active:     director.handleForeground()
+            default: break
+            }
+        }
         .sheet(isPresented: $showsHistory) {
             MatchHistoryView()
                 .environment(\.theme, theme)
@@ -148,6 +177,10 @@ struct ContentView: View {
         .sheet(isPresented: $showsAbout) {
             AboutView()
                 .environment(\.theme, theme)
+        }
+        .sheet(isPresented: $showsFeelBoard) {
+            FeelBoardView()
+                .environment(director)
         }
     }
 

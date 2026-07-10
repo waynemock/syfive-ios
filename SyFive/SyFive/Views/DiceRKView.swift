@@ -2,6 +2,19 @@ import SwiftUI
 import RealityKit
 import UIKit
 
+extension Theme {
+    /// Converts App-layer Theme into the palette `Dice/` accepts (D-013).
+    var dicePalette: DiceTintPalette {
+        DiceTintPalette(
+            normal: UIColor(primaryAccent),
+            held: UIColor(heldAccent),
+            nudgeable: UIColor(stuckColor),
+            stuck: UIColor(errorColor),
+            pip: UIColor(pipColor)
+        )
+    }
+}
+
 /// SwiftUI wrapper around the RealityKit dice scene.
 /// Uses `.virtual` camera mode — no AR session, no camera permission needed.
 struct DiceRKView: View {
@@ -26,20 +39,20 @@ struct DiceRKView: View {
             addCamera(to: &content)
             addLights(to: &content)
             addTray(to: &content)
-            diceRoller.setup(in: &content, theme: theme)
+            diceRoller.setup(in: &content, palette: theme.dicePalette)
         } update: { _ in
             updateCameraFOV()
-            diceRoller.applyTheme(theme)
+            diceRoller.applyPalette(theme.dicePalette)
         }
         .background(theme.backgroundColor)
         .onAppear {
-            diceRoller.applyTheme(theme)
+            diceRoller.applyPalette(theme.dicePalette)
         }
         .onChange(of: colorScheme) { _, _ in
-            diceRoller.applyTheme(theme)
+            diceRoller.applyPalette(theme.dicePalette)
         }
         .onChange(of: theme.type) { _, _ in
-            diceRoller.applyTheme(theme)
+            diceRoller.applyPalette(theme.dicePalette)
         }
     }
 

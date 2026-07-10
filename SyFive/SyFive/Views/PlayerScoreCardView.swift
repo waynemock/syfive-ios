@@ -12,6 +12,7 @@ struct PlayerScoreCardView: View {
     var horizontalPadding: CGFloat = 16
     var sectionGap: CGFloat = 14
 
+    @Environment(FeelDirector.self) private var director
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.sizeCategory) private var sizeCategory
     @State private var isWinnerHighlightExpanded = false
@@ -307,6 +308,7 @@ struct PlayerScoreCardView: View {
             isWinner: model.isWinner(playerIndex)
         ) {
             model.score(category: category)
+            if model.isGameOver { director.gameEnded() } else { director.scoreConfirmed() }
         }
     }
 

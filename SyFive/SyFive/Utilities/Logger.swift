@@ -27,7 +27,7 @@ struct AppLogger: Sendable {
 	/// - Parameters:
 	///   - subsystem: The subsystem identifier (defaults to app bundle ID)
 	///   - category: A category for organizing logs (typically the class/file name)
-	nonisolated init(subsystem: String = "com.syzygy.syflux", category: String) {
+	nonisolated init(subsystem: String = Bundle.main.bundleIdentifier ?? "com.syzygy", category: String) {
 		self.logger = Logger(subsystem: subsystem, category: category)
 	}
 	

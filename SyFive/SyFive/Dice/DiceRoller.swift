@@ -4,7 +4,7 @@ import Observation
 
 /// Orchestrates physics dice rolls: spawns dice, applies impulses, detects settle, delivers results.
 ///
-/// Owned by `DiceAreaView` via `@State`. Call `setup(in:)` once from `DiceRKView.make`,
+/// Owned by `DiceAreaView` via `@State`. Call `setup(in:palette:)` once from `DiceRKView`,
 /// then `roll(held:onResults:)` each time the player rolls.
 @MainActor
 @Observable
@@ -46,6 +46,10 @@ final class DiceRoller {
         var gravityBoostBase: Float = 0.05
         /// Log-curve rate for gravity boost — higher values ramp faster.
         var gravityBoostRate: Float = 5.0
+
+        // Injected at App layer — package code reads from Config, never touches App globals.
+        var logDiagnostics: Bool = false
+        var appVersion: String = ""
 
         static let batch = Config(
             settleVThreshold: 0.08, settleWThreshold: 0.40, settleFlatnessThreshold: 0.94,
@@ -100,6 +104,9 @@ final class DiceRoller {
     /// Optional audio hook receiver.
     weak var audioController: (any DiceAudioControlling)?
 
+    /// App-supplied closure to control screen sleep (§10 — keeps the idle-timer call app-side).
+    var keepScreenAwake: ((Bool) -> Void)?
+
     // MARK: - Private
 
     private let diceCount = 5
@@ -136,6 +143,9 @@ final class DiceRoller {
     private var activeRollingIndices: Set<Int> = []
     private var pendingLaunchIndices: Set<Int> = []
 
+    private var settleAnnounced: [Bool] = Array(repeating: false, count: 5)
+    private var settleReviveCounters: [Int] = Array(repeating: 0, count: 5)
+
     private var batchRemaining: Int = 0
     private var savedBatchConfig: Config?
     private var activeRollNumber: Int = 0
@@ -162,14 +172,14 @@ final class DiceRoller {
 
     // MARK: - Setup
 
-    func setup(in content: inout RealityViewCameraContent, theme: Theme) {
+    func setup(in content: inout RealityViewCameraContent, palette: DiceTintPalette) {
         guard diceEntities.isEmpty else {
-            applyTheme(theme)
+            applyPalette(palette)
             return
         }
 
         for _ in 0..<diceCount {
-            let die = DiceEntity(theme: theme)
+            let die = DiceEntity(palette: palette)
             die.entity.isEnabled = false
             content.add(die.entity)
             diceEntities.append(die)
@@ -196,9 +206,9 @@ final class DiceRoller {
         }
     }
 
-    func applyTheme(_ theme: Theme) {
+    func applyPalette(_ palette: DiceTintPalette) {
         for die in diceEntities {
-            die.updateTheme(theme)
+            die.updatePalette(palette)
         }
     }
 
@@ -247,6 +257,8 @@ final class DiceRoller {
         stuckDieIndices = []
         nudgeableDieIndices = []
         dieNudgeAttempted = Array(repeating: false, count: diceCount)
+        settleAnnounced = Array(repeating: false, count: diceCount)
+        settleReviveCounters = Array(repeating: 0, count: diceCount)
 
         logDiagnostics("Starting roll \(activeRollNumber) seed=\(rollSeed) held=\(held)")
 
@@ -266,14 +278,14 @@ final class DiceRoller {
             pendingLaunchIndices.remove(index)
             activeRollingIndices.insert(index)
             launchParams.append(params)
-            audioController?.onDieLaunched(index: index)
+            notify { audioController?.onDieLaunched(index: index) }
         }
 
         logDiagnostics("Launched roll \(activeRollNumber) params=\(launchParams.count)")
 
         lastRecipe = DiceRollRecipe(
             seed: rollSeed,
-            appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?",
+            appVersion: config.appVersion,
             timestamp: Date(),
             dice: launchParams
         )
@@ -294,14 +306,14 @@ final class DiceRoller {
         batchTotal = count
         batchProgress = 0
         isBatchRunning = true
-        UIApplication.shared.isIdleTimerDisabled = true
+        keepScreenAwake?(true)
         prepareBatchDiceIfNeeded(for: heldPattern)
         triggerNextBatchRoll()
     }
 
     func stopBatch() {
         isBatchRunning = false
-        UIApplication.shared.isIdleTimerDisabled = false
+        keepScreenAwake?(false)
         batchRemaining = 0
         batchHeldIndices = []
         batchNeedsFreeRollAfterReset = false
@@ -376,6 +388,8 @@ final class DiceRoller {
         dieNudgeAttempted[index] = false  // fresh launch — reset so next stuck event starts yellow again
         activeRollingIndices = [index]
         settleCounters[index] = 0
+        settleAnnounced[index] = false
+        settleReviveCounters[index] = 0
         stillUnsettledTime[index] = 0
         rollTime = 0
         isRolling = true
@@ -391,7 +405,7 @@ final class DiceRoller {
 
         logDiagnostics("Rerolling stuck die \(index) on roll \(activeRollNumber)")
         _ = await launchDie(at: index)
-        audioController?.onDieLaunched(index: index)
+        notify { audioController?.onDieLaunched(index: index) }
     }
 
     /// Apply a downward press + random angular kick to a yellow (nudgeable) die, then re-enter active rolling.
@@ -426,6 +440,8 @@ final class DiceRoller {
         isRolling = true
         rollTime = 0
         settleCounters[index] = 0
+        settleAnnounced[index] = false
+        settleReviveCounters[index] = 0
         stillUnsettledTime[index] = 0
         floorStuckTime[index] = 0
         flattenNudgeAxes[index] = nil
@@ -585,17 +601,32 @@ final class DiceRoller {
             let isStill = linearOK && angularOK
 
             if isStill && flatOK && heightOK {
+                let isFirstSettleFrame = settleCounters[index] == 0
                 settleCounters[index] += 1
+                settleReviveCounters[index] = 0
                 stillUnsettledTime[index] = 0
                 flattenNudgeAxes[index] = nil
                 floorStuckTime[index] = 0
+                if isFirstSettleFrame && !settleAnnounced[index] {
+                    settleAnnounced[index] = true
+                    notify { audioController?.onDieSettled(index: index, value: die.topFaceValue) }
+                }
             } else if isStill {
                 settleCounters[index] = 0
+                settleReviveCounters[index] = 0  // still but tilted — not resuming motion
                 stillUnsettledTime[index] += deltaTime
                 applySettleAssistance(for: index, die: die)
             } else {
                 settleCounters[index] = 0
                 stillUnsettledTime[index] = 0
+                // Revive: re-arm settle hook after 6 consecutive moving frames (hysteresis).
+                if settleAnnounced[index] {
+                    settleReviveCounters[index] += 1
+                    if settleReviveCounters[index] >= 6 {
+                        settleAnnounced[index] = false
+                        settleReviveCounters[index] = 0
+                    }
+                }
             }
 
             // Floor-flattening: three-stage approach for die stuck tilted on the open floor.
@@ -669,6 +700,12 @@ final class DiceRoller {
     }
 
     // MARK: - Private helpers
+
+    // Batch guard (D-050): suppress audio/haptic during batch runs to avoid thousands of events.
+    private func notify(_ body: () -> Void) {
+        guard !isBatchRunning else { return }
+        body()
+    }
 
     private func nextBatchHeldPattern() -> [Bool] {
         guard batchHoldModeEnabled else {
@@ -861,10 +898,7 @@ final class DiceRoller {
             )
         }
 
-        for (index, value) in values.enumerated() {
-            audioController?.onDieSettled(index: index, value: value)
-        }
-        audioController?.onAllDiceSettled(values: values)
+        notify { audioController?.onAllDiceSettled(values: values) }
 
         let callback = pendingResults
         pendingResults = nil
@@ -872,7 +906,7 @@ final class DiceRoller {
     }
 
     private func logStuckRollSnapshotIfNeeded() {
-        guard AppConfig.DebugDice.logRollDiagnostics else { return }
+        guard config.logDiagnostics else { return }
         let bucket = Int(rollTime / 2)
         guard bucket >= 1, bucket != lastStuckLogBucket else { return }
         lastStuckLogBucket = bucket
@@ -896,7 +930,7 @@ final class DiceRoller {
     }
 
     private func logDiagnostics(_ message: String) {
-        guard AppConfig.DebugDice.logRollDiagnostics else { return }
+        guard config.logDiagnostics else { return }
         logger.debug(self, message)
     }
 
@@ -969,6 +1003,8 @@ final class DiceRoller {
         for index in toRelaunch {
             currentRollStuckReroll[index] = true
             settleCounters[index] = 0
+            settleAnnounced[index] = false
+            settleReviveCounters[index] = 0
             stillUnsettledTime[index] = 0
             pendingLaunchIndices.insert(index)
             let die = diceEntities[index]
@@ -984,7 +1020,7 @@ final class DiceRoller {
                 let _ = await launchDie(at: index)
                 pendingLaunchIndices.remove(index)
                 activeRollingIndices.insert(index)
-                audioController?.onDieLaunched(index: index)
+                notify { audioController?.onDieLaunched(index: index) }
             }
         }
     }
@@ -1037,7 +1073,7 @@ final class DiceRoller {
             let _ = await self.launchDie(at: index)
             self.pendingLaunchIndices.remove(index)
             self.activeRollingIndices.insert(index)
-            self.audioController?.onDieLaunched(index: index)
+            self.notify { self.audioController?.onDieLaunched(index: index) }
             self.logDiagnostics("Recovered die \(index) relaunched on roll \(self.activeRollNumber)")
         }
 

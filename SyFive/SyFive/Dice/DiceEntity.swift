@@ -1,12 +1,11 @@
 import RealityKit
-import SwiftUI
 import UIKit
 
 /// Wraps a `ModelEntity` to add die-specific behaviour: face reading, held state, launch.
 /// Uses composition instead of inheritance because `ModelEntity` is not open.
 @MainActor
 final class DiceEntity {
-    private var theme: Theme
+    private var palette: DiceTintPalette
     private var isPinnedForPresentation = false
 
     // MARK: - Constants
@@ -19,11 +18,11 @@ final class DiceEntity {
     /// This is based on the die's containing sphere, not the softer support heuristic.
     static let wallHeuristicRadius: Float = dieSize * 0.8660254
 
-    private var normalTint: UIColor { UIColor(theme.primaryAccent) }
-    private var heldTint: UIColor { UIColor(theme.heldAccent) }
-    private var nudgeableTint: UIColor { UIColor(theme.stuckColor) } // yellow — first stuck, tap to nudge
-    private var stuckTint: UIColor { UIColor(theme.errorColor) } // red — nudge failed, tap to reroll
-    private var pipTint: UIColor { UIColor(theme.pipColor) }
+    private var normalTint: UIColor { palette.normal }
+    private var heldTint: UIColor { palette.held }
+    private var nudgeableTint: UIColor { palette.nudgeable }
+    private var stuckTint: UIColor { palette.stuck }
+    private var pipTint: UIColor { palette.pip }
 
     /// Local-space face normals → pip value (standard Western die layout).
     static let faceNormals: [(normal: SIMD3<Float>, value: Int)] = [
@@ -99,8 +98,8 @@ final class DiceEntity {
 
     // MARK: - Init
 
-    init(theme: Theme) {
-        self.theme = theme
+    init(palette: DiceTintPalette) {
+        self.palette = palette
         entity = ModelEntity()
         entity.addChild(visualEntity)
         buildMesh()
@@ -108,8 +107,8 @@ final class DiceEntity {
         buildPips()
     }
 
-    func updateTheme(_ theme: Theme) {
-        self.theme = theme
+    func updatePalette(_ palette: DiceTintPalette) {
+        self.palette = palette
         rebuildAppearance()
     }
 

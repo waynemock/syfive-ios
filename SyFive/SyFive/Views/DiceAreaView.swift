@@ -5,9 +5,11 @@ import RealityKit
 struct DiceAreaView: View {
     @Bindable var model: MatchController
     @State private var diceRoller = DiceRoller()
+    @State private var feelAdapter: DiceFeelAdapter?
     @State private var traySize: CGSize = .zero
     @State private var suppressNextPlayerChangeDiceClear = false
     @State private var isAwaitingInitialTurnStart = false
+    @Environment(FeelDirector.self) private var director
     @Environment(\.colorScheme) private var colorScheme
     private let rollControlHeight: CGFloat = 24
 
@@ -25,6 +27,16 @@ struct DiceAreaView: View {
             #endif
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .onAppear {
+            if feelAdapter == nil {
+                let adapter = DiceFeelAdapter(director: director)
+                feelAdapter = adapter
+                diceRoller.audioController = adapter
+            }
+            diceRoller.keepScreenAwake = { UIApplication.shared.isIdleTimerDisabled = $0 }
+            diceRoller.config.logDiagnostics = AppConfig.DebugDice.logRollDiagnostics
+            diceRoller.config.appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        }
         .onChange(of: model.currentPlayerIndex) { _, _ in
             if suppressNextPlayerChangeDiceClear {
                 suppressNextPlayerChangeDiceClear = false
@@ -74,9 +86,16 @@ struct DiceAreaView: View {
                     }
 
                     model.beginRoll()
+                    director.rollStarted(unheldCount: model.held.filter { !$0 }.count)
                     Task {
                         await diceRoller.roll(held: model.held) { values in
                             model.receiveDiceResults(values)
+                            // Yatzy-moment predicate (D-052): all-same values + box nil or 50.
+                            let isYatzy = !values.isEmpty && values.dropFirst().allSatisfy { $0 == values[0] }
+                            let yahtzeeBox = model.scores(for: model.currentPlayerIndex)[.yahtzee]
+                            if isYatzy && (yahtzeeBox == nil || yahtzeeBox == 50) {
+                                director.yatzyMoment()
+                            }
                         }
                     }
                 } label: {
@@ -138,9 +157,11 @@ struct DiceAreaView: View {
             guard diceRoller.isStuckDie(index: diceIndex) else { return }
             if diceRoller.isNudgeableDie(index: diceIndex) {
                 // Yellow die — nudge attempt: apply a physics push and let it try to settle.
+                director.dieNudged()
                 diceRoller.nudgeStuckDie(at: diceIndex)
             } else {
                 // Red die — nudge already failed, reroll from scratch.
+                director.dieRerolled()
                 Task {
                     await diceRoller.rerollStuckDie(at: diceIndex)
                 }
@@ -151,6 +172,8 @@ struct DiceAreaView: View {
         guard model.canScore else { return }
         model.toggleHold(at: diceIndex)
         diceRoller.setHeld(model.held)
+        let engaged = model.held.indices.contains(diceIndex) ? model.held[diceIndex] : false
+        director.holdToggled(engaged: engaged)
     }
 
     // MARK: - Helpers

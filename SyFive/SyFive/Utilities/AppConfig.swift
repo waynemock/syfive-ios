@@ -5,6 +5,11 @@ struct AppConfig {
         static let isEnabled = false
     }
 
+    struct DebugFeel {
+        /// Show the feel board in SettingsView for on-device recipe tuning (§9).
+        static let showFeelBoard = true
+    }
+
     struct DebugDice {
         /// Show physics tuning sliders in `DiceAreaView`. Flip to `true` to tune feel.
         static let showPhysicsSliders = false
