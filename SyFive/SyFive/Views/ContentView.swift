@@ -9,6 +9,7 @@ struct ContentView: View {
     @State private var showsSettings = false
     @State private var showsAbout = false
     @State private var showsFeelBoard = false
+    @State private var celebrationCoordinator = CelebrationCoordinator()
     @State private var isUpdateAvailable = false
     @State private var updateBadgeAcknowledged = false
     @Environment(\.colorScheme) private var colorScheme
@@ -136,11 +137,16 @@ struct ContentView: View {
                 Text("This will reset the current game and scores.")
             }
         }
+        .overlay {
+            CelebrationView(model: model)
+                .ignoresSafeArea()
+        }
         .preferredColorScheme(appSettings?.colorScheme.preferredColorScheme ?? .dark)
         .tint(theme.primaryAccent)
         .environment(\.theme, theme)
         .environment(\.suggestedMoveEnabled, appSettings?.suggestedMoveEnabled ?? true)
         .environment(director)
+        .environment(celebrationCoordinator)
         .task {
             isUpdateAvailable = await AppUpdateChecker.shared.isUpdateAvailable()
             await director.warmUp()
@@ -165,6 +171,10 @@ struct ContentView: View {
             case .active:     director.handleForeground()
             default: break
             }
+        }
+        .onChange(of: model.isGameOver) { _, isGameOver in
+            guard isGameOver else { return }
+            celebrationCoordinator.triggerGameOver(winnerIndices: model.winnerIndices)
         }
         .sheet(isPresented: $showsHistory) {
             MatchHistoryView()

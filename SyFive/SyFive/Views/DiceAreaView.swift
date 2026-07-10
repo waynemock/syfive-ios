@@ -10,6 +10,7 @@ struct DiceAreaView: View {
     @State private var suppressNextPlayerChangeDiceClear = false
     @State private var isAwaitingInitialTurnStart = false
     @Environment(FeelDirector.self) private var director
+    @Environment(CelebrationCoordinator.self) private var celebrationCoordinator
     @Environment(\.colorScheme) private var colorScheme
     private let rollControlHeight: CGFloat = 24
 
@@ -95,6 +96,7 @@ struct DiceAreaView: View {
                             let yahtzeeBox = model.scores(for: model.currentPlayerIndex)[.yahtzee]
                             if isYatzy && (yahtzeeBox == nil || yahtzeeBox == 50) {
                                 director.yatzyMoment()
+                                celebrationCoordinator.triggerYatzy(playerIndex: model.currentPlayerIndex)
                             }
                         }
                     }

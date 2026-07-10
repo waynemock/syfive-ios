@@ -17,6 +17,8 @@ struct PlayerScoreCardView: View {
     @Environment(\.sizeCategory) private var sizeCategory
     @State private var isWinnerHighlightExpanded = false
     @State private var showsProfile = false
+    @State private var displayedTotal: Int = 0
+    @State private var rainbowRotation: Double = 0
 
     var body: some View {
         guard model.playerScores.indices.contains(playerIndex) else {
@@ -24,9 +26,23 @@ struct PlayerScoreCardView: View {
         }
 
         let isCurrentPlayer = playerIndex == model.currentPlayerIndex
-        let totalScore = model.totalScore(for: playerIndex)
         let isWinner = model.isWinner(playerIndex)
+        let rawTotal = model.totalScore(for: playerIndex)
+        // Use animated count-up total for the winner at game-over; live total otherwise.
+        let totalScore = (isWinner && model.isGameOver) ? displayedTotal : rawTotal
         let theme = Theme(type: model.themeType(for: playerIndex), colorScheme: colorScheme)
+        let gameOverWinner = isWinner && model.isGameOver
+        let borderShapeStyle: AnyShapeStyle = gameOverWinner
+            ? AnyShapeStyle(AngularGradient(
+                colors: [.red, .orange, .yellow, .green, .cyan, .blue, .purple, .pink, .red],
+                center: .center,
+                startAngle: .degrees(rainbowRotation),
+                endAngle: .degrees(rainbowRotation + 360)
+            ))
+            : AnyShapeStyle(theme.primaryAccent)
+        let borderWidth: CGFloat = gameOverWinner
+            ? (isWinnerHighlightExpanded ? 4.0 : 2.5)
+            : 2.0
 
         return AnyView(
             VStack(alignment: .leading, spacing: scoreSectionSpacing) {
@@ -73,11 +89,12 @@ struct PlayerScoreCardView: View {
                 }
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(theme.primaryAccent, lineWidth: 2)
+                        .strokeBorder(borderShapeStyle, lineWidth: borderWidth)
                 )
             )
             .onAppear {
                 updateWinnerHighlightAnimation(isWinner: isWinner)
+                displayedTotal = rawTotal
             }
             .onChange(of: isWinner) { _, newValue in
                 updateWinnerHighlightAnimation(isWinner: newValue)
@@ -89,6 +106,27 @@ struct PlayerScoreCardView: View {
                         playerName: model.playerNames[playerIndex],
                         themeType: model.themeType(for: playerIndex)
                     )
+                }
+            }
+            .task(id: model.isGameOver && isWinner) {
+                let finalTotal = model.totalScore(for: playerIndex)
+                let gameIsOver = model.isGameOver
+                let thisPlayerWon = model.isWinner(playerIndex)
+                guard gameIsOver && thisPlayerWon else {
+                    displayedTotal = finalTotal
+                    return
+                }
+                // Skip count-up if already at final (e.g. resumed with a completed game).
+                guard displayedTotal < finalTotal else { return }
+                let steps = min(50, finalTotal)
+                let startVal = max(0, finalTotal - steps)
+                displayedTotal = startVal
+                guard steps > 0 else { return }
+                let intervalNs = UInt64(1_500_000_000 / steps)
+                for v in startVal...finalTotal {
+                    guard !Task.isCancelled else { return }
+                    displayedTotal = v
+                    if v < finalTotal { try? await Task.sleep(nanoseconds: intervalNs) }
                 }
             }
         )
@@ -318,6 +356,9 @@ struct PlayerScoreCardView: View {
     }
 
     private func cardHighlightColor(isWinner: Bool, isCurrentPlayer: Bool, theme: Theme) -> Color {
+        if isWinner && model.isGameOver {
+            return theme.primaryAccent.opacity(isWinnerHighlightExpanded ? 0.50 : 0.32)
+        }
         if isWinner {
             return theme.primaryAccent.opacity(isWinnerHighlightExpanded ? 0.38 : 0.22)
         }
@@ -332,12 +373,23 @@ struct PlayerScoreCardView: View {
             withAnimation(.none) {
                 isWinnerHighlightExpanded = false
             }
+            rainbowRotation = 0
             return
         }
 
         isWinnerHighlightExpanded = false
         withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
             isWinnerHighlightExpanded = true
+        }
+        if model.isGameOver {
+            startRainbowRotation()
+        }
+    }
+
+    private func startRainbowRotation() {
+        rainbowRotation = 0
+        withAnimation(.linear(duration: 3.0).repeatForever(autoreverses: false)) {
+            rainbowRotation = 360
         }
     }
 
