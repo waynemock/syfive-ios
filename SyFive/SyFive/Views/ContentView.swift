@@ -12,8 +12,11 @@ struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) private var modelContext
     @Environment(\.openURL) private var openURL
+    @Query private var settingsModels: [AppSettingsModel]
     private let showsDebugLayout = AppConfig.DebugLayout.isEnabled
     private let logger = AppLogger(category: "ContentView")
+
+    private var appSettings: AppSettingsModel? { settingsModels.first }
 
     var body: some View {
         let theme = Theme(type: model.themeType(for: model.currentPlayerIndex), colorScheme: colorScheme)
@@ -120,12 +123,15 @@ struct ContentView: View {
                 Text("This will reset the current game and scores.")
             }
         }
+        .preferredColorScheme(appSettings?.colorScheme.preferredColorScheme ?? .dark)
         .tint(theme.primaryAccent)
         .environment(\.theme, theme)
+        .environment(\.suggestedMoveEnabled, appSettings?.suggestedMoveEnabled ?? true)
         .task {
             isUpdateAvailable = await AppUpdateChecker.shared.isUpdateAvailable()
         }
         .onAppear {
+            seedSettingsIfNeeded()
             seedYatzyGameIfNeeded()
             loadMatchIfNeeded()
         }
@@ -136,11 +142,8 @@ struct ContentView: View {
                 .environment(\.theme, theme)
         }
         .sheet(isPresented: $showsSettings) {
-            Text("Settings")
-                .font(.largeTitle)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .presentationDetents([.medium, .large])
+            SettingsView()
+                .environment(\.theme, theme)
         }
         .sheet(isPresented: $showsAbout) {
             AboutView()
@@ -187,6 +190,11 @@ struct ContentView: View {
         guard let gameID = (try? modelContext.fetch(gameDescriptor))?.first?.id else { return }
         model.save(to: modelContext, gameID: gameID)
         try? modelContext.save()
+    }
+
+    private func seedSettingsIfNeeded() {
+        guard settingsModels.isEmpty else { return }
+        modelContext.insert(AppSettingsModel())
     }
 
     private func seedYatzyGameIfNeeded() {

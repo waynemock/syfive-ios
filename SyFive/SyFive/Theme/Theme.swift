@@ -109,26 +109,48 @@ struct Theme {
     }
     
     /// Secondary accent color for complementary elements.
+    /// Used for held dice, user-entered scorecard values, and suggested-move pulse.
+    /// Each secondary is on a distinct hue from its primary so held dice read unambiguously.
     var secondaryAccent: Color {
         switch type {
         case .blossom:
-            return Color(red: 0.98, green: 0.60, blue: 0.85)
+            // Primary: hot pink → Secondary: violet
+            return colorScheme == .dark
+                ? Color(red: 0.76, green: 0.52, blue: 0.98)
+                : Color(red: 0.62, green: 0.38, blue: 0.86)
         case .ember:
-            return Color(red: 0.98, green: 0.45, blue: 0.20)
+            // Primary: red-orange → Secondary: amber gold
+            return colorScheme == .dark
+                ? Color(red: 1.00, green: 0.75, blue: 0.18)
+                : Color(red: 0.88, green: 0.60, blue: 0.10)
         case .forest:
-            return Color(red: 0.50, green: 0.85, blue: 0.40)
+            // Primary: teal-green → Secondary: warm coral (green-on-green was unreadable)
+            return colorScheme == .dark
+                ? Color(red: 0.95, green: 0.52, blue: 0.28)
+                : Color(red: 0.82, green: 0.40, blue: 0.18)
         case .midnight:
-            return Color(red: 0.70, green: 0.60, blue: 0.95)
+            // Primary: periwinkle → Secondary: cyan
+            return colorScheme == .dark
+                ? Color(red: 0.20, green: 0.85, blue: 0.92)
+                : Color(red: 0.12, green: 0.68, blue: 0.78)
         case .ocean:
-            return Color(red: 0.10, green: 0.80, blue: 0.70)
+            // Primary: cyan-blue → Secondary: seafoam mint
+            return colorScheme == .dark
+                ? Color(red: 0.10, green: 0.90, blue: 0.76)
+                : Color(red: 0.05, green: 0.72, blue: 0.60)
         case .sunset:
-            return Color(red: 0.90, green: 0.70, blue: 0.30)
+            // Primary: orange → Secondary: rose magenta
+            return colorScheme == .dark
+                ? Color(red: 0.95, green: 0.30, blue: 0.65)
+                : Color(red: 0.82, green: 0.20, blue: 0.52)
         case .paper:
-            return colorScheme == .dark ? Color(red: 0.50, green: 0.50, blue: 0.50) : Color(red: 0.45, green: 0.45, blue: 0.45)
+            return colorScheme == .dark
+                ? Color(red: 0.70, green: 0.70, blue: 0.70)
+                : Color(red: 0.50, green: 0.50, blue: 0.50)
         }
     }
 
-    var heldAccent: Color { type == .forest ? errorColor : successColor }
+    var heldAccent: Color { secondaryAccent }
 
     var oppositeTheme: Theme {
         switch type {
@@ -179,9 +201,18 @@ struct Theme {
         return Color.black
     }
     
+    /// Color for stuck (nudgeable) dice — first stuck state, tap to nudge.
+    var stuckColor: Color {
+        colorScheme == .dark
+            ? Color(red: 1.00, green: 0.80, blue: 0.10)
+            : Color(red: 0.88, green: 0.62, blue: 0.04)
+    }
+
     /// Color for error/conflict indicators.
     var errorColor: Color {
-        Color.red
+        // Ember's primaryAccent is red-orange; use crimson-magenta so stuck dice
+        // are clearly distinct from the normal die body.
+        type == .ember ? Color(red: 0.85, green: 0.05, blue: 0.45) : Color.red
     }
     
     /// Color for success indicators.

@@ -237,22 +237,15 @@ struct PlayerScoreCardView: View {
     }
 
     private func scoreRow(for category: YatzyCategory) -> some View {
-        HStack(spacing: 2) {
-            Text(category.displayName)
-                .font(.subheadline)
-                .minimumScaleFactor(0.75)
-                .lineLimit(1)
-                .foregroundStyle(.primary)
-            Spacer()
-            ScoreRow(
-                players: [playerCell(for: category)],
-                theme: Theme(type: model.themeType(for: playerIndex), colorScheme: colorScheme),
-                columnWidth: scoreColumnWidth,
-                rowHeight: scoreRowHeight,
-                rowAction: rowAction(for: category)
-            )
-        }
-        .frame(height: scoreRowHeight)
+        CategoryScoreRow(
+            category: category,
+            isBestSuggested: category == bestSuggestedCategory,
+            cell: playerCell(for: category),
+            theme: Theme(type: model.themeType(for: playerIndex), colorScheme: colorScheme),
+            columnWidth: scoreColumnWidth,
+            rowHeight: scoreRowHeight,
+            rowAction: rowAction(for: category)
+        )
     }
 
     private func summaryRow(title: String, value: Int) -> some View {
@@ -293,6 +286,10 @@ struct PlayerScoreCardView: View {
         lowerSectionSubtotal + model.yahtzeeBonus(for: playerIndex)
     }
 
+    private var bestSuggestedCategory: YatzyCategory? {
+        model.suggestedCategory(for: playerIndex)
+    }
+
     private func playerCell(for category: YatzyCategory) -> ScoreRow.PlayerCell {
         let assignedScore = model.scores(for: playerIndex)[category]
         let suggested = model.suggestedScores(for: playerIndex)[category] ?? 0
@@ -303,6 +300,7 @@ struct PlayerScoreCardView: View {
             id: playerIndex,
             value: assignedScore,
             suggested: suggested,
+            isBestSuggested: category == bestSuggestedCategory,
             isAvailable: assignedScore == nil,
             canScore: canScore,
             isCurrentPlayer: isCurrentPlayer,
@@ -356,6 +354,60 @@ struct PlayerScoreCardView: View {
         colorScheme == .dark ? Color.white.opacity(0.45) : Color.black.opacity(0.18)
     }
 }
+
+private struct CategoryScoreRow: View {
+    let category: YatzyCategory
+    let isBestSuggested: Bool
+    let cell: ScoreRow.PlayerCell
+    let theme: Theme
+    let columnWidth: CGFloat
+    let rowHeight: CGFloat
+    let rowAction: (() -> Void)?
+
+    @Environment(\.suggestedMoveEnabled) private var suggestedMoveEnabled
+    @State private var labelBright = false
+
+    private var shouldPulse: Bool { isBestSuggested && suggestedMoveEnabled }
+
+    var body: some View {
+        HStack(spacing: 2) {
+            Text(category.displayName)
+                .font(.subheadline)
+                .fontWeight(shouldPulse ? .bold : .regular)
+                .minimumScaleFactor(0.75)
+                .lineLimit(1)
+                .foregroundStyle(
+                    shouldPulse
+                        ? theme.secondaryAccent.opacity(labelBright ? 1.0 : 0.55)
+                        : Color.primary
+                )
+            Spacer()
+            ScoreRow(
+                players: [cell],
+                theme: theme,
+                columnWidth: columnWidth,
+                rowHeight: rowHeight,
+                rowAction: rowAction
+            )
+        }
+        .frame(height: rowHeight)
+        // .task(id:) is cancelled and restarted whenever shouldPulse changes,
+        // which reliably stops the previous animation cycle.
+        .task(id: shouldPulse) {
+            guard shouldPulse else {
+                withAnimation(.easeInOut(duration: 0.25)) { labelBright = false }
+                return
+            }
+            while !Task.isCancelled {
+                withAnimation(.easeInOut(duration: 1.4)) { labelBright = true }
+                do { try await Task.sleep(for: .seconds(1.4)) } catch { break }
+                withAnimation(.easeInOut(duration: 1.4)) { labelBright = false }
+                do { try await Task.sleep(for: .seconds(1.4)) } catch { break }
+            }
+        }
+    }
+}
+
 #Preview("Editable Player Card") {
     PlayerScoreCardPreviewContainer()
         .padding()

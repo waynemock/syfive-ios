@@ -13,6 +13,7 @@ struct ScoreRow: View {
         let id: Int
         let value: Int?
         let suggested: Int
+        let isBestSuggested: Bool
         let isAvailable: Bool
         let canScore: Bool
         let isCurrentPlayer: Bool
@@ -25,6 +26,8 @@ struct ScoreRow: View {
     let columnWidth: CGFloat
     let rowHeight: CGFloat
     let rowAction: (() -> Void)?
+
+    @Environment(\.suggestedMoveEnabled) private var suggestedMoveEnabled
 
     var body: some View {
         let rowContent = HStack(spacing: 12) {
@@ -48,24 +51,38 @@ struct ScoreRow: View {
 
     @ViewBuilder
     private func scoreCell(for player: PlayerCell) -> some View {
-        let background = RoundedRectangle(cornerRadius: 6, style: .continuous)
-            .fill(cellHighlight(for: player))
-        let outline = RoundedRectangle(cornerRadius: 6, style: .continuous)
-            .strokeBorder(theme.primaryAccent.opacity(player.isAvailable && player.canScore ? 0.7 : 0), lineWidth: 1.5)
-            .shadow(color: theme.primaryAccent.opacity(player.isAvailable && player.canScore ? 0.35 : 0), radius: 4, x: 0, y: 0)
+        let isScorable = player.isAvailable && player.canScore
+        let isPulse = isScorable && player.isBestSuggested && suggestedMoveEnabled
 
-        if rowAction == nil, player.isAvailable && player.canScore {
+        if rowAction == nil, isScorable {
             Button(action: player.onSelect) {
-                scoreText(for: player)
-                    .background(background)
-                    .overlay(outline)
+                scoreCellContent(for: player, isScorable: isScorable, isPulse: isPulse)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(CardButtonStyle())
         } else {
-            scoreText(for: player)
-                .background(background)
-                .overlay(outline)
+            scoreCellContent(for: player, isScorable: isScorable, isPulse: isPulse)
         }
+    }
+
+    private func scoreCellContent(for player: PlayerCell, isScorable: Bool, isPulse: Bool) -> some View {
+        scoreText(for: player)
+            .fontWeight(isPulse ? .bold : .regular)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(cellHighlight(for: player))
+            )
+            .overlay {
+                if isScorable {
+                    if isPulse {
+                        PulsingOutline(color: theme.secondaryAccent)
+                    } else {
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .strokeBorder(theme.primaryAccent.opacity(0.7), lineWidth: 1.5)
+                            .shadow(color: theme.primaryAccent.opacity(0.35), radius: 4)
+                    }
+                }
+            }
     }
 
     private func scoreText(for player: PlayerCell) -> some View {
@@ -109,6 +126,28 @@ struct ScoreRow: View {
     }
 }
 
+private struct PulsingOutline: View {
+    let color: Color
+    @State private var glowing = false
+
+    var body: some View {
+        ZStack {
+            // Fill breathes: adds a tint on top of the existing background
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(color.opacity(glowing ? 0.22 : 0))
+            // Border: always at least as bright as a static scoreable cell
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .strokeBorder(color.opacity(glowing ? 1.0 : 0.6), lineWidth: 1.5)
+                .shadow(color: color.opacity(glowing ? 0.75 : 0.1), radius: glowing ? 12 : 3)
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) {
+                glowing = true
+            }
+        }
+    }
+}
+
 private struct CardButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -125,6 +164,7 @@ private struct CardButtonStyle: ButtonStyle {
                 id: 0,
                 value: nil,
                 suggested: 12,
+                isBestSuggested: false,
                 isAvailable: true,
                 canScore: true,
                 isCurrentPlayer: true,
@@ -134,6 +174,7 @@ private struct CardButtonStyle: ButtonStyle {
                 id: 1,
                 value: 18,
                 suggested: 0,
+                isBestSuggested: false,
                 isAvailable: false,
                 canScore: false,
                 isCurrentPlayer: false,
@@ -143,8 +184,9 @@ private struct CardButtonStyle: ButtonStyle {
                 id: 2,
                 value: nil,
                 suggested: 24,
+                isBestSuggested: true,
                 isAvailable: true,
-                canScore: false,
+                canScore: true,
                 isCurrentPlayer: false,
                 isWinner: false
             ) {}

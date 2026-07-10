@@ -97,17 +97,17 @@ struct PlayerPickerSheet: View {
     // MARK: - Row views
 
     private func inGameRow(at index: Int, slotID: UUID) -> some View {
-        let accentColor = Theme(
+        let theme = Theme(
             type: model.themeType(for: index),
             colorScheme: colorScheme
-        ).primaryAccent
+        )
         let isEditing = editMode?.wrappedValue.isEditing == true
         // Safe subscripts: SwiftUI calls the body once more during removal animation.
         let name = model.playerDisplayNames.indices.contains(index) ? model.playerDisplayNames[index] : ""
 
         return HStack(spacing: 12) {
             ZStack {
-                Circle().fill(accentColor)
+                Circle().fill(theme.primaryAccent)
                 Text(model.playerInitials(for: index))
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(.white)
@@ -116,6 +116,7 @@ struct PlayerPickerSheet: View {
 
             Text(name)
                 .font(.body)
+                .foregroundStyle(theme.secondaryAccent)
 
             if !isEditing {
                 if model.playerIDs.indices.contains(index),
@@ -125,7 +126,7 @@ struct PlayerPickerSheet: View {
                         playerEditMode = .edit(pm, matchSlot: index)
                     } label: {
                         Image(systemName: "pencil")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(theme.secondaryAccent)
                     }
                     .buttonStyle(.plain)
                 }
@@ -158,14 +159,14 @@ struct PlayerPickerSheet: View {
     }
 
     private func rosterRow(for playerModel: PlayerModel) -> some View {
-        let accentColor = Theme(
+        let theme = Theme(
             type: Theme.ThemeType(rawValue: playerModel.themeID) ?? .midnight,
             colorScheme: colorScheme
-        ).primaryAccent
+        )
 
         return HStack(spacing: 12) {
             ZStack {
-                Circle().fill(accentColor)
+                Circle().fill(theme.primaryAccent)
                 Text(playerModel.initials)
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(.white)
@@ -174,12 +175,13 @@ struct PlayerPickerSheet: View {
  
             Text(playerModel.name)
                 .font(.body)
+                .foregroundStyle(theme.secondaryAccent)
 
             Button {
                 playerEditMode = .edit(playerModel, matchSlot: nil)
             } label: {
                 Image(systemName: "pencil")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.secondaryAccent)
             }
             .buttonStyle(.plain)
 
@@ -206,14 +208,14 @@ struct PlayerPickerSheet: View {
     }
 
     private func archivedRow(for playerModel: PlayerModel) -> some View {
-        let accentColor = Theme(
+        let theme = Theme(
             type: Theme.ThemeType(rawValue: playerModel.themeID) ?? .midnight,
             colorScheme: colorScheme
-        ).primaryAccent
+        )
 
         return HStack(spacing: 12) {
             ZStack {
-                Circle().fill(accentColor.opacity(0.4))
+                Circle().fill(theme.primaryAccent.opacity(0.4))
                 Text(playerModel.initials)
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(.white)
@@ -222,7 +224,7 @@ struct PlayerPickerSheet: View {
 
             Text(playerModel.name)
                 .font(.body)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.secondaryAccent.opacity(0.4))
 
             Spacer()
 

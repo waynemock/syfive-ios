@@ -21,7 +21,7 @@ final class DiceEntity {
 
     private var normalTint: UIColor { UIColor(theme.primaryAccent) }
     private var heldTint: UIColor { UIColor(theme.heldAccent) }
-    private var nudgeableTint: UIColor { .systemYellow }  // yellow — first stuck, tap to nudge
+    private var nudgeableTint: UIColor { UIColor(theme.stuckColor) } // yellow — first stuck, tap to nudge
     private var stuckTint: UIColor { UIColor(theme.errorColor) } // red — nudge failed, tap to reroll
     private var pipTint: UIColor { UIColor(theme.pipColor) }
 

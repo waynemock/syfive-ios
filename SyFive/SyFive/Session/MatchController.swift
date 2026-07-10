@@ -23,6 +23,8 @@ final class MatchController {
 
     private let diceCount = 5
     private let rollsPerTurn = 3
+    private let logger = AppLogger(category: "MatchController")
+    @ObservationIgnored private var lastLoggedSuggestion: YatzyCategory?
 
     private(set) var diceValues: [Int]
     private(set) var held: [Bool]
@@ -475,6 +477,19 @@ final class MatchController {
         }
     }
 
+    /// Returns the highest-value legal scoring category for the current player.
+    /// Returns nil when it is not this player's turn, before the first roll, or when no categories are available.
+    func suggestedCategory(for playerIndex: Int) -> YatzyCategory? {
+        guard playerIndex == currentPlayerIndex, canScore else { return nil }
+        let scores = suggestedScores(for: playerIndex)
+        guard let best = scores.max(by: { $0.value < $1.value }) else { return nil }
+        if lastLoggedSuggestion != best.key {
+            lastLoggedSuggestion = best.key
+            logger.debug(self, "Suggested: \(best.key.displayName) (\(best.value)pts) for player \(playerIndex)")
+        }
+        return best.key
+    }
+
     func yahtzeeBonus(for playerIndex: Int) -> Int {
         guard playerYahtzeeBonuses.indices.contains(playerIndex) else { return 0 }
         return playerYahtzeeBonuses[playerIndex]
@@ -514,6 +529,7 @@ final class MatchController {
         held = Array(repeating: false, count: diceCount)
         rollsRemaining = rollsPerTurn
         currentPlayerIndex = (currentPlayerIndex + 1) % playerCount
+        lastLoggedSuggestion = nil
     }
 
     private func clearUndoState() { lastScoreSnapshot = nil }

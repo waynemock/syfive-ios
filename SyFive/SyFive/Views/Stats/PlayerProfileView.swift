@@ -10,6 +10,7 @@ struct PlayerProfileView: View {
            sort: \MatchModel.startedAt)
     private var completedModels: [MatchModel]
 
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
 
     private var theme: Theme { Theme(type: themeType, colorScheme: colorScheme) }
@@ -38,6 +39,11 @@ struct PlayerProfileView: View {
             .background(theme.backgroundColor)
             .navigationTitle(playerName)
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
         }
         .tint(theme.primaryAccent)
         .environment(\.theme, theme)

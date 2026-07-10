@@ -93,16 +93,30 @@ struct PlayerEditSheet: View {
         let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 7)
         return LazyVGrid(columns: columns, spacing: 8) {
             ForEach(Theme.ThemeType.allCases, id: \.self) { type in
-                let color = Theme(type: type, colorScheme: colorScheme).primaryAccent
+                let theme = Theme(type: type, colorScheme: colorScheme)
+                let isSelected = themeType == type
                 ZStack {
-                    Circle().fill(color)
-                    if themeType == type {
+                    HStack(spacing: 0) {
+                        Rectangle().fill(theme.primaryAccent)
+                        Rectangle().fill(theme.secondaryAccent)
+                    }
+                    .clipShape(Circle())
+
+                    if isSelected {
                         Image(systemName: "checkmark")
                             .font(.caption.weight(.bold))
                             .foregroundStyle(.white)
+                            .shadow(color: .black.opacity(0.4), radius: 2)
                     }
                 }
                 .frame(height: 36)
+                .overlay(
+                    Circle().strokeBorder(
+                        isSelected ? Color.white.opacity(0.9) : Color.clear,
+                        lineWidth: 2
+                    )
+                )
+                .shadow(color: .black.opacity(isSelected ? 0.35 : 0.15), radius: isSelected ? 4 : 2)
                 .onTapGesture { themeType = type }
             }
         }

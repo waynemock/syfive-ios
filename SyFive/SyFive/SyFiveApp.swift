@@ -17,6 +17,7 @@ struct SyFiveApp: App {
             GameModel.self,
             MatchModel.self,
             ParticipantModel.self,
+            AppSettingsModel.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
