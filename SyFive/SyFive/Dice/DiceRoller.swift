@@ -70,6 +70,9 @@ final class DiceRoller {
     var config = Config()
     private(set) var stuckDieIndices: Set<Int> = []
     private(set) var nudgeableDieIndices: Set<Int> = []
+    /// True during a spectator theater replay. Suppresses stuck-die UI and forces finishRoll()
+    /// so applyAuthoritativeResult always gets a chance to correct face values.
+    private(set) var isTheaterReplay: Bool = false
 
     var hasStuckDice: Bool { !stuckDieIndices.isEmpty || !nudgeableDieIndices.isEmpty }
 
@@ -361,6 +364,37 @@ final class DiceRoller {
         rng = savedRng
     }
 
+    /// Spectator path: replay an externally-provided recipe without flagging isReplay.
+    /// Held dice stay kinematic; only non-held dice are launched from the seed.
+    /// Sets isTheaterReplay so stuck dice don't block the callback — applyAuthoritativeResult
+    /// will correct any face values that landed wrong on this device.
+    func replayRecipe(_ recipe: DiceRollRecipe, held: [Bool], onResults: @escaping ([Int]) -> Void) async {
+        guard !isRolling, !isBatchRunning else { return }
+        let savedRng = rng
+        rng = DiceRandSource(seed: recipe.seed)
+        isTheaterReplay = true
+        await roll(held: held) { [weak self] values in
+            self?.isTheaterReplay = false
+            onResults(values)
+        }
+        // roll() returns after launch; isTheaterReplay cleared in the callback above (after settle).
+        rng = savedRng
+    }
+
+    /// Selectively correct any dice whose face value doesn't match the authoritative result.
+    /// Positions are preserved; only face orientation is updated on mismatches.
+    func applyAuthoritativeResult(_ values: [Int]) {
+        guard values.count == diceEntities.count else { return }
+        for (index, die) in diceEntities.enumerated() {
+            guard die.entity.isEnabled else { continue }
+            let authoritative = values[index]
+            guard die.topFaceValue != authoritative else { continue }
+            let pos = die.entity.position
+            let isHeld = index < currentHeld.count ? currentHeld[index] : false
+            die.present(value: authoritative, at: pos, isHeld: isHeld)
+        }
+    }
+
     // MARK: - Hold management
 
     func index(of entity: Entity) -> Int? {
@@ -485,6 +519,7 @@ final class DiceRoller {
 
     func clearDice() {
         isRolling = false
+        isTheaterReplay = false
         pendingResults = nil
         currentHeld = Array(repeating: false, count: diceCount)
         settleCounters = Array(repeating: 0, count: diceCount)
@@ -675,6 +710,11 @@ final class DiceRoller {
             isRolling = false
             if stuckDieIndices.isEmpty && nudgeableDieIndices.isEmpty {
                 finishRoll()
+            } else if isTheaterReplay {
+                // Spectator replay: always finish so applyAuthoritativeResult can correct values.
+                stuckDieIndices = []
+                nudgeableDieIndices = []
+                finishRoll()
             } else if isBatchRunning {
                 autoRerollStuckDiceForBatch()
             }
@@ -689,6 +729,11 @@ final class DiceRoller {
 
         if allSettled {
             if stuckDieIndices.isEmpty && nudgeableDieIndices.isEmpty {
+                finishRoll()
+            } else if isTheaterReplay {
+                // Spectator replay: always finish so applyAuthoritativeResult can correct values.
+                stuckDieIndices = []
+                nudgeableDieIndices = []
                 finishRoll()
             } else {
                 isRolling = false
@@ -965,15 +1010,17 @@ final class DiceRoller {
         // If a nudge was already attempted, go straight to red (stuck/reroll).
         // Otherwise go to yellow (nudgeable) first — in gameplay the player taps;
         // in batch autoRerollStuckDiceForBatch() will auto-nudge, just like a player would.
+        // In theater replay, track state internally but skip visual indicators — tick() will
+        // call finishRoll() anyway and applyAuthoritativeResult will correct the face value.
         let nudgeAttempted = diceEntities.indices.contains(index) && dieNudgeAttempted[index]
         if nudgeAttempted {
             stuckDieIndices.insert(index)
-            die.isStuck = true
-            logDiagnostics("Marked die \(index) stuck(red) on roll \(activeRollNumber) reason=\(reason) nudgeAttempted=true state=\(describeDie(at: index))")
+            if !isTheaterReplay { die.isStuck = true }
+            logDiagnostics("Marked die \(index) stuck(red) on roll \(activeRollNumber) reason=\(reason) nudgeAttempted=true theaterReplay=\(isTheaterReplay) state=\(describeDie(at: index))")
         } else {
             nudgeableDieIndices.insert(index)
-            die.isNudgeable = true
-            logDiagnostics("Marked die \(index) stuck(yellow) on roll \(activeRollNumber) reason=\(reason) state=\(describeDie(at: index))")
+            if !isTheaterReplay { die.isNudgeable = true }
+            logDiagnostics("Marked die \(index) stuck(yellow) on roll \(activeRollNumber) reason=\(reason) theaterReplay=\(isTheaterReplay) state=\(describeDie(at: index))")
         }
     }
 

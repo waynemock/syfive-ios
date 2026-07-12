@@ -457,6 +457,7 @@ final class MatchController {
             playerYahtzeeBonuses[currentPlayerIndex] += 100
         }
         let scoreVal = scoreValue(for: category, playerIndex: currentPlayerIndex)
+        let capturedDice = diceValues
         playerScores[currentPlayerIndex][category] = scoreVal
         playerScoreTimestamps[currentPlayerIndex][category] = Date()
         let gameJustEnded = isGameOver
@@ -470,6 +471,7 @@ final class MatchController {
                                 earnedBonus: earnedBonus,
                                 gameJustEnded: gameJustEnded)
         }
+        onScoreApplied?(category, capturedDice)
     }
 
     @discardableResult
@@ -484,6 +486,7 @@ final class MatchController {
         currentPlayerIndex = snapshot.currentPlayerIndex
         isRolling = snapshot.isRolling
         lastScoreSnapshot = nil
+        onUndone?()
         return UndoRestoration(diceValues: snapshot.diceValues, held: snapshot.held)
     }
 
@@ -634,5 +637,94 @@ final class MatchController {
             .midnight, .blossom, .ember, .forest, .ocean, .sunset, .paper
         ]
         return order[index % order.count]
+    }
+
+    // MARK: - Game Night hooks
+
+    /// Fires after every successful `score()` application, carrying the scored
+    /// category and the dice values that were live at scoring time.
+    /// GameNightController wires this: host → broadcastMatchState; guest → proposeScore.
+    var onScoreApplied: ((YatzyCategory, [Int]) -> Void)?
+
+    /// Fires after a successful `undoLastScore()`.
+    /// GameNightController wires this: host → broadcastMatchState; guest → proposeUndo.
+    var onUndone: (() -> Void)?
+
+    // MARK: - Game Night state loading
+
+    /// Replaces all match state from a Game Night wire snapshot. Used by:
+    ///  • Host: initialise from the `matchStart` payload, preserving participantIDs.
+    ///  • All devices: apply an incoming `matchState` (authoritative; guests never argue).
+    /// Transient dice state is not on the wire and is reset to a fresh-turn baseline.
+    func loadFromGameNightMatch(_ match: Match, currentSeatIndex: Int) {
+        let sorted = match.participants.sorted(by: { $0.seat < $1.seat })
+
+        playerScores = sorted.map { p in
+            Dictionary(uniqueKeysWithValues: p.scoreEntries.compactMap { entry -> (YatzyCategory, Int)? in
+                guard let cat = YatzyCategory(rawValue: entry.slotKey),
+                      let val = entry.value else { return nil }
+                return (cat, NSDecimalNumber(decimal: val).intValue)
+            })
+        }
+        playerScoreTimestamps = sorted.map { _ in [:] }
+        playerYahtzeeBonuses = sorted.map { $0.yahtzeeBonus }
+        playerThemes = sorted.map { Theme.ThemeType(rawValue: $0.displayThemeID) ?? .midnight }
+        playerDisplayNames = sorted.map { $0.displayName }
+        playerDisplayInitials = sorted.map { $0.displayInitials }
+        playerIDs = sorted.map { $0.playerID }
+        participantIDs = sorted.map { $0.id }
+
+        // Keep slotIDs stable for view identity; rebuild only on count change.
+        if slotIDs.count != sorted.count {
+            slotIDs = sorted.map { _ in UUID() }
+        }
+
+        currentPlayerIndex = currentSeatIndex
+        diceValues = Array(repeating: 1, count: diceCount)
+        held = Array(repeating: false, count: diceCount)
+        rollsRemaining = rollsPerTurn
+        isRolling = false
+        // Bind to the session match UUID so save() writes under the same key on every device.
+        persistedMatchID = match.id
+        matchStartedAt = match.startedAt
+        clearUndoState()
+    }
+
+    // MARK: - Game Night host scoring
+
+    /// Host-side: apply a guest's score using their reported dice values.
+    /// Temporarily loads the remote dice so Layer 1's pure scoring functions
+    /// (`legalScoreCategories`, `scoreValue`, `qualifiesForExtraYahtzeeBonus`)
+    /// all see the correct state. Fires `onScoreApplied` on success.
+    func applyRemoteScore(category: YatzyCategory, remoteValues: [Int], forParticipantID participantID: UUID) {
+        guard let index = participantIDs.firstIndex(of: participantID),
+              index == currentPlayerIndex else { return }
+        let previousDice = diceValues
+        let previousHeld = held
+        diceValues = remoteValues
+        held = Array(repeating: false, count: remoteValues.count)
+        score(category: category)   // fires onScoreApplied if the category was legal
+        // If score() didn't apply, restore dice state.
+        if playerScores[index][category] == nil {
+            diceValues = previousDice
+            held = previousHeld
+        }
+    }
+
+    // MARK: - Game Night match snapshot
+
+    /// Builds a wire `Match` value from the current in-memory state.
+    /// Called by the host to produce a `matchState` payload after every mutation.
+    func buildMatchSnapshot(matchID: UUID, gameID: UUID) -> Match {
+        Match(
+            id: matchID,
+            gameID: gameID,
+            scoringSystemID: "yatzy",
+            scoringSystemVersion: 1,
+            status: isGameOver ? .completed : .inProgress,
+            startedAt: matchStartedAt ?? Date(),
+            completedAt: isGameOver ? (matchCompletedAt ?? Date()) : nil,
+            participants: buildParticipants()
+        )
     }
 }

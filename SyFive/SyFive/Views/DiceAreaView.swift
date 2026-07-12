@@ -11,7 +11,9 @@ struct DiceAreaView: View {
     @State private var isAwaitingInitialTurnStart = false
     @Environment(FeelDirector.self) private var director
     @Environment(CelebrationCoordinator.self) private var celebrationCoordinator
+    @Environment(GameNightController.self) private var gameNight
     @Environment(\.colorScheme) private var colorScheme
+    @AppStorage("theaterAudioEnabled") private var theaterAudioEnabled: Bool = false
     private let rollControlHeight: CGFloat = 24
 
     var body: some View {
@@ -31,12 +33,22 @@ struct DiceAreaView: View {
         .onAppear {
             if feelAdapter == nil {
                 let adapter = DiceFeelAdapter(director: director)
+                adapter.theaterAudioEnabled = theaterAudioEnabled
                 feelAdapter = adapter
                 diceRoller.audioController = adapter
             }
             diceRoller.keepScreenAwake = { UIApplication.shared.isIdleTimerDisabled = $0 }
             diceRoller.config.logDiagnostics = AppConfig.DebugDice.logRollDiagnostics
             diceRoller.config.appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+            if gameNight.isSessionActive {
+                wireGameNightHooks()
+            }
+        }
+        .onChange(of: gameNight.isSessionActive) { _, active in
+            if active { wireGameNightHooks() }
+        }
+        .onChange(of: theaterAudioEnabled) { _, enabled in
+            feelAdapter?.theaterAudioEnabled = enabled
         }
         .onChange(of: model.currentPlayerIndex) { _, _ in
             if suppressNextPlayerChangeDiceClear {
@@ -88,9 +100,16 @@ struct DiceAreaView: View {
 
                     model.beginRoll()
                     director.rollStarted(unheldCount: model.held.filter { !$0 }.count)
+                    let rollIndex = 3 - model.rollsRemaining
+                    let capturedHeld = model.held
+                    let gn = gameNight
+                    let dr = diceRoller
                     Task {
-                        await diceRoller.roll(held: model.held) { values in
+                        await dr.roll(held: capturedHeld) { values in
                             model.receiveDiceResults(values)
+                            if gn.isSessionActive && gn.phase == .inProgress {
+                                gn.sendRollResult(faceValues: values)
+                            }
                             // Yatzy-moment predicate (D-052): all-same values + box nil or 50.
                             let isYatzy = !values.isEmpty && values.dropFirst().allSatisfy { $0 == values[0] }
                             let yahtzeeBox = model.scores(for: model.currentPlayerIndex)[.yahtzee]
@@ -98,6 +117,11 @@ struct DiceAreaView: View {
                                 director.yatzyMoment()
                                 celebrationCoordinator.triggerYatzy(playerIndex: model.currentPlayerIndex)
                             }
+                        }
+                        // After roll() returns, all dice are launched and lastRecipe is set.
+                        if gn.isSessionActive && gn.phase == .inProgress,
+                           let recipe = dr.lastRecipe {
+                            gn.sendRollBegan(recipe: recipe, rollIndex: rollIndex, heldMask: capturedHeld)
                         }
                     }
                 } label: {
@@ -109,7 +133,7 @@ struct DiceAreaView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(!canRoll)
 
-                if model.canUndoLastScore {
+                if model.canUndoLastScore && isLocalTurn {
                     Button {
                         suppressNextPlayerChangeDiceClear = true
                         if let restoration = model.undoLastScore() {
@@ -129,7 +153,7 @@ struct DiceAreaView: View {
             }
 
             VStack(spacing: 4) {
-                if let stuckMessage = diceRoller.stuckDiceMessage {
+                if let stuckMessage = diceRoller.stuckDiceMessage, isLocalTurn {
                     Text(stuckMessage)
                         .font(.footnote)
                         .foregroundStyle(.red)
@@ -153,7 +177,7 @@ struct DiceAreaView: View {
     // MARK: - Actions
 
     private func handleDiceTap(_ entity: Entity) {
-        guard let diceIndex = diceRoller.index(of: entity) else { return }
+        guard isLocalTurn, let diceIndex = diceRoller.index(of: entity) else { return }
 
         if diceRoller.hasStuckDice {
             guard diceRoller.isStuckDie(index: diceIndex) else { return }
@@ -175,25 +199,100 @@ struct DiceAreaView: View {
         model.toggleHold(at: diceIndex)
         diceRoller.setHeld(model.held)
         let engaged = model.held.indices.contains(diceIndex) ? model.held[diceIndex] : false
+        if gameNight.isSessionActive && gameNight.phase == .inProgress {
+            gameNight.sendHoldToggled(dieIndex: diceIndex, isHeld: engaged)
+        }
         director.holdToggled(engaged: engaged)
+    }
+
+    // MARK: - Game Night hooks
+
+    private func wireGameNightHooks() {
+        let gn = gameNight
+        let dr = diceRoller
+        let mc = model
+        let dir = director
+        let fa = feelAdapter
+        let cc = celebrationCoordinator
+
+        gn.onRollBegan = { recipe, heldMask in
+            Task { @MainActor in
+                // Theater lifecycle (11 §2): gate haptics for the entire replay.
+                fa?.isTheaterMode = true
+                // Theater audio (11 §1): start the rattle bed on eligible devices.
+                if fa?.theaterAudioEnabled == true {
+                    dir.rollStarted(unheldCount: heldMask.filter { !$0 }.count)
+                }
+                await dr.replayRecipe(recipe, held: heldMask) { _ in
+                    fa?.isTheaterMode = false
+                    if let auth = gn.pendingAuthoritativeResult {
+                        gn.pendingAuthoritativeResult = nil
+                        dr.applyAuthoritativeResult(auth)
+                    }
+                }
+                fa?.isTheaterMode = false  // safety: cleared even if replay exited early
+            }
+        }
+        gn.onRollResult = { values in
+            if dr.isRolling {
+                gn.pendingAuthoritativeResult = values
+            } else {
+                gn.pendingAuthoritativeResult = nil
+                dr.applyAuthoritativeResult(values)
+            }
+            // Theater Yatzy moment (11 §5): fire celebration audio on theater-ON devices.
+            guard fa?.theaterAudioEnabled == true else { return }
+            let isYatzy = !values.isEmpty && values.dropFirst().allSatisfy { $0 == values[0] }
+            guard isYatzy else { return }
+            let yahtzeeBox = mc.scores(for: mc.currentPlayerIndex)[.yahtzee]
+            guard yahtzeeBox == nil || yahtzeeBox == 50 else { return }
+            // Haptic tick stays roller-only per touch rule (11 §5, §7 pending).
+            let saved = dir.hapticsEnabled
+            dir.hapticsEnabled = false
+            dir.yatzyMoment()
+            dir.hapticsEnabled = saved
+            cc.triggerYatzy(playerIndex: mc.currentPlayerIndex)
+        }
+        gn.onHoldToggled = { dieIndex, isHeld in
+            var held = mc.held
+            if held.indices.contains(dieIndex) { held[dieIndex] = isHeld }
+            dr.setHeld(held)
+        }
     }
 
     // MARK: - Helpers
 
+    private var isLocalTurn: Bool {
+        guard gameNight.isSessionActive, gameNight.phase == .inProgress else { return true }
+        guard let localID = gameNight.localParticipantID else { return true }
+        let ids = model.participantIDs
+        guard model.currentPlayerIndex < ids.count else { return true }
+        return ids[model.currentPlayerIndex] == localID
+    }
+
     private var canRoll: Bool {
-        model.rollsRemaining > 0 && !model.isGameOver && !model.isRolling
+        isLocalTurn && model.rollsRemaining > 0 && !model.isGameOver && !model.isRolling
     }
 
     private var shouldPrimeInitialTurn: Bool {
-        !model.hasStarted && model.playerCount > 1 && !isAwaitingInitialTurnStart
+        // Never prime in Game Night — the match is already underway when the guest arrives.
+        guard !gameNight.isSessionActive else { return false }
+        return !model.hasStarted && model.playerCount > 1 && !isAwaitingInitialTurnStart
     }
 
     private var rollButtonTitle: String {
+        if gameNight.isSessionActive, gameNight.phase == .inProgress, !isLocalTurn {
+            let names = model.playerDisplayNames
+            guard model.currentPlayerIndex < names.count else { return "Waiting…" }
+            return "Waiting for \(names[model.currentPlayerIndex])…"
+        }
         if isAwaitingInitialTurnStart {
             return "Start Turn"
         }
         if !model.hasStarted {
             if model.playerCount == 0 { return "Add players to begin" }
+            // In Game Night the match is already live — skip the "Start game" label.
+            if gameNight.isSessionActive { return "Start Turn" }
             return model.playerCount == 1
                 ? "Start game with 1 player"
                 : "Start game with \(model.playerCount) players"

@@ -10,6 +10,8 @@ import SwiftData
 
 @main
 struct SyFiveApp: App {
+    @State private var gameNight = GameNightController()
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             PlayerModel.self,
@@ -31,6 +33,7 @@ struct SyFiveApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(gameNight)
         }
         .modelContainer(sharedModelContainer)
     }

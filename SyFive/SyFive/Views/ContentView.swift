@@ -10,10 +10,13 @@ struct ContentView: View {
     @State private var showsSettings = false
     @State private var showsAbout = false
     @State private var showsFeelBoard = false
+    @State private var showsGameNight = false
+    @State private var showsSessionEndedAlert = false
     @State private var celebrationCoordinator = CelebrationCoordinator()
     @State private var commentaryEngine: CommentaryEngine? = nil
     @State private var isUpdateAvailable = false
     @State private var updateBadgeAcknowledged = false
+    @Environment(GameNightController.self) private var gameNight
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) private var modelContext
     @Environment(\.openURL) private var openURL
@@ -89,11 +92,33 @@ struct ContentView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
+                        if isUpdateAvailable {
+                            Button {
+                                openAppStore()
+                            } label: {
+                                Label("Update Available", systemImage: "arrow.down.circle")
+                            }
+                            Divider()
+                        }
                         Button {
                             showsHistory = true
                         } label: {
                             Label("History", systemImage: "clock")
                         }
+                        Divider()
+                        Button {
+                            Task {
+                                do {
+                                    try await gameNight.startAsHost()
+                                    showsGameNight = true
+                                } catch {
+                                    logger.error(self, "startAsHost failed: \(error)")
+                                }
+                            }
+                        } label: {
+                            Label("Game Night", systemImage: "person.3.fill")
+                        }
+                        gameNightMenuItems
                         Divider()
                         Button {
                             showsSettings = true
@@ -138,6 +163,14 @@ struct ContentView: View {
             } message: {
                 Text("This will reset the current game and scores.")
             }
+            .alert("Game Night ended", isPresented: $showsSessionEndedAlert) {
+                Button("OK") { gameNight.clearSessionEndedFlag() }
+            } message: {
+                Text("Your progress has been saved. Start a new Game Night session to continue.")
+            }
+            .onChange(of: gameNight.sessionEndedDuringPlay) { _, ended in
+                if ended { showsSessionEndedAlert = true }
+            }
         }
         .overlay {
             CelebrationView(model: model)
@@ -157,12 +190,42 @@ struct ContentView: View {
             seedSettingsIfNeeded()
             seedYatzyGameIfNeeded()
             loadMatchIfNeeded()
+            gameNight.startListeningForSessions()
             // Sync initial settings values (onChange won't fire for the first load).
             director.soundEnabled   = appSettings?.soundEnabled   ?? true
             director.hapticsEnabled = appSettings?.hapticsEnabled ?? true
             // Warm up haptic engine before first roll to avoid first-event latency (§6.2).
             director.warmUpHaptics()
             syncCommentaryEngine()
+        }
+        .onChange(of: gameNight.isSessionActive) { _, active in
+            syncCommentaryEngine()  // gate / restore on every session transition
+            if active {
+                showsGameNight = true
+                gameNight.attach(matchController: model)
+                let ctx = modelContext
+                gameNight.onMatchComplete = { completedMatch in
+                    // Guests write exactly once — upsert by session UUID.
+                    let matchID = completedMatch.id
+                    var descriptor = FetchDescriptor<MatchModel>(
+                        predicate: #Predicate { $0.id == matchID }
+                    )
+                    descriptor.fetchLimit = 1
+                    if let existing = (try? ctx.fetch(descriptor))?.first {
+                        existing.hydrate(from: completedMatch, context: ctx)
+                    } else {
+                        let newModel = MatchModel()
+                        ctx.insert(newModel)
+                        newModel.hydrate(from: completedMatch, context: ctx)
+                    }
+                    try? ctx.save()
+                }
+            }
+        }
+        .onChange(of: gameNight.phase) { _, newPhase in
+            if newPhase == .inProgress { showsGameNight = false }
+            // Re-show the seating sheet when the host calls playAgain().
+            if newPhase == .settingTable && gameNight.isSessionActive { showsGameNight = true }
         }
         .onChange(of: model.playerCount) { saveMatch() }
         .onChange(of: model.playerScores) { saveMatch() }
@@ -198,9 +261,21 @@ struct ContentView: View {
             FeelBoardView()
                 .environment(director)
         }
+        .sheet(isPresented: $showsGameNight, onDismiss: {
+            if !gameNight.isSessionActive { return }
+        }) {
+            TableSettingView(gameNight: gameNight)
+        }
     }
 
     private func syncCommentaryEngine() {
+        // Commentary speaks only on the host's seated device during Game Night (10 §3).
+        if gameNight.isSessionActive && gameNight.role != .host {
+            commentaryEngine?.stopSpeaking()
+            commentaryEngine = nil
+            model.commentaryEventSink = nil
+            return
+        }
         guard let settings = appSettings, settings.commentaryEnabled else {
             commentaryEngine?.stopSpeaking()
             commentaryEngine = nil
@@ -301,6 +376,28 @@ struct ContentView: View {
     private func openSyzygyAppStore() {
         guard let appStoreURL = URL(string: "https://apps.apple.com/us/developer/syzygy-softwerks-llc/id1118759442") else { return }
         openURL(appStoreURL)
+    }
+
+    @ViewBuilder
+    private var gameNightMenuItems: some View {
+        if gameNight.isSessionActive && gameNight.role == .host {
+            if gameNight.phase == .inProgress {
+                Button(role: .destructive) {
+                    gameNight.abandonSession()
+                } label: {
+                    Label("End Game Night", systemImage: "xmark.circle")
+                }
+            }
+            if gameNight.phase == .completed {
+                Button {
+                    model.abandonMatch(in: modelContext)
+                    model.resetGame()
+                    gameNight.playAgain()
+                } label: {
+                    Label("Play Again", systemImage: "arrow.clockwise.circle")
+                }
+            }
+        }
     }
 
     private func debugColor(_ color: Color) -> Color {

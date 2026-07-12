@@ -25,6 +25,7 @@ struct SettingsView: View {
 
 private struct SettingsForm: View {
     @Bindable var settings: AppSettingsModel
+    @AppStorage("theaterAudioEnabled") private var theaterAudioEnabled: Bool = false
 
     var body: some View {
         Form {
@@ -54,6 +55,14 @@ private struct SettingsForm: View {
                         Text("Voice, Personality & Level")
                     }
                 }
+            }
+
+            Section {
+                Toggle("Theater sound on this device", isOn: $theaterAudioEnabled)
+            } header: {
+                Text("Game Night")
+            } footer: {
+                Text("Play dice audio during other players' rolls. Turn off when you can hear their device.")
             }
         }
     }
