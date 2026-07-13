@@ -15,6 +15,8 @@ struct PlayerScoreCardView: View {
     @Environment(FeelDirector.self) private var director
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.sizeCategory) private var sizeCategory
+    @ScaledMetric private var initialsCircleSize: CGFloat = 28
+    @ScaledMetric private var initialsFontSize: CGFloat = 11
     @State private var isWinnerHighlightExpanded = false
     @State private var showsProfile = false
     @State private var displayedTotal: Int = 0
@@ -47,15 +49,31 @@ struct PlayerScoreCardView: View {
         return AnyView(
             VStack(alignment: .leading, spacing: scoreSectionSpacing) {
                 header(theme: theme, isCurrentPlayer: isCurrentPlayer, totalScore: totalScore)
-                if !model.canEditPlayers {
-                    scoreContent(theme: theme)
-                } else {
-                    statsContent(theme: theme)
+                    .padding(.top, 12)
+                    .padding(.horizontal, horizontalPadding)
+                    .padding(.bottom, 6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        UnevenRoundedRectangle(
+                            topLeadingRadius: 16,
+                            bottomLeadingRadius: 0,
+                            bottomTrailingRadius: 0,
+                            topTrailingRadius: 16,
+                            style: .continuous
+                        )
+                        .fill(theme.primaryAccent.opacity(0.18))
+                    )
+                Group {
+                    if !model.canEditPlayers {
+                        scoreContent(theme: theme)
+                    } else {
+                        statsContent(theme: theme)
+                    }
                 }
+                .padding(.horizontal, horizontalPadding)
+                .padding(.bottom, 12)
             }
             .frame(maxHeight: .infinity, alignment: .top)
-            .padding(.horizontal, horizontalPadding)
-            .padding(.vertical, 12)
             .tint(theme.primaryAccent)
             .background(
                 RoundedRectangle(
@@ -70,23 +88,6 @@ struct PlayerScoreCardView: View {
                     )
                     .fill(cardHighlightColor(isWinner: isWinner, isCurrentPlayer: isCurrentPlayer, theme: theme))
                 )
-                .overlay(alignment: .top) {
-                    UnevenRoundedRectangle(
-                        topLeadingRadius: 16,
-                        bottomLeadingRadius: 0,
-                        bottomTrailingRadius: 0,
-                        topTrailingRadius: 16,
-                        style: .continuous
-                    )
-                    .fill(theme.primaryAccent.opacity(0.18))
-                    .frame(height: headerRowHeight + 20)
-                    .mask(
-                        VStack(spacing: 0) {
-                            Rectangle()
-                            Spacer(minLength: 0)
-                        }
-                    )
-                }
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .strokeBorder(borderShapeStyle, lineWidth: borderWidth)
@@ -176,11 +177,11 @@ struct PlayerScoreCardView: View {
         ZStack {
             Circle().fill(theme.primaryAccent)
             Text(model.playerInitials(for: playerIndex))
-                .font(.system(size: 11, weight: .bold))
+                .font(.system(size: initialsFontSize, weight: .bold))
                 .foregroundStyle(.white)
         }
         .overlay(Circle().stroke(colorButtonBorder, lineWidth: 1.5))
-        .frame(width: 28, height: 28)
+        .frame(width: initialsCircleSize, height: initialsCircleSize)
     }
 
     @ViewBuilder
@@ -466,6 +467,7 @@ private struct CategoryScoreRow: View {
     PlayerScoreCardPreviewContainer()
         .padding()
         .frame(width: 320)
+        .environment(FeelDirector())
 }
 
 private struct PlayerScoreCardPreviewContainer: View {
@@ -529,6 +531,7 @@ private struct PlayerScoreCardCompactPreviewContainer: View {
                 horizontalPadding: 10,
                 sectionGap: 10
             )
+            .environment(FeelDirector())
         }
     }
 }

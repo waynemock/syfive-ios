@@ -60,6 +60,8 @@ private struct YatzyOverlayView: View {
     @State private var startDate = Date()
     @State private var motes: [Mote] = []
     @State private var titleOpacity: Double = 0
+    @ScaledMetric private var yatzyFontSize: CGFloat = 40
+    @ScaledMetric private var bonusFontSize: CGFloat = 24
 
     var body: some View {
         ZStack {
@@ -76,10 +78,10 @@ private struct YatzyOverlayView: View {
 
             VStack(spacing: 4) {
                 Text("YATZY")
-                    .font(.system(size: 40, weight: .black, design: .rounded))
+                    .font(.system(size: yatzyFontSize, weight: .black, design: .rounded))
                     .foregroundStyle(theme.primaryAccent)
                 Text("+50")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .font(.system(size: bonusFontSize, weight: .bold, design: .rounded))
                     .foregroundStyle(theme.secondaryAccent)
             }
             .padding(.horizontal, 32)

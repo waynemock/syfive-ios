@@ -120,13 +120,17 @@ struct UndoRequestPayload: Codable, Sendable {
 }
 
 /// Full match snapshot broadcast after every applied action (score, undo, turn
-/// advance). Transient dice state (values, held, rollsRemaining) is never
-/// included; spectators derive roll count from the `rollBegan` stream.
-/// Received host state replaces guest render state — guests never argue.
+/// advance). Normally transient dice state is omitted; spectators derive roll
+/// count from the `rollBegan` stream. Exception: undo broadcasts include
+/// `diceValues`/`rollsRemaining` so the undone player can rescore immediately.
 struct MatchStatePayload: Codable, Sendable {
     let match: Match
     /// Index into `match.participants` for the seat whose turn it is.
     let currentSeatIndex: Int
+    /// Pre-scoring dice values, present only in undo broadcasts.
+    var diceValues: [Int]? = nil
+    /// Rolls remaining for the seat, present only in undo broadcasts (always 0).
+    var rollsRemaining: Int? = nil
 }
 
 /// Broadcast when the match completes. Every guest device upserts this `Match`

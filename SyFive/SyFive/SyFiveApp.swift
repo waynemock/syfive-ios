@@ -34,6 +34,7 @@ struct SyFiveApp: App {
         WindowGroup {
             ContentView()
                 .environment(gameNight)
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         }
         .modelContainer(sharedModelContainer)
     }

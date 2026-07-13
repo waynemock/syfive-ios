@@ -12,6 +12,11 @@ struct ContentView: View {
     @State private var showsFeelBoard = false
     @State private var showsGameNight = false
     @State private var showsSessionEndedAlert = false
+    @State private var showsGameNightReconnect = false
+    /// Set when the reconnect alert's "Restart as Host" is tapped, so isSessionActive handler
+    /// can skip the seating sheet and jump straight to the in-progress match.
+    @State private var pendingResumeMatchID: UUID? = nil
+    @State private var pendingResumeGameID: UUID? = nil
     @State private var celebrationCoordinator = CelebrationCoordinator()
     @State private var commentaryEngine: CommentaryEngine? = nil
     @State private var isUpdateAvailable = false
@@ -84,6 +89,9 @@ struct ContentView: View {
                         } else {
                             model.abandonMatch(in: modelContext)
                             model.resetGame()
+                            if gameNight.isSessionActive && gameNight.role == .host {
+                                startGameNightRematch()
+                            }
                         }
                     } label: {
                         Image(systemName: model.hasStarted && !model.isGameOver ? "arrow.clockwise" : "plus")
@@ -106,19 +114,7 @@ struct ContentView: View {
                             Label("History", systemImage: "clock")
                         }
                         Divider()
-                        Button {
-                            Task {
-                                do {
-                                    try await gameNight.startAsHost()
-                                    showsGameNight = true
-                                } catch {
-                                    logger.error(self, "startAsHost failed: \(error)")
-                                }
-                            }
-                        } label: {
-                            Label("Game Night", systemImage: "person.3.fill")
-                        }
-                        gameNightMenuItems
+                        gameNightMenuSection
                         Divider()
                         Button {
                             showsSettings = true
@@ -156,17 +152,50 @@ struct ContentView: View {
             }
             .alert("Start a new game?", isPresented: $showsResetAlert) {
                 Button("Cancel", role: .cancel) {}
-                Button("Start Over", role: .destructive) {
-                    model.abandonMatch(in: modelContext)
-                    model.resetGame()
+                if gameNight.isSessionActive && gameNight.role == .host {
+                    Button("New Game Night Game") {
+                        model.abandonMatch(in: modelContext)
+                        model.resetGame()
+                        startGameNightRematch()
+                    }
+                    Button("Play Locally", role: .destructive) {
+                        model.abandonMatch(in: modelContext)
+                        model.resetGame()
+                    }
+                } else {
+                    Button("Start Over", role: .destructive) {
+                        model.abandonMatch(in: modelContext)
+                        model.resetGame()
+                    }
                 }
             } message: {
-                Text("This will reset the current game and scores.")
+                Text(gameNight.isSessionActive && gameNight.role == .host
+                     ? "Start a new Game Night game with the same players, or reset to a local game."
+                     : "This will reset the current game and scores.")
             }
             .alert("Game Night ended", isPresented: $showsSessionEndedAlert) {
                 Button("OK") { gameNight.clearSessionEndedFlag() }
             } message: {
                 Text("Your progress has been saved. Start a new Game Night session to continue.")
+            }
+            .alert("Reconnect Game Night?", isPresented: $showsGameNightReconnect) {
+                Button("Restart as Host") {
+                    Task {
+                        do {
+                            try await gameNight.startAsHost()
+                        } catch {
+                            logger.error(self, "GN reconnect failed: \(error)")
+                            pendingResumeMatchID = nil
+                            pendingResumeGameID = nil
+                        }
+                    }
+                }
+                Button("Play Locally", role: .cancel) {
+                    pendingResumeMatchID = nil
+                    pendingResumeGameID = nil
+                }
+            } message: {
+                Text("Your scores are intact. If you were the host, tap Restart as Host — guests will rejoin via FaceTime.")
             }
             .onChange(of: gameNight.sessionEndedDuringPlay) { _, ended in
                 if ended { showsSessionEndedAlert = true }
@@ -201,7 +230,7 @@ struct ContentView: View {
         .onChange(of: gameNight.isSessionActive) { _, active in
             syncCommentaryEngine()  // gate / restore on every session transition
             if active {
-                showsGameNight = true
+                showsGameNightReconnect = false
                 gameNight.attach(matchController: model)
                 let ctx = modelContext
                 gameNight.onMatchComplete = { completedMatch in
@@ -220,10 +249,22 @@ struct ContentView: View {
                     }
                     try? ctx.save()
                 }
+                // Reconnect path: resume the already-started match without going through
+                // the seating sheet. Non-reconnect sessions show the seating sheet normally.
+                if let matchID = pendingResumeMatchID, let gameID = pendingResumeGameID {
+                    pendingResumeMatchID = nil
+                    pendingResumeGameID = nil
+                    gameNight.resumeAsHost(matchID: matchID, gameID: gameID)
+                } else {
+                    showsGameNight = true
+                }
             }
         }
         .onChange(of: gameNight.phase) { _, newPhase in
-            if newPhase == .inProgress { showsGameNight = false }
+            if newPhase == .inProgress {
+                showsGameNight = false
+                markCurrentMatchAsGameNight()
+            }
             // Re-show the seating sheet when the host calls playAgain().
             if newPhase == .settingTable && gameNight.isSessionActive { showsGameNight = true }
         }
@@ -306,6 +347,14 @@ struct ContentView: View {
         if let matchModel = (try? modelContext.fetch(inProgress))?.first,
            !matchModel.participants.isEmpty {
             model.load(from: matchModel)
+            if matchModel.isGameNight && !gameNight.isSessionActive {
+                showsGameNightReconnect = true
+                pendingResumeMatchID = matchModel.id
+                let gameDesc = FetchDescriptor<GameModel>(
+                    predicate: #Predicate { $0.scoringSystemID == "yatzy" }
+                )
+                pendingResumeGameID = (try? modelContext.fetch(gameDesc))?.first?.id
+            }
             return
         }
 
@@ -325,6 +374,27 @@ struct ContentView: View {
                 playerID: p.playerID
             )
         }
+    }
+
+    private func markCurrentMatchAsGameNight() {
+        var descriptor = FetchDescriptor<MatchModel>(
+            predicate: #Predicate { $0.statusRaw == "inProgress" },
+            sortBy: [SortDescriptor(\MatchModel.startedAt, order: .reverse)]
+        )
+        descriptor.fetchLimit = 1
+        guard let matchModel = (try? modelContext.fetch(descriptor))?.first else { return }
+        guard !matchModel.isGameNight else { return }
+        matchModel.isGameNight = true
+        try? modelContext.save()
+    }
+
+    private func startGameNightRematch() {
+        let descriptor = FetchDescriptor<GameModel>(
+            predicate: #Predicate { $0.scoringSystemID == "yatzy" }
+        )
+        guard let gameID = (try? modelContext.fetch(descriptor))?.first?.id else { return }
+        gameNight.broadcastRematch(gameID: gameID)
+        markCurrentMatchAsGameNight()
     }
 
     private func saveMatch() {
@@ -378,23 +448,51 @@ struct ContentView: View {
         openURL(appStoreURL)
     }
 
+    /// Context-aware Game Night section for the main menu. Never calls activate()
+    /// when a session is already live — prevents the iOS "Replace?" conflict dialog
+    /// that appears when a second device tries to start while the host's session is
+    /// still propagating via GroupActivities.
     @ViewBuilder
-    private var gameNightMenuItems: some View {
-        if gameNight.isSessionActive && gameNight.role == .host {
-            if gameNight.phase == .inProgress {
-                Button(role: .destructive) {
-                    gameNight.abandonSession()
-                } label: {
-                    Label("End Game Night", systemImage: "xmark.circle")
+    private var gameNightMenuSection: some View {
+        if !gameNight.isSessionActive {
+            // No active session — offer to start one as host.
+            Button {
+                Task {
+                    do {
+                        try await gameNight.startAsHost()
+                        showsGameNight = true
+                    } catch {
+                        // activate() may throw if the user dismissed an iOS system
+                        // prompt; a session from the other device may arrive shortly.
+                        logger.error(self, "startAsHost failed: \(error)")
+                    }
+                }
+            } label: {
+                Label("Game Night", systemImage: "person.3.fill")
+            }
+        } else {
+            // Active session — show phase-appropriate actions; never re-activate.
+            if gameNight.phase == .settingTable {
+                Button { showsGameNight = true } label: {
+                    Label("Game Night Setup", systemImage: "person.3.fill")
                 }
             }
-            if gameNight.phase == .completed {
-                Button {
-                    model.abandonMatch(in: modelContext)
-                    model.resetGame()
-                    gameNight.playAgain()
-                } label: {
-                    Label("Play Again", systemImage: "arrow.clockwise.circle")
+            if gameNight.role == .host {
+                if gameNight.phase == .inProgress {
+                    Button(role: .destructive) {
+                        gameNight.abandonSession()
+                    } label: {
+                        Label("End Game Night", systemImage: "xmark.circle")
+                    }
+                }
+                if gameNight.phase == .completed {
+                    Button {
+                        model.abandonMatch(in: modelContext)
+                        model.resetGame()
+                        gameNight.playAgain()
+                    } label: {
+                        Label("Play Again", systemImage: "arrow.clockwise.circle")
+                    }
                 }
             }
         }
@@ -430,5 +528,40 @@ private struct ContentLayoutSizePreferenceKey: PreferenceKey {
 }
 
 #Preview {
-    ContentView()
+    let schema = Schema([
+        PlayerModel.self, TeamModel.self, GameModel.self,
+        MatchModel.self, ParticipantModel.self, AppSettingsModel.self,
+    ])
+    let container = try! ModelContainer(
+        for: schema,
+        configurations: [ModelConfiguration(isStoredInMemoryOnly: true)]
+    )
+
+    // Seed a completed match so loadMatchIfNeeded() pre-populates 2 players.
+    let match = MatchModel()
+    match.statusRaw = "completed"
+    container.mainContext.insert(match)
+
+    let p1 = ParticipantModel()
+    p1.displayName = "Wayne"
+    p1.displayInitials = "WM"
+    p1.displayThemeID = "midnight"
+    p1.seat = 0
+    p1.playerID = UUID()
+    p1.match = match
+    container.mainContext.insert(p1)
+
+    let p2 = ParticipantModel()
+    p2.displayName = "Sherida"
+    p2.displayInitials = "SM"
+    p2.displayThemeID = "forest"
+    p2.seat = 1
+    p2.playerID = UUID()
+    p2.match = match
+    container.mainContext.insert(p2)
+
+    return ContentView()
+        .environment(GameNightController())
+        .modelContainer(container)
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
 }

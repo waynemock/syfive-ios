@@ -47,6 +47,10 @@ final class GameNightController {
     private var session: GroupSession<GameNightActivity>?
     private var messenger: GroupSessionMessenger?
     private var messageListenTask: Task<Void, Never>?
+    /// True between calling activate() and the resulting session arriving in configureSession.
+    /// Used to distinguish "I started this session" from "another device started it" so role
+    /// is resolved correctly when both devices restart and both tap Start.
+    private var pendingHostSessionActivation = false
 
     /// Participant IDs that sent a mismatched protocol version. Their subsequent
     /// seatClaim will be declined with calm copy (Phase 3).
@@ -73,6 +77,8 @@ final class GameNightController {
     var onHoldToggled: ((Int, Bool) -> Void)?
     /// Authoritative face values from rollResult, held while spectator replay is still running.
     var pendingAuthoritativeResult: [Int]? = nil
+    /// Fired on the undone player's device after undo — DiceAreaView restores 3D dice.
+    var onUndoWithDice: (([Int]) -> Void)?
 
     // MARK: - Completion hook (Phase 6)
 
@@ -103,7 +109,14 @@ final class GameNightController {
     /// call-absent path (door 3 / invite link).
     func startAsHost() async throws {
         role = .host
-        _ = try await GameNightActivity().activate()
+        pendingHostSessionActivation = true
+        do {
+            _ = try await GameNightActivity().activate()
+        } catch {
+            role = .guest
+            pendingHostSessionActivation = false
+            throw error
+        }
     }
 
     // MARK: - Session configuration (both host and guest)
@@ -114,9 +127,19 @@ final class GameNightController {
         // Guard against reconfiguring with the same session.
         if session?.id == incomingSession.id { return }
 
+        // Resolve role from activation intent, not from stale prior role.
+        // If WE activated this session (pendingHostSessionActivation), we are host.
+        // If another device activated it (the flag is false), step down to guest.
+        // This fixes the case where both devices restart and both tap Start — the
+        // device whose activate() call "won" is correctly identified as host, and
+        // the other device correctly falls through to guest even if its role was .host.
+        let takingHostRole = pendingHostSessionActivation
+        pendingHostSessionActivation = false
+
         // Tear down any prior session cleanly.
         tearDownSession()
         sessionEndedDuringPlay = false
+        role = takingHostRole ? .host : .guest
 
         session = incomingSession
         let m = GroupSessionMessenger(session: incomingSession)
@@ -166,6 +189,7 @@ final class GameNightController {
     }
 
     private func tearDownSession() {
+        pendingHostSessionActivation = false
         messageListenTask?.cancel()
         messageListenTask = nil
         session?.end()
@@ -181,6 +205,7 @@ final class GameNightController {
         onRollResult = nil
         onHoldToggled = nil
         pendingAuthoritativeResult = nil
+        onUndoWithDice = nil
         onMatchComplete = nil
         detachMatchController()
     }
@@ -204,10 +229,11 @@ final class GameNightController {
                 self.proposeScore(category: category, diceValues: dice)
             }
         }
-        matchController.onUndone = { [weak self] in
+        matchController.onUndone = { [weak self, weak matchController] in
             guard let self, self.phase == .inProgress else { return }
             if self.role == .host {
-                Task { await self.broadcastMatchState() }
+                let dv = matchController?.diceValues ?? []
+                Task { await self.broadcastMatchUndo(diceValues: dv) }
             } else {
                 self.proposeUndo()
             }
@@ -231,6 +257,24 @@ final class GameNightController {
               let gameID = sessionGameID else { return }
         let match = mc.buildMatchSnapshot(matchID: matchID, gameID: gameID)
         send(.matchState, payload: MatchStatePayload(match: match, currentSeatIndex: mc.currentPlayerIndex))
+    }
+
+    /// Broadcasts a matchState that includes the pre-scoring dice values so the
+    /// undone player can rescore without re-rolling. `rollsRemaining` is always
+    /// sent as 0 — the guest already used their rolls before scoring.
+    func broadcastMatchUndo(diceValues: [Int]) async {
+        guard role == .host,
+              phase == .inProgress,
+              let mc = matchController,
+              let matchID = sessionMatchID,
+              let gameID = sessionGameID else { return }
+        let match = mc.buildMatchSnapshot(matchID: matchID, gameID: gameID)
+        send(.matchState, payload: MatchStatePayload(
+            match: match,
+            currentSeatIndex: mc.currentPlayerIndex,
+            diceValues: diceValues,
+            rollsRemaining: 0
+        ))
     }
 
     /// Broadcasts the final match to all guests; sets phase to .completed. Host-only.
@@ -265,6 +309,7 @@ final class GameNightController {
     func sendRollBegan(recipe: DiceRollRecipe, rollIndex: Int, heldMask: [Bool]) {
         guard isSessionActive, phase == .inProgress,
               let participantID = localParticipantID else { return }
+        logger.debug(self, "sendRollBegan: roll=\(rollIndex) held=\(heldMask) seed=\(recipe.seed)")
         send(.rollBegan, payload: RollBeganPayload(
             participantID: participantID, rollIndex: rollIndex,
             recipe: recipe, heldMask: heldMask))
@@ -273,6 +318,7 @@ final class GameNightController {
     func sendRollResult(faceValues: [Int]) {
         guard isSessionActive, phase == .inProgress,
               let participantID = localParticipantID else { return }
+        logger.debug(self, "sendRollResult: values=\(faceValues)")
         send(.rollResult, payload: RollResultPayload(
             participantID: participantID, faceValues: faceValues))
     }
@@ -280,6 +326,7 @@ final class GameNightController {
     func sendHoldToggled(dieIndex: Int, isHeld: Bool) {
         guard isSessionActive, phase == .inProgress,
               let participantID = localParticipantID else { return }
+        logger.debug(self, "sendHoldToggled: die=\(dieIndex) held=\(isHeld)")
         send(.holdToggled, payload: HoldToggledPayload(
             participantID: participantID, dieIndex: dieIndex, isHeld: isHeld))
     }
@@ -340,10 +387,20 @@ final class GameNightController {
             versionMismatchedIDs.insert(senderID)
             return
         }
-        // Compatible joiner — push current tableState for catch-up.
+        // Compatible joiner — push current table state for catch-up.
+        // If a match is already running, also push the full match snapshot so
+        // reconnecting guests (or late joiners) see current scores immediately.
         if role == .host {
-            Task { await self.broadcastTableState() }
+            Task {
+                await self.broadcastTableState()
+                if self.phase == .inProgress { await self.broadcastMatchState() }
+            }
         }
+    }
+
+    private func persistLocalParticipantID() {
+        guard let pid = localParticipantID, let mid = sessionMatchID else { return }
+        UserDefaults.standard.set(pid.uuidString, forKey: "gn.participantID.\(mid.uuidString)")
     }
 
     private func handleTableState(_ envelope: GameNightEnvelope) {
@@ -378,6 +435,7 @@ final class GameNightController {
         }
         sessionMatchID = payload.match.id
         sessionGameID = payload.match.gameID
+        persistLocalParticipantID()
         matchController?.loadFromGameNightMatch(payload.match, currentSeatIndex: payload.currentSeatIndex)
         logger.debug(self, "matchStart: \(payload.match.participants.count) seats, seat \(payload.currentSeatIndex)")
     }
@@ -411,13 +469,18 @@ final class GameNightController {
               let mc = matchController,
               let payload = try? envelope.decode(MatchStatePayload.self) else { return }
         mc.loadFromGameNightMatch(payload.match, currentSeatIndex: payload.currentSeatIndex)
-        logger.debug(self, "matchState: seat \(payload.currentSeatIndex)")
+        if let dv = payload.diceValues, let rr = payload.rollsRemaining {
+            mc.restoreDiceStateAfterUndo(values: dv, rollsRemaining: rr)
+            onUndoWithDice?(dv)
+        }
+        logger.debug(self, "matchState: seat \(payload.currentSeatIndex) undo=\(payload.diceValues != nil)")
     }
 
     private func handleRollBegan(_ envelope: GameNightEnvelope) {
         guard let payload = try? envelope.decode(RollBeganPayload.self),
               payload.participantID != localParticipantID,
               phase == .inProgress else { return }
+        logger.debug(self, "handleRollBegan: roll=\(payload.rollIndex) held=\(payload.heldMask) seed=\(payload.recipe.seed) hookWired=\(onRollBegan != nil)")
         pendingAuthoritativeResult = nil
         onRollBegan?(payload.recipe, payload.heldMask)
     }
@@ -426,6 +489,7 @@ final class GameNightController {
         guard let payload = try? envelope.decode(RollResultPayload.self),
               payload.participantID != localParticipantID,
               phase == .inProgress else { return }
+        logger.debug(self, "handleRollResult: values=\(payload.faceValues) hookWired=\(onRollResult != nil)")
         pendingAuthoritativeResult = payload.faceValues
         onRollResult?(payload.faceValues)
     }
@@ -434,6 +498,7 @@ final class GameNightController {
         guard let payload = try? envelope.decode(HoldToggledPayload.self),
               payload.participantID != localParticipantID,
               phase == .inProgress else { return }
+        logger.debug(self, "handleHoldToggled: die=\(payload.dieIndex) held=\(payload.isHeld) hookWired=\(onHoldToggled != nil)")
         onHoldToggled?(payload.dieIndex, payload.isHeld)
     }
     private func handleMatchComplete(_ envelope: GameNightEnvelope) {
@@ -552,9 +617,48 @@ final class GameNightController {
            let mapping = mappings.first(where: { $0.seatClaimID == myClaimID }) {
             localParticipantID = mapping.participantID
         }
+        persistLocalParticipantID()
         matchController?.loadFromGameNightMatch(match, currentSeatIndex: currentSeatIndex)
         send(.matchStart, payload: MatchStartPayload(match: match, seatMappings: mappings, currentSeatIndex: currentSeatIndex))
         Task { await self.broadcastTableState() }
+    }
+
+    /// Host-only: start a new game with the same seated participants without leaving the
+    /// current session. Builds a fresh match (new UUIDs, zeroed scores) from the existing
+    /// seat list and broadcasts a `matchStart` so all guests reset alongside the host.
+    func broadcastRematch(gameID: UUID) {
+        guard role == .host, phase == .inProgress, matchController != nil else { return }
+        let (match, mappings) = buildInitialMatch(gameID: gameID)
+        sessionMatchID = match.id
+        sessionGameID = gameID
+        if let myClaimID = localSeatClaimID,
+           let mapping = mappings.first(where: { $0.seatClaimID == myClaimID }) {
+            localParticipantID = mapping.participantID
+        }
+        persistLocalParticipantID()
+        matchController?.loadFromGameNightMatch(match, currentSeatIndex: 0)
+        send(.matchStart, payload: MatchStartPayload(match: match, seatMappings: mappings, currentSeatIndex: 0))
+        Task { await broadcastTableState() }
+    }
+
+    /// Host-only: skip the seating phase and immediately resume an already-started match.
+    /// Called after a cold relaunch when the host wants to reconnect Game Night without
+    /// going back through table setup. Restores the local participant ID from the prior
+    /// session so roll messages can be sent correctly.
+    func resumeAsHost(matchID: UUID, gameID: UUID) {
+        guard role == .host, isSessionActive, phase == .settingTable else { return }
+        sessionMatchID = matchID
+        sessionGameID = gameID
+        let key = "gn.participantID.\(matchID.uuidString)"
+        if let idStr = UserDefaults.standard.string(forKey: key),
+           let id = UUID(uuidString: idStr) {
+            localParticipantID = id
+        }
+        phase = .inProgress
+        Task {
+            await broadcastTableState()
+            await broadcastMatchState()
+        }
     }
 
     private func addSeat(from payload: SeatClaimPayload) {

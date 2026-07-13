@@ -9,6 +9,7 @@ struct VoicePickerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.theme) private var theme
     @State private var speaker = VoiceSpeaker()
+    @ScaledMetric private var speakerButtonSize: CGFloat = 28
 
     private var groupedVoices: [(language: String, voices: [AVSpeechSynthesisVoice])] {
         let localeLang = Locale.current.language.languageCode?.identifier ?? "en"
@@ -74,7 +75,7 @@ struct VoicePickerView: View {
                 Image(systemName: speaker.speakingVoiceID == voice.identifier
                       ? "speaker.wave.2.fill" : "speaker.wave.2")
                     .foregroundStyle(theme.primaryAccent)
-                    .frame(width: 28, height: 28)
+                    .frame(width: speakerButtonSize, height: speakerButtonSize)
             }
             .buttonStyle(.plain)
 

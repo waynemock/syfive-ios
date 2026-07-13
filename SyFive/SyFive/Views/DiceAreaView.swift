@@ -55,6 +55,11 @@ struct DiceAreaView: View {
                 suppressNextPlayerChangeDiceClear = false
                 return
             }
+            if let pending = diceRoller.pendingUndoRestore {
+                diceRoller.pendingUndoRestore = nil
+                diceRoller.restoreDice(values: pending, held: Array(repeating: false, count: pending.count))
+                return
+            }
             guard model.playerCount > 1 else { return }
             diceRoller.clearDice()
         }
@@ -234,29 +239,38 @@ struct DiceAreaView: View {
             }
         }
         gn.onRollResult = { values in
-            if dr.isRolling {
-                gn.pendingAuthoritativeResult = values
-            } else {
-                gn.pendingAuthoritativeResult = nil
+            // Always store so the settle callback can correct even if rollResult arrived
+            // before the replayRecipe Task started (race: Task queued but not yet running).
+            gn.pendingAuthoritativeResult = values
+            if !dr.isRolling {
+                // Apply immediately when replay already finished; settle callback will be a no-op.
                 dr.applyAuthoritativeResult(values)
             }
-            // Theater Yatzy moment (11 §5): fire celebration audio on theater-ON devices.
-            guard fa?.theaterAudioEnabled == true else { return }
+            // Yatzy check — runs regardless of theater audio setting.
             let isYatzy = !values.isEmpty && values.dropFirst().allSatisfy { $0 == values[0] }
             guard isYatzy else { return }
             let yahtzeeBox = mc.scores(for: mc.currentPlayerIndex)[.yahtzee]
             guard yahtzeeBox == nil || yahtzeeBox == 50 else { return }
-            // Haptic tick stays roller-only per touch rule (11 §5, §7 pending).
+            // Visual overlay fires on all spectator devices unconditionally.
+            cc.triggerYatzy(playerIndex: mc.currentPlayerIndex)
+            // Theater Yatzy audio (11 §5): sound fires only on theater-ON devices.
+            // Haptic stays roller-only per touch rule (11 §5, §7 pending).
+            guard fa?.theaterAudioEnabled == true else { return }
             let saved = dir.hapticsEnabled
             dir.hapticsEnabled = false
             dir.yatzyMoment()
             dir.hapticsEnabled = saved
-            cc.triggerYatzy(playerIndex: mc.currentPlayerIndex)
         }
         gn.onHoldToggled = { dieIndex, isHeld in
-            var held = mc.held
+            var held = dr.currentHeld
             if held.indices.contains(dieIndex) { held[dieIndex] = isHeld }
             dr.setHeld(held)
+        }
+        gn.onUndoWithDice = { values in
+            // Store in the DiceRoller reference so the onChange(of: currentPlayerIndex)
+            // handler (which fires after loadFromGameNightMatch changes the index) can
+            // restore rather than clear.
+            dr.pendingUndoRestore = values
         }
     }
 

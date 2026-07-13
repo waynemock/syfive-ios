@@ -104,6 +104,10 @@ final class DiceRoller {
     /// The recipe from the most recent roll — use for replay.
     private(set) var lastRecipe: DiceRollRecipe?
 
+    /// Set by the Game Night undo path so `onChange(of: currentPlayerIndex)` can
+    /// restore these dice instead of clearing. Consumed once by the observer.
+    var pendingUndoRestore: [Int]? = nil
+
     /// Optional audio hook receiver.
     weak var audioController: (any DiceAudioControlling)?
 
@@ -139,7 +143,7 @@ final class DiceRoller {
     /// Persists across the nudge re-roll so a second stuck event routes to red (reroll).
     private var dieNudgeAttempted: [Bool] = Array(repeating: false, count: 5)
     private var rollTime: Float = 0
-    private var currentHeld: [Bool] = []
+    private(set) var currentHeld: [Bool] = []
     private var pendingResults: (([Int]) -> Void)?
     private var sceneSubscription: EventSubscription?
     private var rng = DiceRandSource()
@@ -369,7 +373,16 @@ final class DiceRoller {
     /// Sets isTheaterReplay so stuck dice don't block the callback — applyAuthoritativeResult
     /// will correct any face values that landed wrong on this device.
     func replayRecipe(_ recipe: DiceRollRecipe, held: [Bool], onResults: @escaping ([Int]) -> Void) async {
-        guard !isRolling, !isBatchRunning else { return }
+        if isRolling {
+            // Prior replay still running — clear it so the new roll isn't skipped.
+            logger.warning(self, "replayRecipe: prior replay active, forcing clear. seed=\(recipe.seed)")
+            clearDice()
+        }
+        guard !isBatchRunning else {
+            logger.warning(self, "replayRecipe skipped: isBatch=\(isBatchRunning) seed=\(recipe.seed)")
+            return
+        }
+        logger.debug(self, "replayRecipe: starting seed=\(recipe.seed) held=\(held)")
         let savedRng = rng
         rng = DiceRandSource(seed: recipe.seed)
         isTheaterReplay = true
@@ -377,7 +390,8 @@ final class DiceRoller {
             self?.isTheaterReplay = false
             onResults(values)
         }
-        // roll() returns after launch; isTheaterReplay cleared in the callback above (after settle).
+        // roll() returns after all dice are launched (not yet settled).
+        logger.debug(self, "replayRecipe: launched seed=\(recipe.seed)")
         rng = savedRng
     }
 
@@ -385,12 +399,19 @@ final class DiceRoller {
     /// Positions are preserved; only face orientation is updated on mismatches.
     func applyAuthoritativeResult(_ values: [Int]) {
         guard values.count == diceEntities.count else { return }
+        // Settle detection allows ±settleHeightTolerance (8mm) before finishRoll fires.
+        // A die at the top of that window would be placed kinematic at an airborne Y by
+        // present(), where it would stay forever (kinematic ignores gravity). Snap Y to
+        // the canonical settled height for non-held dice so face corrections always land
+        // on the floor. X/Z are preserved — remote physics may land slightly differently.
+        let settledY = Self.expectedSettledCenterHeight + 0.001
         for (index, die) in diceEntities.enumerated() {
             guard die.entity.isEnabled else { continue }
             let authoritative = values[index]
             guard die.topFaceValue != authoritative else { continue }
-            let pos = die.entity.position
+            var pos = die.entity.position
             let isHeld = index < currentHeld.count ? currentHeld[index] : false
+            if !isHeld { pos.y = settledY }
             die.present(value: authoritative, at: pos, isHeld: isHeld)
         }
     }

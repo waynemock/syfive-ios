@@ -20,6 +20,9 @@ struct PlayerEditSheet: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.sizeCategory) private var sizeCategory
+
+    @ScaledMetric private var swatchSize: CGFloat = 36
 
     @State private var name: String
     @State private var initials: String
@@ -54,6 +57,7 @@ struct PlayerEditSheet: View {
             Form {
                 Section {
                     TextField("Name", text: $name)
+                        .textInputAutocapitalization(.words)
                         .onChange(of: name) { oldName, newName in
                             // Auto-sync initials when they still match the previous auto-derived value.
                             if initials == deriveInitials(from: oldName) || initials.isEmpty {
@@ -61,13 +65,23 @@ struct PlayerEditSheet: View {
                             }
                         }
 
-                    HStack {
-                        Text("Initials")
-                        Spacer()
-                        TextField("AB", text: $initials)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 60)
-                            .foregroundStyle(.secondary)
+                    if sizeCategory.isAccessibilityCategory {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Initials")
+                            TextField("AB", text: $initials)
+                                .textInputAutocapitalization(.characters)
+                                .foregroundStyle(.secondary)
+                        }
+                    } else {
+                        HStack {
+                            Text("Initials")
+                            Spacer()
+                            TextField("AB", text: $initials)
+                                .textInputAutocapitalization(.characters)
+                                .multilineTextAlignment(.trailing)
+                                .frame(width: 60)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
 
@@ -90,7 +104,8 @@ struct PlayerEditSheet: View {
     }
 
     private var themePicker: some View {
-        let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 7)
+        let columnCount = sizeCategory.isAccessibilityCategory ? 4 : 7
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: columnCount)
         return LazyVGrid(columns: columns, spacing: 8) {
             ForEach(Theme.ThemeType.allCases, id: \.self) { type in
                 let theme = Theme(type: type, colorScheme: colorScheme)
@@ -109,7 +124,7 @@ struct PlayerEditSheet: View {
                             .shadow(color: .black.opacity(0.4), radius: 2)
                     }
                 }
-                .frame(height: 36)
+                .frame(height: swatchSize)
                 .overlay(
                     Circle().strokeBorder(
                         isSelected ? Color.white.opacity(0.9) : Color.clear,
@@ -149,4 +164,29 @@ struct PlayerEditSheet: View {
 
         dismiss()
     }
+}
+
+#Preview("New Player") {
+    let container = try! ModelContainer(
+        for: Schema([PlayerModel.self]),
+        configurations: [ModelConfiguration(isStoredInMemoryOnly: true)]
+    )
+    PlayerEditSheet(mode: .create, matchModel: MatchController())
+        .modelContainer(container)
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+}
+
+#Preview("Edit Player") {
+    let container = try! ModelContainer(
+        for: Schema([PlayerModel.self]),
+        configurations: [ModelConfiguration(isStoredInMemoryOnly: true)]
+    )
+    let pm = PlayerModel()
+    pm.name = "Wayne"
+    pm.initials = "WM"
+    pm.themeID = "midnight"
+    container.mainContext.insert(pm)
+    return PlayerEditSheet(mode: .edit(pm, matchSlot: 0), matchModel: MatchController())
+        .modelContainer(container)
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
 }

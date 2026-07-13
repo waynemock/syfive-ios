@@ -47,7 +47,6 @@ struct PreGameGridView: View {
             HStack(spacing: 10) {
                 Image(systemName: "plus.circle.fill")
                     .font(.title)
-                    .frame(width: 28, height: 28)
                 Text("Add Player")
                     .font(.title3)
                 Spacer()
@@ -71,6 +70,7 @@ struct PreGameGridView: View {
         return m
     }(), onAddPlayer: {})
     .frame(width: 393)
+    .environment(FeelDirector())
 }
 
 #Preview("Pre-Game Grid – Landscape / iPad") {
@@ -82,5 +82,6 @@ struct PreGameGridView: View {
         return m
     }(), onAddPlayer: {})
     .environment(\.horizontalSizeClass, .regular)
+    .environment(FeelDirector())
     .frame(width: 744)
 }

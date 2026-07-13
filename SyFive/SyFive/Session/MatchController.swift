@@ -80,7 +80,7 @@ final class MatchController {
     }
 
     var hasStarted: Bool {
-        rollsRemaining < rollsPerTurn || playerScores.contains { !$0.isEmpty }
+        matchStartedAt != nil || rollsRemaining < rollsPerTurn || playerScores.contains { !$0.isEmpty }
     }
 
     var canEditPlayers: Bool { !hasStarted }
@@ -488,6 +488,14 @@ final class MatchController {
         lastScoreSnapshot = nil
         onUndone?()
         return UndoRestoration(diceValues: snapshot.diceValues, held: snapshot.held)
+    }
+
+    /// Called on guest devices after receiving an undo matchState broadcast.
+    /// Overwrites the values that `loadFromGameNightMatch` reset, so the guest
+    /// can see their pre-scoring dice and rescore without re-rolling.
+    func restoreDiceStateAfterUndo(values: [Int], rollsRemaining: Int) {
+        diceValues = values
+        self.rollsRemaining = rollsRemaining
     }
 
     func suggestedScores(for playerIndex: Int) -> [YatzyCategory: Int] {

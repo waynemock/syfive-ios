@@ -15,6 +15,8 @@ struct MainMenuButton: View {
     
     let showBadge: Bool
 
+    @ScaledMetric private var badgeSize: CGFloat = 10
+
     var body: some View {
         ZStack(alignment: .topTrailing) {
             Image(systemName: "ellipsis.circle")
@@ -23,7 +25,7 @@ struct MainMenuButton: View {
             if showBadge {
                 Circle()
                     .fill(theme.primaryAccent)
-                    .frame(width: 10, height: 10)
+                    .frame(width: badgeSize, height: badgeSize)
                     .overlay(
                         Circle()
                             .strokeBorder(Color.black.opacity(0.8), lineWidth: 1)

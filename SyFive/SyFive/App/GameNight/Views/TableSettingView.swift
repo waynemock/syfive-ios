@@ -182,15 +182,18 @@ struct InitialsCircle: View {
     let themeID: String
     let colorScheme: ColorScheme
 
+    @ScaledMetric private var circleSize: CGFloat = 32
+    @ScaledMetric private var fontSize: CGFloat = 11
+
     var body: some View {
         let themeType = Theme.ThemeType(rawValue: themeID) ?? .midnight
         let accent = Theme(type: themeType, colorScheme: colorScheme).primaryAccent
         ZStack {
             Circle().fill(accent)
             Text(initials)
-                .font(.system(size: 11, weight: .bold))
+                .font(.system(size: fontSize, weight: .bold))
                 .foregroundStyle(.white)
         }
-        .frame(width: 32, height: 32)
+        .frame(width: circleSize, height: circleSize)
     }
 }

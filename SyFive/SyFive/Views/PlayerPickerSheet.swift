@@ -10,6 +10,8 @@ struct PlayerPickerSheet: View {
 
     @State private var playerEditMode: PlayerEditSheet.Mode? = nil
     @State private var pendingArchive: PlayerModel? = nil
+    @ScaledMetric private var initialsCircleSize: CGFloat = 28
+    @ScaledMetric private var initialsFontSize: CGFloat = 10
 
     private var playerIDsInMatch: Set<UUID> {
         Set(model.playerIDs.compactMap { $0 })
@@ -109,10 +111,10 @@ struct PlayerPickerSheet: View {
             ZStack {
                 Circle().fill(theme.primaryAccent)
                 Text(model.playerInitials(for: index))
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: initialsFontSize, weight: .bold))
                     .foregroundStyle(.white)
             }
-            .frame(width: 28, height: 28)
+            .frame(width: initialsCircleSize, height: initialsCircleSize)
 
             Text(name)
                 .font(.body)
@@ -168,10 +170,10 @@ struct PlayerPickerSheet: View {
             ZStack {
                 Circle().fill(theme.primaryAccent)
                 Text(playerModel.initials)
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: initialsFontSize, weight: .bold))
                     .foregroundStyle(.white)
             }
-            .frame(width: 28, height: 28)
+            .frame(width: initialsCircleSize, height: initialsCircleSize)
  
             Text(playerModel.name)
                 .font(.body)
@@ -217,10 +219,10 @@ struct PlayerPickerSheet: View {
             ZStack {
                 Circle().fill(theme.primaryAccent.opacity(0.4))
                 Text(playerModel.initials)
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: initialsFontSize, weight: .bold))
                     .foregroundStyle(.white)
             }
-            .frame(width: 28, height: 28)
+            .frame(width: initialsCircleSize, height: initialsCircleSize)
 
             Text(playerModel.name)
                 .font(.body)
@@ -261,4 +263,34 @@ struct PlayerPickerSheet: View {
         .listRowBackground(Color.clear)
         .padding(.vertical, 24)
     }
+}
+
+#Preview {
+    let schema = Schema([
+        PlayerModel.self, TeamModel.self, GameModel.self,
+        MatchModel.self, ParticipantModel.self, AppSettingsModel.self,
+    ])
+    let container = try! ModelContainer(
+        for: schema,
+        configurations: [ModelConfiguration(isStoredInMemoryOnly: true)]
+    )
+
+    let p1 = PlayerModel()
+    p1.name = "Wayne"
+    p1.initials = "WM"
+    p1.themeID = "midnight"
+    container.mainContext.insert(p1)
+
+    let p2 = PlayerModel()
+    p2.name = "Sherida"
+    p2.initials = "SM"
+    p2.themeID = "forest"
+    container.mainContext.insert(p2)
+
+    let model = MatchController()
+    model.addPlayer(from: p1.toDomain())
+
+    return PlayerPickerSheet(model: model)
+        .modelContainer(container)
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
 }

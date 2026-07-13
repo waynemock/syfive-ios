@@ -11,6 +11,7 @@ import SwiftData
     var statusRaw: String = MatchStatus.inProgress.rawValue
     var startedAt: Date = Date()
     var completedAt: Date? = nil
+    var isGameNight: Bool = false
 
     @Relationship(deleteRule: .nullify, inverse: \ParticipantModel.match)
     var participants: [ParticipantModel] = []

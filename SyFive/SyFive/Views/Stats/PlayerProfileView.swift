@@ -276,9 +276,18 @@ struct PlayerProfileView: View {
 
 private struct InsightLabelStyle: LabelStyle {
     func makeBody(configuration: Configuration) -> some View {
-        HStack(alignment: .top, spacing: 6) {
-            configuration.icon.font(.system(size: 5)).padding(.top, 6)
-            configuration.title
+        InsightLabelBody(configuration: configuration)
+    }
+
+    private struct InsightLabelBody: View {
+        let configuration: LabelStyleConfiguration
+        @ScaledMetric private var iconSize: CGFloat = 5
+
+        var body: some View {
+            HStack(alignment: .top, spacing: 6) {
+                configuration.icon.font(.system(size: iconSize)).padding(.top, 6)
+                configuration.title
+            }
         }
     }
 }

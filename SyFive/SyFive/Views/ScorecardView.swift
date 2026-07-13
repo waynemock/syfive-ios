@@ -205,4 +205,5 @@ private struct LabelWidthKey: PreferenceKey {
 
 #Preview {
     ScorecardView(model: MatchController(), availableWidth: 360)
+        .environment(FeelDirector())
 }

@@ -30,6 +30,19 @@ struct DiceRKView: View {
     @State private var cameraEntity = Entity()
 
     var body: some View {
+        #if DEBUG
+        // RealityView crashes Xcode's preview agent when rendering static variant snapshots.
+        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PLAYGROUNDS"] != nil {
+            previewPlaceholder
+        } else {
+            realityContent
+        }
+        #else
+        realityContent
+        #endif
+    }
+
+    @ViewBuilder private var realityContent: some View {
         RealityView { content in
             // Non-AR virtual camera mode
             content.camera = .virtual
@@ -55,6 +68,18 @@ struct DiceRKView: View {
             diceRoller.applyPalette(theme.dicePalette)
         }
     }
+
+    #if DEBUG
+    private var previewPlaceholder: some View {
+        RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .fill(theme.backgroundColor)
+            .overlay(
+                Image(systemName: "die.face.5.fill")
+                    .font(.system(size: 56))
+                    .foregroundStyle(theme.primaryAccent.opacity(0.35))
+            )
+    }
+    #endif
 
     // MARK: - Scene setup
 

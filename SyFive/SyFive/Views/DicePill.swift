@@ -14,17 +14,20 @@ struct DicePill: View {
     let isEnabled: Bool
     let onTap: () -> Void
 
+    @ScaledMetric private var pillSize: CGFloat = 72
+    @ScaledMetric private var pillCornerRadius: CGFloat = 12
+
     var body: some View {
         Button(action: onTap) {
             Text("\(value)")
                 .font(.title3.weight(.semibold))
-                .frame(width: 72, height: 72)
+                .frame(width: pillSize, height: pillSize)
                 .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: pillCornerRadius, style: .continuous)
                         .fill(isHeld ? Color.primary.opacity(0.15) : Color.primary.opacity(0.05))
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: pillCornerRadius, style: .continuous)
                         .stroke(isHeld ? Color.primary : Color.primary.opacity(0.2), lineWidth: isHeld ? 2 : 1)
                 )
         }
