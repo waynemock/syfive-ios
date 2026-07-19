@@ -47,11 +47,6 @@ struct ScorecardView: View {
         .sheet(isPresented: $showsPlayerPicker) {
             PlayerPickerSheet(model: model)
         }
-        .onAppear {
-            if !model.hasStarted {
-                showsPlayerPicker = true
-            }
-        }
     }
 
     private var inGameView: some View {

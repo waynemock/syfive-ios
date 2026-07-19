@@ -35,6 +35,9 @@ struct SyFiveApp: App {
             ContentView()
                 .environment(gameNight)
                 .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                .task {
+                    await gameNight.listenForSessions()
+                }
         }
         .modelContainer(sharedModelContainer)
     }

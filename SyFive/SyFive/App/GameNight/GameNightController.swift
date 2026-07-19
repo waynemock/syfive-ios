@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import GroupActivities
 
@@ -28,6 +29,16 @@ final class GameNightController {
     private(set) var phase: GameNightPhase = .settingTable
     private(set) var seats: [SeatSnapshot] = []
     private(set) var isSessionActive = false
+    /// Incremented every time configureSession() fully completes. Because tearDownSession()
+    /// can flip isSessionActive false→true within the same SwiftUI render cycle (net: no change),
+    /// keying the seating-sheet trigger off this counter guarantees onChange always fires.
+    private(set) var sessionActivationCount: Int = 0
+    /// True after prepareAsHost() until the session arrives or the invite is cancelled.
+    /// Used to block a second invite attempt and show a "waiting" state in the menu.
+    private(set) var isSessionPending = false
+    /// Mirrors GroupStateObserver.isEligibleForGroupSession. True when the device is
+    /// in a FaceTime call or iMessage thread that supports SharePlay.
+    private(set) var isEligibleForGroupSession = false
     /// The seatClaimID for the local device's own seat, set on `claimSeat()`.
     private(set) var localSeatClaimID: UUID?
     /// The participantID assigned to our seat when `matchStart` locks the table.
@@ -85,38 +96,61 @@ final class GameNightController {
     /// Fired on guests when matchComplete arrives. ContentView wires this to the upsert write.
     var onMatchComplete: ((Match) -> Void)?
 
+    private let groupStateObserver = GroupStateObserver()
+
     private let logger = AppLogger(category: "GameNightController")
 
     // MARK: - App-launch entry point
 
-    /// Begin watching for incoming GroupSession objects. Call once from SyFiveApp
-    /// and let it run for the app's lifetime.
-    func startListeningForSessions() {
-        Task { [weak self] in
-            for await incomingSession in GameNightActivity.sessions() {
-                await MainActor.run {
-                    self?.configureSession(incomingSession)
-                }
+    /// Called by SyFiveApp via `.task` on the root ContentView. Running the for-await
+    /// loop inside a structured `.task` ties it to the scene lifecycle, which lets iOS
+    /// route Messages-based SharePlay sessions back to the sender's device. An unstructured
+    /// Task {} in onAppear is not associated with any scene and silently drops those deliveries.
+    func listenForSessions() async {
+        logger.info(self, "listenForSessions: scene-level task started, awaiting sessions")
+        // Mirror GroupStateObserver eligibility into our @Observable property so
+        // views can drive UI without importing GroupActivities themselves.
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.isEligibleForGroupSession = self.groupStateObserver.isEligibleForGroupSession
+            for await _ in self.groupStateObserver.objectWillChange.values {
+                self.isEligibleForGroupSession = self.groupStateObserver.isEligibleForGroupSession
             }
         }
+        for await incomingSession in GameNightActivity.sessions() {
+            logger.info(self, "listenForSessions: *** SESSION ARRIVED *** id=\(incomingSession.id) state=\(String(describing: incomingSession.state))")
+            configureSession(incomingSession)
+        }
+        logger.warning(self, "listenForSessions: *** STREAM ENDED *** for-await loop exited, no more sessions will arrive")
     }
 
     // MARK: - Host entry point
 
-    /// Called when the host taps "Start Game Night". Sets role = .host before
-    /// activate() so configureSession knows which role to take.
-    /// Phase 3 will wrap this in a GroupActivitySharingController for the
-    /// call-absent path (door 3 / invite link).
-    func startAsHost() async throws {
+    /// Called before presenting the invite UI. Sets the host role so configureSession
+    /// knows to take host when the session arrives. Does NOT call activate() — the
+    /// GroupActivitySharingController handles activation after the user picks contacts.
+    func prepareAsHost() {
+        logger.info(self, "prepareAsHost: isSessionActive=\(isSessionActive) isSessionPending=\(isSessionPending)")
+        guard !isSessionActive && !isSessionPending else {
+            logger.warning(self, "prepareAsHost: guard failed — already active or pending, ignoring")
+            return
+        }
         role = .host
         pendingHostSessionActivation = true
-        do {
-            _ = try await GameNightActivity().activate()
-        } catch {
-            role = .guest
-            pendingHostSessionActivation = false
-            throw error
+        isSessionPending = true
+        logger.info(self, "prepareAsHost: pendingHostSessionActivation=true isSessionPending=true")
+    }
+
+    /// Reverts prepareAsHost() if the user cancelled before a session was established.
+    func cancelHostPreparation() {
+        logger.info(self, "cancelHostPreparation: isSessionActive=\(isSessionActive)")
+        guard !isSessionActive else {
+            logger.warning(self, "cancelHostPreparation: guard failed — session already active")
+            return
         }
+        role = .guest
+        pendingHostSessionActivation = false
+        isSessionPending = false
     }
 
     // MARK: - Session configuration (both host and guest)
@@ -124,8 +158,13 @@ final class GameNightController {
     /// Wires up the messenger and starts listening. Called for every incoming
     /// session — the host's own session arrives here too.
     func configureSession(_ incomingSession: GroupSession<GameNightActivity>) {
+        logger.info(self, "configureSession: entry id=\(incomingSession.id) state=\(String(describing: incomingSession.state)) pendingHostActivation=\(pendingHostSessionActivation) existingSessionID=\(session?.id.uuidString ?? "nil")")
+
         // Guard against reconfiguring with the same session.
-        if session?.id == incomingSession.id { return }
+        if session?.id == incomingSession.id {
+            logger.warning(self, "configureSession: duplicate session id, skipping")
+            return
+        }
 
         // Resolve role from activation intent, not from stale prior role.
         // If WE activated this session (pendingHostSessionActivation), we are host.
@@ -136,6 +175,7 @@ final class GameNightController {
         let takingHostRole = pendingHostSessionActivation
         pendingHostSessionActivation = false
 
+        logger.info(self, "configureSession: takingHostRole=\(takingHostRole), calling tearDownSession")
         // Tear down any prior session cleanly.
         tearDownSession()
         sessionEndedDuringPlay = false
@@ -146,6 +186,7 @@ final class GameNightController {
         messenger = m
         incomingSession.join()
         isSessionActive = true
+        isSessionPending = false
 
         messageListenTask = Task { [weak self] in
             guard let self else { return }
@@ -159,6 +200,8 @@ final class GameNightController {
             // Announce ourselves so the host can version-check and send tableState.
             Task { await self.sendHello() }
         }
+        sessionActivationCount += 1
+        logger.info(self, "configureSession: *** COMPLETE *** role=\(String(describing: role)) activationCount=\(sessionActivationCount)")
     }
 
     // MARK: - Session teardown
@@ -190,6 +233,7 @@ final class GameNightController {
 
     private func tearDownSession() {
         pendingHostSessionActivation = false
+        isSessionPending = false
         messageListenTask?.cancel()
         messageListenTask = nil
         session?.end()

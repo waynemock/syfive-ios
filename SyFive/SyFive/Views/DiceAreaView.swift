@@ -105,7 +105,6 @@ struct DiceAreaView: View {
 
                     model.beginRoll()
                     director.rollStarted(unheldCount: model.held.filter { !$0 }.count)
-                    let rollIndex = 3 - model.rollsRemaining
                     let capturedHeld = model.held
                     let gn = gameNight
                     let dr = diceRoller
@@ -122,11 +121,6 @@ struct DiceAreaView: View {
                                 director.yatzyMoment()
                                 celebrationCoordinator.triggerYatzy(playerIndex: model.currentPlayerIndex)
                             }
-                        }
-                        // After roll() returns, all dice are launched and lastRecipe is set.
-                        if gn.isSessionActive && gn.phase == .inProgress,
-                           let recipe = dr.lastRecipe {
-                            gn.sendRollBegan(recipe: recipe, rollIndex: rollIndex, heldMask: capturedHeld)
                         }
                     }
                 } label: {
@@ -216,50 +210,32 @@ struct DiceAreaView: View {
         let gn = gameNight
         let dr = diceRoller
         let mc = model
-        let dir = director
-        let fa = feelAdapter
         let cc = celebrationCoordinator
 
-        gn.onRollBegan = { recipe, heldMask in
-            Task { @MainActor in
-                // Theater lifecycle (11 §2): gate haptics for the entire replay.
-                fa?.isTheaterMode = true
-                // Theater audio (11 §1): start the rattle bed on eligible devices.
-                if fa?.theaterAudioEnabled == true {
-                    dir.rollStarted(unheldCount: heldMask.filter { !$0 }.count)
-                }
-                await dr.replayRecipe(recipe, held: heldMask) { _ in
-                    fa?.isTheaterMode = false
-                    if let auth = gn.pendingAuthoritativeResult {
-                        gn.pendingAuthoritativeResult = nil
-                        dr.applyAuthoritativeResult(auth)
-                    }
-                }
-                fa?.isTheaterMode = false  // safety: cleared even if replay exited early
-            }
+        // Captured by both onRollBegan and onRollResult so the held mask at roll-start
+        // is preserved when the settled values arrive. Swift captures this var by reference
+        // (heap-boxed), so the write in onRollBegan is visible in onRollResult.
+        var lastRollHeldMask: [Bool] = []
+
+        // Cache the held mask so onRollResult can restore dice with the correct held state.
+        // setHeld also tells the DiceRoller which dice to treat as kinematically fixed.
+        gn.onRollBegan = { _, heldMask in
+            lastRollHeldMask = heldMask
+            dr.setHeld(heldMask)
         }
+        // Show settled values statically — no physics replay on spectator devices.
+        // Use lastRollHeldMask so dice that were held before this roll remain visually held.
+        // Without this, restoreDice(allFalse) would wipe previously-held dice every roll.
         gn.onRollResult = { values in
-            // Always store so the settle callback can correct even if rollResult arrived
-            // before the replayRecipe Task started (race: Task queued but not yet running).
-            gn.pendingAuthoritativeResult = values
-            if !dr.isRolling {
-                // Apply immediately when replay already finished; settle callback will be a no-op.
-                dr.applyAuthoritativeResult(values)
-            }
-            // Yatzy check — runs regardless of theater audio setting.
+            let held = lastRollHeldMask.isEmpty
+                ? Array(repeating: false, count: values.count)
+                : lastRollHeldMask
+            dr.restoreDice(values: values, held: held)
             let isYatzy = !values.isEmpty && values.dropFirst().allSatisfy { $0 == values[0] }
             guard isYatzy else { return }
             let yahtzeeBox = mc.scores(for: mc.currentPlayerIndex)[.yahtzee]
             guard yahtzeeBox == nil || yahtzeeBox == 50 else { return }
-            // Visual overlay fires on all spectator devices unconditionally.
             cc.triggerYatzy(playerIndex: mc.currentPlayerIndex)
-            // Theater Yatzy audio (11 §5): sound fires only on theater-ON devices.
-            // Haptic stays roller-only per touch rule (11 §5, §7 pending).
-            guard fa?.theaterAudioEnabled == true else { return }
-            let saved = dir.hapticsEnabled
-            dir.hapticsEnabled = false
-            dir.yatzyMoment()
-            dir.hapticsEnabled = saved
         }
         gn.onHoldToggled = { dieIndex, isHeld in
             var held = dr.currentHeld

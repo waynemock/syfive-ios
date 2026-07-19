@@ -10,18 +10,35 @@ import GroupActivities
 /// the auto-dismiss animation is still running. In TestFlight/App Store the full flow works.
 @MainActor
 enum GameNightSharing {
-    static func present(onRequiresConversation: @escaping () -> Void) {
+    private static let logger = AppLogger(category: "GameNightSharing")
+
+    /// `onDismissed` is always called once the UIKit controller is gone (success OR fast-cancel).
+    /// Use it to re-show the Game Night seating sheet if the session arrived while the
+    /// controller was on screen (Messages SharePlay delivers the session before the modal
+    /// dismisses, but iOS resets SwiftUI's isPresented binding when a UIKit modal takes over).
+    static func present(
+        onRequiresConversation: @escaping () -> Void,
+        onDismissed: @escaping () -> Void = {}
+    ) {
         guard let controller = try? GroupActivitySharingController(GameNightActivity()),
               let topVC = topmostViewController() else {
+            logger.info(logger, "present: controller or topVC unavailable — calling onRequiresConversation")
             onRequiresConversation()
             return
         }
+        logger.info(logger, "present: presenting GroupActivitySharingController over \(String(describing: type(of: topVC)))")
         let presentedAt = Date()
         topVC.present(controller, animated: true)
         Task { @MainActor in
             let outcome = await controller.result
+            let elapsed = Date().timeIntervalSince(presentedAt)
+            logger.info(logger, "present: controller result=\(String(describing: outcome)) elapsed=\(String(format: "%.2f", elapsed))s")
+            // Always notify that the UIKit modal is now gone.
+            logger.info(logger, "present: calling onDismissed")
+            onDismissed()
             guard case .cancelled = outcome,
-                  Date().timeIntervalSince(presentedAt) < 1.0 else { return }
+                  elapsed < 1.0 else { return }
+            logger.info(logger, "present: fast-cancel detected, sleeping 0.6s then calling onRequiresConversation")
             // Let the auto-dismiss animation finish before SwiftUI presents the next sheet.
             try? await Task.sleep(nanoseconds: 600_000_000)
             onRequiresConversation()

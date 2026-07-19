@@ -5,8 +5,9 @@ struct Player: Codable, Hashable, Sendable, Identifiable {
     var name: String
     // Derived by deriveInitials(from:); stored so collisions ("B" vs "B") can be hand-resolved.
     var initials: String
-    // Theme.ThemeType.rawValue — String keeps Domain Foundation-only.
+     // Theme.ThemeType.rawValue — String keeps Domain Foundation-only.
     var themeID: String
     var createdAt: Date
     var isArchived: Bool
+    var source: PlayerSource
 }

@@ -51,12 +51,38 @@ final class DiceEntity {
     }
 
     var isStuck: Bool = false {
-        didSet { rebuildAppearance() }
+        didSet {
+            if isStuck { isSuspectedStuck = false }
+            rebuildAppearance()
+        }
     }
 
     var isNudgeable: Bool = false {
-        didSet { rebuildAppearance() }
+        didSet {
+            if isNudgeable { isSuspectedStuck = false }
+            rebuildAppearance()
+        }
     }
+
+    /// Pulses the die toward the nudgeable (yellow) tint during the algorithm's observation
+    /// window — before it formally declares the die stuck. Cleared automatically when the
+    /// die either settles normally or graduates to isNudgeable/isStuck.
+    var isSuspectedStuck: Bool = false {
+        didSet {
+            guard oldValue != isSuspectedStuck else { return }
+            if isSuspectedStuck {
+                startSuspectedPulse()
+            } else {
+                suspectedPulseTask?.cancel()
+                suspectedPulseTask = nil
+                suspectedTint = nil
+                rebuildAppearance()
+            }
+        }
+    }
+
+    private var suspectedTint: UIColor?
+    private var suspectedPulseTask: Task<Void, Never>?
 
     // MARK: - Computed
 
@@ -127,6 +153,8 @@ final class DiceEntity {
             tint = stuckTint
         } else if nudgeable {
             tint = nudgeableTint
+        } else if let suspected = suspectedTint {
+            tint = suspected
         } else if held {
             tint = heldTint
         } else {
@@ -339,6 +367,7 @@ final class DiceEntity {
         isPinnedForPresentation = true
         entity.position = position
         self.isStuck = false
+        self.isSuspectedStuck = false
 
         if let targetNormal = Self.faceNormals.first(where: { $0.value == value })?.normal {
             entity.orientation = Self.quaternionAligning(targetNormal, to: SIMD3<Float>(0, 1, 0))
@@ -486,5 +515,35 @@ final class DiceEntity {
             guard let modelEntity = child as? ModelEntity else { continue }
             modelEntity.model?.materials = [UnlitMaterial(color: pipTint)]
         }
+    }
+
+    // MARK: - Suspected-stuck pulse
+
+    private func startSuspectedPulse() {
+        suspectedPulseTask?.cancel()
+        suspectedPulseTask = Task { @MainActor [weak self] in
+            var t: Float = 0.0
+            var forward = true
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 50_000_000) // 50ms ≈ 20fps
+                guard let self else { return }
+                if forward { t += 0.08 } else { t -= 0.08 }
+                if t >= 1.0 { t = 1.0; forward = false }
+                if t <= 0.0 { t = 0.0; forward = true }
+                // Blend up to 55% of nudgeable yellow — visible but not alarming.
+                self.suspectedTint = Self.lerpColor(from: self.normalTint, to: self.nudgeableTint, t: t * 0.55)
+                self.rebuildAppearance()
+            }
+        }
+    }
+
+    private static func lerpColor(from a: UIColor, to b: UIColor, t: Float) -> UIColor {
+        var r0: CGFloat = 0, g0: CGFloat = 0, b0: CGFloat = 0, a0: CGFloat = 0
+        var r1: CGFloat = 0, g1: CGFloat = 0, b1: CGFloat = 0, a1: CGFloat = 0
+        a.getRed(&r0, green: &g0, blue: &b0, alpha: &a0)
+        b.getRed(&r1, green: &g1, blue: &b1, alpha: &a1)
+        let tt = CGFloat(t)
+        return UIColor(red: r0 + (r1 - r0) * tt, green: g0 + (g1 - g0) * tt,
+                       blue: b0 + (b1 - b0) * tt, alpha: a0 + (a1 - a0) * tt)
     }
 }

@@ -83,6 +83,12 @@ final class MatchController {
         matchStartedAt != nil || rollsRemaining < rollsPerTurn || playerScores.contains { !$0.isEmpty }
     }
 
+    /// True once at least one score category has been filled in. Used to gate SwiftData writes
+    /// so pre-populated-but-unplayed games never produce orphan inProgress records.
+    var hasGameActivity: Bool {
+        playerScores.contains { !$0.isEmpty }
+    }
+
     var canEditPlayers: Bool { !hasStarted }
 
     var isGameOver: Bool {
@@ -385,18 +391,13 @@ final class MatchController {
         clearUndoState()
     }
 
-    /// Marks the current match as abandoned (or deletes it if no scoring has occurred).
-    /// Call before resetGame() when the user explicitly starts a new game.
+    /// Deletes the current in-progress match record. Call before resetGame() when the user
+    /// explicitly discards a game. Completed games are never deleted here.
     func abandonMatch(in context: ModelContext) {
         guard let mid = persistedMatchID else { return }
         let descriptor = FetchDescriptor<MatchModel>(predicate: #Predicate { $0.id == mid })
         if let match = (try? context.fetch(descriptor))?.first, !isGameOver {
-            if hasStarted {
-                match.status = .abandoned
-                match.completedAt = Date()
-            } else {
-                context.delete(match)
-            }
+            context.delete(match)
         }
         try? context.save()
         persistedMatchID = nil

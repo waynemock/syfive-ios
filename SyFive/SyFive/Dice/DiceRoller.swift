@@ -172,7 +172,6 @@ final class DiceRoller {
     private static let heldDiceWallInset: Float = 0.0
     private static let heldDiceVisualGap: Float = 0.001
     private static let expectedSettledCenterHeight: Float = DiceEntity.dieSize / 2
-    private static let wallRescueInset: Float = 0.006
     private static let outOfBoundsHorizontalLimit: Float = DiceTrayEntity.halfSize * 2.5
     private static let outOfBoundsLowerY: Float = -0.10
     private static let outOfBoundsUpperY: Float = DiceTrayEntity.collisionWallHeight + 0.20
@@ -663,6 +662,7 @@ final class DiceRoller {
                 stillUnsettledTime[index] = 0
                 flattenNudgeAxes[index] = nil
                 floorStuckTime[index] = 0
+                if !isTheaterReplay { die.isSuspectedStuck = false }
                 if isFirstSettleFrame && !settleAnnounced[index] {
                     settleAnnounced[index] = true
                     notify { audioController?.onDieSettled(index: index, value: die.topFaceValue) }
@@ -672,9 +672,15 @@ final class DiceRoller {
                 settleReviveCounters[index] = 0  // still but tilted — not resuming motion
                 stillUnsettledTime[index] += deltaTime
                 applySettleAssistance(for: index, die: die)
+                // Start pulsing once the die has been watched long enough to notice.
+                if !isTheaterReplay && !die.isNudgeable && !die.isStuck
+                   && stillUnsettledTime[index] >= 1.0 && !die.isSuspectedStuck {
+                    die.isSuspectedStuck = true
+                }
             } else {
                 settleCounters[index] = 0
                 stillUnsettledTime[index] = 0
+                if !isTheaterReplay { die.isSuspectedStuck = false }
                 // Revive: re-arm settle hook after 6 consecutive moving frames (hysteresis).
                 if settleAnnounced[index] {
                     settleReviveCounters[index] += 1
@@ -857,10 +863,12 @@ final class DiceRoller {
     }
 
     private func isLikelyBlockedByWall(_ die: DiceEntity) -> Bool {
+        // wallHeuristicRadius is the cube circumradius (center-to-corner). If the die center
+        // is within this distance of a wall, a corner can geometrically reach it — and no die
+        // outside this zone can be touching the wall regardless of orientation.
         let maxCenter = DiceTrayEntity.halfSize - DiceEntity.wallHeuristicRadius
         let position = die.entity.position
-        return abs(position.x) >= (maxCenter - Self.wallRescueInset)
-            || abs(position.z) >= (maxCenter - Self.wallRescueInset)
+        return abs(position.x) >= maxCenter || abs(position.z) >= maxCenter
     }
 
     private func supportingDieIndex(for index: Int) -> Int? {

@@ -9,7 +9,8 @@ struct PreGameGridView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     private var useSingleColumn: Bool {
-        horizontalSizeClass == .compact && verticalSizeClass == .regular
+        true
+//        horizontalSizeClass == .compact && verticalSizeClass == .regular
     }
 
     private var gridColumns: [GridItem] {

@@ -8,7 +8,8 @@ extension PlayerModel {
             initials: initials,
             themeID: themeID,
             createdAt: createdAt,
-            isArchived: isArchived
+            isArchived: isArchived,
+            source: source
         )
     }
 
@@ -19,5 +20,6 @@ extension PlayerModel {
         themeID = player.themeID
         createdAt = player.createdAt
         isArchived = player.isArchived
+        sourceRaw = player.source.rawValue
     }
 }

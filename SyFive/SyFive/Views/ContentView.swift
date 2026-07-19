@@ -13,6 +13,8 @@ struct ContentView: View {
     @State private var showsGameNight = false
     @State private var showsSessionEndedAlert = false
     @State private var showsGameNightReconnect = false
+    @State private var showsInviteInstructions = false
+    @State private var showsCancelGameNightAlert = false
     /// Set when the reconnect alert's "Restart as Host" is tapped, so isSessionActive handler
     /// can skip the seating sheet and jump straight to the in-progress match.
     @State private var pendingResumeMatchID: UUID? = nil
@@ -83,20 +85,7 @@ struct ContentView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        if model.hasStarted && !model.isGameOver {
-                            showsResetAlert = true
-                        } else {
-                            model.abandonMatch(in: modelContext)
-                            model.resetGame()
-                            if gameNight.isSessionActive && gameNight.role == .host {
-                                startGameNightRematch()
-                            }
-                        }
-                    } label: {
-                        Image(systemName: model.hasStarted && !model.isGameOver ? "arrow.clockwise" : "plus")
-                    }
-                    .accessibilityLabel("New Game")
+                    leadingNavButton
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
@@ -163,7 +152,12 @@ struct ContentView: View {
                         model.resetGame()
                     }
                 } else {
-                    Button("Start Over", role: .destructive) {
+                    Button("Pause") {
+                        // Detach from the current record in memory — it stays in History
+                        // as an Unfinished game resumable from the next app launch.
+                        model.resetGame()
+                    }
+                    Button("Delete & Start New", role: .destructive) {
                         model.abandonMatch(in: modelContext)
                         model.resetGame()
                     }
@@ -171,7 +165,7 @@ struct ContentView: View {
             } message: {
                 Text(gameNight.isSessionActive && gameNight.role == .host
                      ? "Start a new Game Night game with the same players, or reset to a local game."
-                     : "This will reset the current game and scores.")
+                     : "Pause saves the game to History so you can resume it later. Delete removes it permanently.")
             }
             .alert("Game Night ended", isPresented: $showsSessionEndedAlert) {
                 Button("OK") { gameNight.clearSessionEndedFlag() }
@@ -179,23 +173,51 @@ struct ContentView: View {
                 Text("Your progress has been saved. Start a new Game Night session to continue.")
             }
             .alert("Reconnect Game Night?", isPresented: $showsGameNightReconnect) {
-                Button("Restart as Host") {
-                    Task {
-                        do {
-                            try await gameNight.startAsHost()
-                        } catch {
-                            logger.error(self, "GN reconnect failed: \(error)")
+                Button("Resume as Host") {
+                    gameNight.prepareAsHost()
+                    GameNightSharing.present(
+                        onRequiresConversation: {
+                            gameNight.cancelHostPreparation()
                             pendingResumeMatchID = nil
                             pendingResumeGameID = nil
+                        },
+                        onDismissed: {
+                            logger.info(self, "reconnect onDismissed: isSessionActive=\(gameNight.isSessionActive) phase=\(String(describing: gameNight.phase))")
+                            if gameNight.isSessionActive && gameNight.phase == .settingTable {
+                                Task { @MainActor in
+                                    try? await Task.sleep(nanoseconds: 500_000_000)
+                                    guard gameNight.isSessionActive && gameNight.phase == .settingTable else { return }
+                                    showsGameNight = true
+                                }
+                            }
                         }
-                    }
+                    )
                 }
                 Button("Play Locally", role: .cancel) {
                     pendingResumeMatchID = nil
                     pendingResumeGameID = nil
                 }
             } message: {
-                Text("Your scores are intact. If you were the host, tap Restart as Host — guests will rejoin via FaceTime.")
+                Text("Your scores are intact. If you were the host, tap Resume as Host — guests will rejoin automatically.")
+            }
+            .alert(
+                gameNight.isSessionPending ? "Cancel Game Night Invite?" : "End Game Night?",
+                isPresented: $showsCancelGameNightAlert
+            ) {
+                Button(gameNight.isSessionPending ? "Cancel Invite" : "End Game Night",
+                       role: .destructive) {
+                    if gameNight.isSessionPending {
+                        gameNight.cancelHostPreparation()
+                    } else {
+                        gameNight.abandonSession()
+                    }
+                }
+                Button(gameNight.isSessionPending ? "Keep Waiting" : "Keep Playing",
+                       role: .cancel) {}
+            } message: {
+                Text(gameNight.isSessionPending
+                     ? "Your invite will be cancelled and the other player won't be able to join."
+                     : "This will end the Game Night session for all players.")
             }
             .onChange(of: gameNight.sessionEndedDuringPlay) { _, ended in
                 if ended { showsSessionEndedAlert = true }
@@ -219,7 +241,6 @@ struct ContentView: View {
             seedSettingsIfNeeded()
             seedYatzyGameIfNeeded()
             loadMatchIfNeeded()
-            gameNight.startListeningForSessions()
             // Sync initial settings values (onChange won't fire for the first load).
             director.soundEnabled   = appSettings?.soundEnabled   ?? true
             director.hapticsEnabled = appSettings?.hapticsEnabled ?? true
@@ -227,35 +248,61 @@ struct ContentView: View {
             director.warmUpHaptics()
             syncCommentaryEngine()
         }
+        // Restore commentary when session ends (isSessionActive false→true is handled below).
         .onChange(of: gameNight.isSessionActive) { _, active in
-            syncCommentaryEngine()  // gate / restore on every session transition
-            if active {
-                showsGameNightReconnect = false
-                gameNight.attach(matchController: model)
-                let ctx = modelContext
-                gameNight.onMatchComplete = { completedMatch in
-                    // Guests write exactly once — upsert by session UUID.
-                    let matchID = completedMatch.id
-                    var descriptor = FetchDescriptor<MatchModel>(
-                        predicate: #Predicate { $0.id == matchID }
-                    )
-                    descriptor.fetchLimit = 1
-                    if let existing = (try? ctx.fetch(descriptor))?.first {
-                        existing.hydrate(from: completedMatch, context: ctx)
-                    } else {
-                        let newModel = MatchModel()
-                        ctx.insert(newModel)
-                        newModel.hydrate(from: completedMatch, context: ctx)
-                    }
-                    try? ctx.save()
-                }
-                // Reconnect path: resume the already-started match without going through
-                // the seating sheet. Non-reconnect sessions show the seating sheet normally.
-                if let matchID = pendingResumeMatchID, let gameID = pendingResumeGameID {
-                    pendingResumeMatchID = nil
-                    pendingResumeGameID = nil
-                    gameNight.resumeAsHost(matchID: matchID, gameID: gameID)
+            if !active { syncCommentaryEngine() }
+        }
+        // Keyed off sessionActivationCount rather than isSessionActive so this always fires,
+        // even when tearDownSession() + reconfigure flips isSessionActive false→true in the
+        // same SwiftUI render cycle (net value unchanged → onChange would otherwise be skipped).
+        .onChange(of: gameNight.sessionActivationCount) { _, count in
+            logger.info(self, "onChange(sessionActivationCount): count=\(count) isSessionActive=\(gameNight.isSessionActive) phase=\(String(describing: gameNight.phase))")
+            guard gameNight.isSessionActive else {
+                logger.warning(self, "onChange(sessionActivationCount): isSessionActive=false, skipping")
+                return
+            }
+            syncCommentaryEngine()
+            showsGameNightReconnect = false
+            // Close any open sheets so the seating sheet can present immediately.
+            showsHistory = false
+            showsSettings = false
+            showsAbout = false
+            showsFeelBoard = false
+            showsInviteInstructions = false
+            gameNight.attach(matchController: model)
+            let ctx = modelContext
+            gameNight.onMatchComplete = { completedMatch in
+                // Guests write exactly once — upsert by session UUID.
+                let matchID = completedMatch.id
+                var descriptor = FetchDescriptor<MatchModel>(
+                    predicate: #Predicate { $0.id == matchID }
+                )
+                descriptor.fetchLimit = 1
+                if let existing = (try? ctx.fetch(descriptor))?.first {
+                    existing.hydrate(from: completedMatch, context: ctx)
                 } else {
+                    let newModel = MatchModel()
+                    ctx.insert(newModel)
+                    newModel.hydrate(from: completedMatch, context: ctx)
+                }
+                try? ctx.save()
+            }
+            // Reconnect path: skip the seating sheet and jump into the running match.
+            // Fresh sessions show the seating sheet normally.
+            if let matchID = pendingResumeMatchID, let gameID = pendingResumeGameID {
+                pendingResumeMatchID = nil
+                pendingResumeGameID = nil
+                gameNight.resumeAsHost(matchID: matchID, gameID: gameID)
+            } else {
+                // Delay sheet presentation so the UIKit GroupActivitySharingController
+                // dismiss animation (~0.35s) fully completes before SwiftUI presents.
+                // controller.result resolves when the user's action completes, not when
+                // the animation finishes. Without the delay, showsGameNight = true silently
+                // fails and gets stuck at true (making subsequent taps no-ops).
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    guard gameNight.isSessionActive else { return }
+                    logger.info(self, "onChange(sessionActivationCount): showing Game Night sheet")
                     showsGameNight = true
                 }
             }
@@ -264,6 +311,7 @@ struct ContentView: View {
             if newPhase == .inProgress {
                 showsGameNight = false
                 markCurrentMatchAsGameNight()
+                upsertGameNightPlayerModels()
             }
             // Re-show the seating sheet when the host calls playAgain().
             if newPhase == .settingTable && gameNight.isSessionActive { showsGameNight = true }
@@ -287,8 +335,11 @@ struct ContentView: View {
             celebrationCoordinator.triggerGameOver(winnerIndices: model.winnerIndices)
         }
         .sheet(isPresented: $showsHistory) {
-            MatchHistoryView()
-                .environment(\.theme, theme)
+            MatchHistoryView(
+                activeMatchID: model.persistedMatchID,
+                onActiveMatchDeleted: { model.resetGame() }
+            )
+            .environment(\.theme, theme)
         }
         .sheet(isPresented: $showsSettings, onDismiss: { syncCommentaryEngine() }) {
             SettingsView()
@@ -302,10 +353,11 @@ struct ContentView: View {
             FeelBoardView()
                 .environment(director)
         }
-        .sheet(isPresented: $showsGameNight, onDismiss: {
-            if !gameNight.isSessionActive { return }
-        }) {
+        .sheet(isPresented: $showsGameNight) {
             TableSettingView(gameNight: gameNight)
+        }
+        .sheet(isPresented: $showsInviteInstructions) {
+            GameNightInviteInstructions()
         }
     }
 
@@ -347,6 +399,7 @@ struct ContentView: View {
         if let matchModel = (try? modelContext.fetch(inProgress))?.first,
            !matchModel.participants.isEmpty {
             model.load(from: matchModel)
+            ensurePlayerModels(for: matchModel.participants)
             if matchModel.isGameNight && !gameNight.isSessionActive {
                 showsGameNightReconnect = true
                 pendingResumeMatchID = matchModel.id
@@ -374,6 +427,32 @@ struct ContentView: View {
                 playerID: p.playerID
             )
         }
+        ensurePlayerModels(for: lastMatch.participants)
+    }
+
+    /// Ensures a PlayerModel exists locally for every participant with a non-nil playerID.
+    /// Safe to call for any match type — local players already have entries (skip),
+    /// and anonymous participants (playerID == nil) are skipped automatically.
+    /// Used to recover missing Game Night remote player roster entries on app launch.
+    private func ensurePlayerModels(for participants: [ParticipantModel]) {
+        var changed = false
+        for p in participants {
+            guard let playerID = p.playerID else { continue }
+            var descriptor = FetchDescriptor<PlayerModel>(
+                predicate: #Predicate { $0.id == playerID }
+            )
+            descriptor.fetchLimit = 1
+            if (try? modelContext.fetch(descriptor))?.first != nil { continue }
+            let pm = PlayerModel()
+            pm.id = playerID
+            pm.name = p.displayName
+            pm.initials = p.displayInitials
+            pm.themeID = p.displayThemeID
+            pm.source = .gameNight
+            modelContext.insert(pm)
+            changed = true
+        }
+        if changed { try? modelContext.save() }
     }
 
     private func markCurrentMatchAsGameNight() {
@@ -388,6 +467,29 @@ struct ContentView: View {
         try? modelContext.save()
     }
 
+    /// Creates PlayerModel records for any remote participants whose playerID doesn't
+    /// exist in local storage yet. Called when a Game Night match goes .inProgress so
+    /// every device has a full player roster for stats and future merge UI.
+    private func upsertGameNightPlayerModels() {
+        guard gameNight.isSessionActive else { return }
+        for i in 0..<model.playerCount {
+            guard let playerID = model.playerIDs[i] else { continue }
+            var descriptor = FetchDescriptor<PlayerModel>(
+                predicate: #Predicate { $0.id == playerID }
+            )
+            descriptor.fetchLimit = 1
+            if (try? modelContext.fetch(descriptor))?.first != nil { continue }
+            let pm = PlayerModel()
+            pm.id = playerID
+            pm.name = model.playerDisplayNames[i]
+            pm.initials = model.playerDisplayInitials[i]
+            pm.themeID = model.playerThemes[i].rawValue
+            pm.source = PlayerSource.gameNight
+            modelContext.insert(pm)
+        }
+        try? modelContext.save()
+    }
+
     private func startGameNightRematch() {
         let descriptor = FetchDescriptor<GameModel>(
             predicate: #Predicate { $0.scoringSystemID == "yatzy" }
@@ -398,6 +500,7 @@ struct ContentView: View {
     }
 
     private func saveMatch() {
+        guard model.hasGameActivity else { return }
         guard model.playerCount > 0 else { return }
         let gameDescriptor = FetchDescriptor<GameModel>(
             predicate: #Predicate { $0.scoringSystemID == "yatzy" }
@@ -448,27 +551,125 @@ struct ContentView: View {
         openURL(appStoreURL)
     }
 
+    /// Leading nav bar button — tracks Game Night state when a session is active or pending,
+    /// otherwise shows the standard new-game / reset button.
+    @ViewBuilder
+    private var leadingNavButton: some View {
+        if gameNight.isSessionPending {
+            // Invite sent — let the host cancel from the nav bar (with confirmation).
+            Button {
+                showsCancelGameNightAlert = true
+            } label: {
+                Image(systemName: "person.3.fill")
+            }
+            .accessibilityLabel("Cancel Game Night Invite")
+        } else if gameNight.isSessionActive {
+            if gameNight.phase == .settingTable {
+                Button { showsGameNight = true } label: {
+                    Image(systemName: "person.3.fill")
+                }
+                .accessibilityLabel("Game Night Setup")
+            } else if gameNight.phase == .inProgress && gameNight.role == .host {
+                Button {
+                    showsCancelGameNightAlert = true
+                } label: {
+                    Image(systemName: "person.3.fill")
+                }
+                .accessibilityLabel("End Game Night")
+            } else if gameNight.phase == .completed && gameNight.role == .host {
+                Button {
+                    model.abandonMatch(in: modelContext)
+                    model.resetGame()
+                    gameNight.playAgain()
+                } label: {
+                    Image(systemName: "arrow.clockwise.circle")
+                }
+                .accessibilityLabel("Play Again")
+            } else {
+                // Guest during active session — visual indicator only.
+                Image(systemName: "person.3.fill")
+                    .foregroundStyle(.secondary)
+            }
+        } else if gameNight.isEligibleForGroupSession {
+            // Active FaceTime/iMessage call — promote Game Night as the primary action.
+            Button {
+                gameNight.prepareAsHost()
+                GameNightSharing.present(
+                    onRequiresConversation: {
+                        gameNight.cancelHostPreparation()
+                        showsInviteInstructions = true
+                    },
+                    onDismissed: {
+                        if gameNight.isSessionActive && gameNight.phase == .settingTable {
+                            Task { @MainActor in
+                                try? await Task.sleep(nanoseconds: 500_000_000)
+                                guard gameNight.isSessionActive && gameNight.phase == .settingTable else { return }
+                                showsGameNight = true
+                            }
+                        }
+                    }
+                )
+            } label: {
+                Image(systemName: "person.3.fill")
+            }
+            .accessibilityLabel("Game Night")
+        } else {
+            // No Game Night — standard new-game / reset button.
+            Button {
+                if model.hasGameActivity && !model.isGameOver {
+                    showsResetAlert = true
+                } else {
+                    model.abandonMatch(in: modelContext)
+                    model.resetGame()
+                }
+            } label: {
+                Image(systemName: model.hasGameActivity && !model.isGameOver ? "arrow.clockwise" : "plus")
+            }
+            .accessibilityLabel("New Game")
+        }
+    }
+
     /// Context-aware Game Night section for the main menu. Never calls activate()
     /// when a session is already live — prevents the iOS "Replace?" conflict dialog
     /// that appears when a second device tries to start while the host's session is
     /// still propagating via GroupActivities.
     @ViewBuilder
     private var gameNightMenuSection: some View {
-        if !gameNight.isSessionActive {
-            // No active session — offer to start one as host.
+        if !gameNight.isSessionActive && !gameNight.isSessionPending {
+            // No session and no pending invite — offer to start one as host.
             Button {
-                Task {
-                    do {
-                        try await gameNight.startAsHost()
-                        showsGameNight = true
-                    } catch {
-                        // activate() may throw if the user dismissed an iOS system
-                        // prompt; a session from the other device may arrive shortly.
-                        logger.error(self, "startAsHost failed: \(error)")
+                gameNight.prepareAsHost()
+                GameNightSharing.present(
+                    onRequiresConversation: {
+                        // Sharing controller was cancelled or needs a conversation first.
+                        // Reset host preparation so a later incoming session from another
+                        // device doesn't incorrectly claim this device as host.
+                        gameNight.cancelHostPreparation()
+                        showsInviteInstructions = true
+                    },
+                    onDismissed: {
+                        logger.info(self, "gameNightMenu onDismissed: isSessionActive=\(gameNight.isSessionActive) phase=\(String(describing: gameNight.phase))")
+                        // With Messages SharePlay, the session can arrive while the UIKit modal
+                        // is on screen. Re-show the seating sheet after a brief delay so the
+                        // UIKit dismiss animation finishes before SwiftUI tries to present.
+                        if gameNight.isSessionActive && gameNight.phase == .settingTable {
+                            Task { @MainActor in
+                                try? await Task.sleep(nanoseconds: 500_000_000)
+                                guard gameNight.isSessionActive && gameNight.phase == .settingTable else { return }
+                                showsGameNight = true
+                            }
+                        }
                     }
-                }
+                )
             } label: {
                 Label("Game Night", systemImage: "person.3.fill")
+            }
+        } else if gameNight.isSessionPending {
+            // Invite sent — waiting for recipients to accept. Block a second invite.
+            Button(role: .destructive) {
+                showsCancelGameNightAlert = true
+            } label: {
+                Label("Cancel Game Night Invite", systemImage: "xmark.circle")
             }
         } else {
             // Active session — show phase-appropriate actions; never re-activate.
@@ -480,7 +681,7 @@ struct ContentView: View {
             if gameNight.role == .host {
                 if gameNight.phase == .inProgress {
                     Button(role: .destructive) {
-                        gameNight.abandonSession()
+                        showsCancelGameNightAlert = true
                     } label: {
                         Label("End Game Night", systemImage: "xmark.circle")
                     }

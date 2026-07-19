@@ -7,6 +7,15 @@ import Charts
 struct MatchProgressionChart: View {
     let progression: MatchProgression
     let playerNames: [UUID: String]    // participantID → display name
+    let playerColors: [UUID: Color]    // participantID → theme primaryAccent
+
+    // Parallel arrays for chartForegroundStyleScale(domain:range:).
+    private var colorScaleDomain: [String] {
+        progression.participants.map { playerNames[$0.participantID] ?? "Player" }
+    }
+    private var colorScaleRange: [Color] {
+        progression.participants.map { playerColors[$0.participantID] ?? .accentColor }
+    }
 
     var body: some View {
         if progression.participants.allSatisfy({ $0.points.isEmpty }) {
@@ -30,6 +39,7 @@ struct MatchProgressionChart: View {
                 }
             }
         }
+        .chartForegroundStyleScale(domain: colorScaleDomain, range: colorScaleRange)
         .chartXAxis {
             AxisMarks(values: .automatic(desiredCount: 5)) { _ in
                 AxisGridLine()
@@ -74,7 +84,9 @@ struct MatchProgressionChart: View {
     )
     MatchProgressionChart(
         progression: sampleProgression,
-        playerNames: [id1: "Alex", id2: "Sam"]
+        playerNames: [id1: "Alex", id2: "Sam"],
+        playerColors: [id1: Theme(type: .midnight, colorScheme: .dark).primaryAccent,
+                       id2: Theme(type: .blossom, colorScheme: .dark).primaryAccent]
     )
     .frame(height: 260)
     .padding()

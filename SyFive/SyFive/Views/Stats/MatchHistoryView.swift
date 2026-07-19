@@ -1,43 +1,111 @@
 import SwiftUI
 import SwiftData
 
+private enum HistorySegment: CaseIterable {
+    case finished, unfinished
+}
+
 struct MatchHistoryView: View {
+    /// ID of the match currently loaded in the active game view.
+    /// When a deletion targets this match, `onActiveMatchDeleted` is called.
+    var activeMatchID: UUID? = nil
+    var onActiveMatchDeleted: (() -> Void)? = nil
+
     @Environment(\.dismiss) private var dismiss
-    
+    @Environment(\.modelContext) private var modelContext
+
     @Query(filter: #Predicate<MatchModel> { $0.statusRaw == "completed" },
            sort: \MatchModel.startedAt, order: .reverse)
-    
-    private var matchModels: [MatchModel]
+    private var completedMatches: [MatchModel]
+
+    @Query(filter: #Predicate<MatchModel> { $0.statusRaw == "inProgress" },
+           sort: \MatchModel.startedAt, order: .reverse)
+    private var inProgressMatches: [MatchModel]
+
+    @State private var segment: HistorySegment = .finished
+    @State private var matchToDelete: MatchModel? = nil
 
     var body: some View {
         NavigationStack {
             List {
-                ForEach(matchModels) { matchModel in
-                    NavigationLink {
-                        MatchDetailView(matchModel: matchModel)
-                    } label: {
-                        MatchHistoryRow(match: matchModel.toDomain())
+                if segment == .finished {
+                    ForEach(completedMatches) { matchModel in
+                        NavigationLink {
+                            MatchDetailView(matchModel: matchModel)
+                        } label: {
+                            MatchHistoryRow(match: matchModel.toDomain())
+                        }
+                    }
+                } else {
+                    ForEach(inProgressMatches) { matchModel in
+                        UnfinishedMatchRow(match: matchModel.toDomain())
+                    }
+                    .onDelete { indexSet in
+                        guard let i = indexSet.first else { return }
+                        matchToDelete = inProgressMatches[i]
                     }
                 }
             }
-            .navigationTitle("History")
+            .animation(.default, value: segment)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    if inProgressMatches.isEmpty {
+                        Text("History").font(.headline)
+                    } else {
+                        Picker("", selection: $segment) {
+                            Text("Finished").tag(HistorySegment.finished)
+                            Text("Unfinished (\(inProgressMatches.count))").tag(HistorySegment.unfinished)
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 240)
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                 }
             }
+            .onChange(of: inProgressMatches.isEmpty) { _, isEmpty in
+                if isEmpty { segment = .finished }
+            }
             .overlay {
-                if matchModels.isEmpty {
+                if segment == .finished && completedMatches.isEmpty {
                     ContentUnavailableView(
                         "No completed games",
                         systemImage: "list.bullet.rectangle",
                         description: Text("Finished games will appear here.")
                     )
+                } else if segment == .unfinished && inProgressMatches.isEmpty {
+                    ContentUnavailableView(
+                        "No unfinished games",
+                        systemImage: "checkmark.circle",
+                        description: Text("All your games have been finished.")
+                    )
                 }
+            }
+            .alert(
+                "Delete this unfinished game?",
+                isPresented: Binding(
+                    get: { matchToDelete != nil },
+                    set: { if !$0 { matchToDelete = nil } }
+                )
+            ) {
+                Button("Delete", role: .destructive) {
+                    if let m = matchToDelete {
+                        if m.id == activeMatchID { onActiveMatchDeleted?() }
+                        modelContext.delete(m)
+                    }
+                    matchToDelete = nil
+                }
+                Button("Cancel", role: .cancel) { matchToDelete = nil }
+            } message: {
+                Text("This cannot be undone.")
             }
         }
     }
 }
+
+// MARK: - Finished row
 
 private struct MatchHistoryRow: View {
     let match: Match
@@ -78,8 +146,36 @@ private struct MatchHistoryRow: View {
     }
 }
 
+// MARK: - Unfinished row
+
+private struct UnfinishedMatchRow: View {
+    let match: Match
+
+    private var playerNames: String {
+        let names = match.participants.map(\.displayName)
+        return names.isEmpty ? "No players" : names.joined(separator: " · ")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(match.startedAt, style: .date)
+                .font(.subheadline.weight(.semibold))
+            Text(playerNames)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+// MARK: - Match detail
+
 struct MatchDetailView: View {
     let matchModel: MatchModel
+
+    @Environment(\.modelContext) private var modelContext
+    @Query private var allPlayers: [PlayerModel]
 
     private var match: Match { matchModel.toDomain() }
 
@@ -87,17 +183,37 @@ struct MatchDetailView: View {
         match.participants.sorted { $0.rank < $1.rank }
     }
 
+    @Environment(\.colorScheme) private var colorScheme
+
+    // Keyed by participantID (p.id), which is what MatchProgressionChart uses.
     private var playerNames: [UUID: String] {
-        Dictionary(uniqueKeysWithValues: match.participants.compactMap { p in
-            guard let pid = p.playerID else { return nil }
-            return (pid, p.displayName)
+        Dictionary(uniqueKeysWithValues: match.participants.map { p in
+            (p.id, p.displayName)
         })
+    }
+
+    private var playerColors: [UUID: Color] {
+        Dictionary(uniqueKeysWithValues: match.participants.map { p in
+            let themeType = Theme.ThemeType(rawValue: p.displayThemeID) ?? .midnight
+            return (p.id, Theme(type: themeType, colorScheme: colorScheme).primaryAccent)
+        })
+    }
+
+    private var missingFromRoster: [Participant] {
+        let knownIDs = Set(allPlayers.map(\.id))
+        return match.participants.filter { p in
+            guard let pid = p.playerID else { return false }
+            return !knownIDs.contains(pid)
+        }
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 finalScoresCard
+                if !missingFromRoster.isEmpty {
+                    missingPlayersCard
+                }
                 if let prog = matchProgression(from: match) {
                     progressionCard(prog)
                 }
@@ -106,6 +222,46 @@ struct MatchDetailView: View {
         }
         .navigationTitle(match.startedAt.formatted(date: .abbreviated, time: .omitted))
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var missingPlayersCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Not in Roster")
+                    .font(.headline)
+                Text("These players appeared in this match but aren't in your local roster.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(missingFromRoster) { participant in
+                HStack {
+                    Text(participant.displayName)
+                        .font(.subheadline)
+                    Spacer()
+                    Button("Add to Roster") {
+                        addToRoster(participant)
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(UIColor.secondarySystemBackground))
+        )
+    }
+
+    private func addToRoster(_ participant: Participant) {
+        guard let playerID = participant.playerID else { return }
+        let pm = PlayerModel()
+        pm.id = playerID
+        pm.name = participant.displayName
+        pm.initials = participant.displayInitials
+        pm.themeID = participant.displayThemeID
+        pm.source = .gameNight
+        modelContext.insert(pm)
+        try? modelContext.save()
     }
 
     private var finalScoresCard: some View {
@@ -138,7 +294,7 @@ struct MatchDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Match Progression")
                 .font(.headline)
-            MatchProgressionChart(progression: prog, playerNames: playerNames)
+            MatchProgressionChart(progression: prog, playerNames: playerNames, playerColors: playerColors)
                 .frame(height: 220)
         }
         .padding(16)
