@@ -150,7 +150,20 @@ struct Theme {
         }
     }
 
-    var heldAccent: Color { secondaryAccent }
+    var heldAccent: Color {
+        // Paper's secondaryAccent is near-identical to its primaryAccent (both neutral grays).
+        // Use near-black instead so a held die is unambiguously distinct from a rolling one.
+        if type == .paper {
+            return Color(white: 0.08)
+        }
+        return secondaryAccent
+    }
+
+    /// Pip color to use when a die is held. White for Paper so pips stay legible on the
+    /// near-black held body; identical to pipColor for every other theme.
+    var heldPipColor: Color {
+        type == .paper ? Color.white : pipColor
+    }
 
     var oppositeTheme: Theme {
         switch type {

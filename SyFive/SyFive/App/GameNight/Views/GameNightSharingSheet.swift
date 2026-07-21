@@ -12,13 +12,14 @@ import GroupActivities
 enum GameNightSharing {
     private static let logger = AppLogger(category: "GameNightSharing")
 
-    /// `onDismissed` is always called once the UIKit controller is gone (success OR fast-cancel).
-    /// Use it to re-show the Game Night seating sheet if the session arrived while the
-    /// controller was on screen (Messages SharePlay delivers the session before the modal
-    /// dismisses, but iOS resets SwiftUI's isPresented binding when a UIKit modal takes over).
+    /// `onDismissed` is always called once the UIKit controller is gone (success OR cancel).
+    /// `onCancelled` is called when the user explicitly cancelled (slow cancel, elapsed >= 1s) —
+    /// use it to clean up isSessionPending. `onRequiresConversation` is called for fast-cancel
+    /// (sandbox auto-dismiss) to show invite instructions.
     static func present(
         onRequiresConversation: @escaping () -> Void,
-        onDismissed: @escaping () -> Void = {}
+        onDismissed: @escaping () -> Void = {},
+        onCancelled: @escaping () -> Void = {}
     ) {
         guard let controller = try? GroupActivitySharingController(GameNightActivity()),
               let topVC = topmostViewController() else {
@@ -33,15 +34,17 @@ enum GameNightSharing {
             let outcome = await controller.result
             let elapsed = Date().timeIntervalSince(presentedAt)
             logger.info(logger, "present: controller result=\(String(describing: outcome)) elapsed=\(String(format: "%.2f", elapsed))s")
-            // Always notify that the UIKit modal is now gone.
             logger.info(logger, "present: calling onDismissed")
             onDismissed()
-            guard case .cancelled = outcome,
-                  elapsed < 1.0 else { return }
-            logger.info(logger, "present: fast-cancel detected, sleeping 0.6s then calling onRequiresConversation")
-            // Let the auto-dismiss animation finish before SwiftUI presents the next sheet.
-            try? await Task.sleep(nanoseconds: 600_000_000)
-            onRequiresConversation()
+            guard case .cancelled = outcome else { return }
+            if elapsed < 1.0 {
+                logger.info(logger, "present: fast-cancel detected, sleeping 0.6s then calling onRequiresConversation")
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                onRequiresConversation()
+            } else {
+                logger.info(logger, "present: slow-cancel detected, calling onCancelled")
+                onCancelled()
+            }
         }
     }
 
@@ -66,7 +69,7 @@ struct GameNightInviteInstructions: View {
         NavigationStack {
             List {
                 Section {
-                    Text("SharePlay requires a FaceTime call or iMessage thread. Start one with your players, then tap **Invite Players** again — no ongoing call needed, just an existing conversation.")
+                    Text("SharePlay requires a FaceTime call or Messages conversation. Start one with your players, then tap **Invite Players** again — no ongoing call needed, just an existing conversation.")
                         .listRowBackground(Color.clear)
                 } header: {
                     Text("A conversation is required")
@@ -77,11 +80,13 @@ struct GameNightInviteInstructions: View {
                     } label: {
                         Label("Open FaceTime", systemImage: "video.fill")
                     }
+                    .tint(.green)
                     Button {
                         openURL(URL(string: "messages://")!)
                     } label: {
                         Label("Open Messages", systemImage: "message.fill")
                     }
+                    .tint(.green)
                 }
             }
             .navigationTitle("Invite Players")

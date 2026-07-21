@@ -9,7 +9,8 @@ struct TableSettingView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @State private var showsSeatClaim = false
-    @State private var showsInviteInstructions = false
+    @State private var showsGameNightHelp = false
+    @State private var showsEndSessionConfirmation = false
 
     var body: some View {
         NavigationStack {
@@ -23,10 +24,25 @@ struct TableSettingView: View {
             .navigationTitle("Game Night")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItemGroup(placement: .topBarLeading) {
                     Button("Leave") {
-                        gameNight.endSession()
-                        dismiss()
+                        if gameNight.role == .host {
+                            showsEndSessionConfirmation = true
+                        } else if gameNight.phase == .settingTable {
+                            // Pre-game: release the seat and close.
+                            gameNight.leaveSession()
+                            dismiss()
+                        } else {
+                            // Game in progress: just close — leaveSession() would nil
+                            // out localParticipantID, silencing all outbound messages.
+                            dismiss()
+                        }
+                    }
+                    if gameNight.role == .host {
+                        Button { showsGameNightHelp = true } label: {
+                            Image(systemName: "questionmark.circle")
+                        }
+                        .accessibilityLabel("Game Night Help")
                     }
                 }
                 if gameNight.role == .host && gameNight.phase == .settingTable {
@@ -35,11 +51,23 @@ struct TableSettingView: View {
                     }
                 }
             }
+            .alert("End Game Night for Everyone?", isPresented: $showsEndSessionConfirmation) {
+                Button("End Game Night", role: .destructive) {
+                    gameNight.endSession()
+                    dismiss()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("All players will be disconnected from this Game Night session.")
+            }
             .sheet(isPresented: $showsSeatClaim) {
                 SeatClaimSheet(gameNight: gameNight)
             }
-            .sheet(isPresented: $showsInviteInstructions) {
-                GameNightInviteInstructions()
+            .sheet(isPresented: $showsGameNightHelp) {
+                GameNightHelpSheet(
+                    context: gameNight.role == .host ? .hosting : .joining,
+                    isEligibleForGroupSession: true
+                )
             }
         }
     }
@@ -54,10 +82,16 @@ struct TableSettingView: View {
                     .italic()
             }
             ForEach(gameNight.seats, id: \.seatClaimID) { seat in
+                let isOwnSeat = seat.seatClaimID == gameNight.localSeatClaimID
                 SeatRow(seat: seat, colorScheme: colorScheme,
-                        isLocal: seat.seatClaimID == gameNight.localSeatClaimID,
-                        canRemove: gameNight.role == .host && gameNight.phase == .settingTable) {
-                    gameNight.removeSeat(seatClaimID: seat.seatClaimID)
+                        isLocal: isOwnSeat,
+                        canRemove: gameNight.phase == .settingTable && (gameNight.role == .host || isOwnSeat),
+                        canReorder: gameNight.role == .host && gameNight.phase == .settingTable) {
+                    if gameNight.role == .host {
+                        gameNight.removeSeat(seatClaimID: seat.seatClaimID)
+                    } else {
+                        gameNight.leaveSession()
+                    }
                 }
             }
             .onMove { indices, destination in
@@ -76,13 +110,6 @@ struct TableSettingView: View {
                     Label("Claim a seat", systemImage: "person.badge.plus")
                 }
             }
-            if gameNight.role == .host {
-                Button {
-                    GameNightSharing.present { showsInviteInstructions = true }
-                } label: {
-                    Label("Invite Players…", systemImage: "square.and.arrow.up")
-                }
-            }
         }
     }
 
@@ -94,11 +121,22 @@ struct TableSettingView: View {
                         Task { await gameNight.broadcastTableState() }
                     }
                 if gameNight.commentaryEnabled {
-                    let packName = CommentaryPersonality.find(id: gameNight.commentaryPackID).displayName
-                    let levelName = CommentaryLevel(rawValue: gameNight.commentaryLevelRaw)?.displayName ?? "Celebrations"
-                    Text("\(packName) · \(levelName)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Picker("Personality", selection: $gameNight.commentaryPackID) {
+                        ForEach(CommentaryPersonality.all, id: \.id) { pack in
+                            Text(pack.displayName).tag(pack.id)
+                        }
+                    }
+                    .onChange(of: gameNight.commentaryPackID) { _, _ in
+                        Task { await gameNight.broadcastTableState() }
+                    }
+                    Picker("Level", selection: $gameNight.commentaryLevelRaw) {
+                        ForEach(CommentaryLevel.allCases, id: \.rawValue) { level in
+                            Text(level.displayName).tag(level.rawValue)
+                        }
+                    }
+                    .onChange(of: gameNight.commentaryLevelRaw) { _, _ in
+                        Task { await gameNight.broadcastTableState() }
+                    }
                 }
             } else {
                 if gameNight.commentaryEnabled {
@@ -150,7 +188,12 @@ private struct SeatRow: View {
     let colorScheme: ColorScheme
     let isLocal: Bool
     let canRemove: Bool
+    let canReorder: Bool
     let onRemove: () -> Void
+
+    @Environment(\.editMode) private var editMode
+
+    private var isEditing: Bool { editMode?.wrappedValue.isEditing == true }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -170,6 +213,11 @@ private struct SeatRow: View {
                         .foregroundStyle(.red)
                 }
                 .buttonStyle(.plain)
+            }
+            if canReorder && !isEditing {
+                Image(systemName: "line.3.horizontal")
+                    .foregroundStyle(.tertiary)
+                    .font(.title3)
             }
         }
     }

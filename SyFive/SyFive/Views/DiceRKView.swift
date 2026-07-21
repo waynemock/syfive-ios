@@ -10,7 +10,8 @@ extension Theme {
             held: UIColor(heldAccent),
             nudgeable: UIColor(stuckColor),
             stuck: UIColor(errorColor),
-            pip: UIColor(pipColor)
+            pip: UIColor(pipColor),
+            heldPip: UIColor(heldPipColor)
         )
     }
 }

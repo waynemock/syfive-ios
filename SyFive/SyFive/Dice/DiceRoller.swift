@@ -176,6 +176,25 @@ final class DiceRoller {
     private static let outOfBoundsLowerY: Float = -0.10
     private static let outOfBoundsUpperY: Float = DiceTrayEntity.collisionWallHeight + 0.20
 
+    /// XZ positions for non-held dice in spectator display, keyed by die count.
+    /// Arranged as the pip face of a standard die matching the remaining count.
+    /// Centered at Z≈0.020, clear of the held-dice row at Z≈−0.098.
+    private static let spectatorRollingGrids: [[SIMD2<Float>]] = {
+        let s: Float = 0.055   // half-spread, matches spawnGrid spacing
+        let z: Float = 0.020   // pattern centre Z
+        return [
+            [],                                                               // 0
+            [.init( 0,    z    )],                                            // 1 – centre
+            [.init( s,    z - s), .init(-s,    z + s)],                      // 2 – diagonal
+            [.init( s,    z - s), .init( 0,    z    ), .init(-s,    z + s)], // 3 – diagonal + centre
+            [.init( s,    z - s), .init(-s,    z - s),                       // 4 – corners
+             .init( s,    z + s), .init(-s,    z + s)],
+            [.init( s,    z - s), .init(-s,    z - s),                       // 5 – corners + centre
+             .init( 0,    z    ),
+             .init( s,    z + s), .init(-s,    z + s)],
+        ]
+    }()
+
     // MARK: - Setup
 
     func setup(in content: inout RealityViewCameraContent, palette: DiceTintPalette) {
@@ -215,6 +234,28 @@ final class DiceRoller {
     func applyPalette(_ palette: DiceTintPalette) {
         for die in diceEntities {
             die.updatePalette(palette)
+        }
+    }
+
+    /// Current top-face values for all dice entities (spectator snap path).
+    var currentFaceValues: [Int] { diceEntities.map { $0.topFaceValue } }
+
+    /// Snaps held dice to the far-wall row immediately — called on watchers when
+    /// a roll begins so held dice line up at the same moment the roller sees them move.
+    /// Non-held dice stay where they are until the roll result arrives.
+    func snapHeldDicesToRow(held: [Bool]) {
+        setHeld(held)
+        arrangeHeldDice(for: held)
+    }
+
+    /// Spectator view of a roll in progress: held dice snap to the far-wall row
+    /// and stay visible; non-held dice are hidden until the result arrives.
+    func prepareForSpectatorRoll(held: [Bool]) {
+        setHeld(held)
+        arrangeHeldDice(for: held)
+        for (index, die) in diceEntities.enumerated() {
+            guard !(index < held.count && held[index]) else { continue }
+            die.entity.isEnabled = false
         }
     }
 
@@ -275,6 +316,7 @@ final class DiceRoller {
             die.isHeld = heldFlag
             die.isStuck = false
             die.isNudgeable = false
+            die.isSuspectedStuck = false
             die.entity.isEnabled = true
 
             guard !heldFlag else { continue }
@@ -455,6 +497,7 @@ final class DiceRoller {
         die.isHeld = false
         die.isStuck = false
         die.isNudgeable = false
+        die.isSuspectedStuck = false
         die.entity.isEnabled = true
 
         logDiagnostics("Rerolling stuck die \(index) on roll \(activeRollNumber)")
@@ -571,6 +614,7 @@ final class DiceRoller {
             die.isHeld = false
             die.isStuck = false
             die.isNudgeable = false
+            die.isSuspectedStuck = false
             die.entity.isEnabled = false
         }
     }
@@ -612,6 +656,69 @@ final class DiceRoller {
             let isHeld = index < held.count ? held[index] : false
             let position = SIMD3<Float>(offset.x, presentationY, offset.y)
             die.present(value: value, at: position, isHeld: isHeld)
+        }
+    }
+
+    /// Spectator-only display after receiving a remote roll result.
+    /// Held dice appear in the far-wall row (same position the roller sees).
+    /// Non-held dice are arranged in the pip pattern of a die face matching their count.
+    /// Does not affect the roller's physics roll or the local undo path.
+    func displaySpectatorResult(values: [Int], held: [Bool]) {
+        guard !diceEntities.isEmpty else { return }
+
+        isRolling = false
+        pendingResults = nil
+        currentHeld = held
+        settleCounters = Array(repeating: 0, count: diceCount)
+        stillUnsettledTime = Array(repeating: 0, count: diceCount)
+        escapeRecoveryCounters = Array(repeating: 0, count: diceCount)
+        currentRollRescueKinds = Array(repeating: [], count: diceCount)
+        currentRollEscapeRecovered = Array(repeating: false, count: diceCount)
+        currentRollStuckReroll = Array(repeating: false, count: diceCount)
+        currentRollStuckNudge = Array(repeating: false, count: diceCount)
+        currentRollStuckReason = Array(repeating: "", count: diceCount)
+        currentRollFinalAlign = Array(repeating: 0, count: diceCount)
+        currentRollUnsettledSecs = Array(repeating: 0, count: diceCount)
+        currentRollFinalX = Array(repeating: 0, count: diceCount)
+        currentRollFinalZ = Array(repeating: 0, count: diceCount)
+        currentRollFinalHeight = Array(repeating: 0, count: diceCount)
+        currentRollSpawnPos = Array(repeating: .zero, count: diceCount)
+        flattenNudgeAxes = Array(repeating: nil, count: diceCount)
+        floorStuckTime = Array(repeating: 0, count: diceCount)
+        activeRollingIndices = []
+        pendingLaunchIndices = []
+        stuckDieIndices = []
+        rollTime = 0
+        activeRollNumber = 0
+        lastStuckLogBucket = -1
+
+        let presentationY = (DiceEntity.dieSize / 2) + 0.001
+        let dieSize = DiceEntity.dieSize
+        let halfSize = DiceTrayEntity.halfSize
+
+        let heldIndices   = diceEntities.indices.filter {  $0 < held.count && held[$0] }
+        let rolledIndices = diceEntities.indices.filter { !($0 < held.count && held[$0]) }
+
+        // Held dice: far-wall row sorted by face value — matches what the roller sees.
+        let sortedHeld = heldIndices.sorted {
+            let va = $0 < values.count ? values[$0] : 1
+            let vb = $1 < values.count ? values[$1] : 1
+            return va == vb ? $0 < $1 : va < vb
+        }
+        let heldStartX = -halfSize + Self.heldDiceWallInset + (dieSize / 2)
+        let heldZ      = -halfSize + Self.heldDiceWallInset + dieSize
+        for (row, dieIndex) in sortedHeld.enumerated() {
+            let x     = heldStartX + Float(row) * (dieSize + Self.heldDiceVisualGap)
+            let value = dieIndex < values.count ? values[dieIndex] : 1
+            diceEntities[dieIndex].present(value: value, at: SIMD3<Float>(x, presentationY, heldZ), isHeld: true)
+        }
+
+        // Non-held dice: pip pattern of a die face matching the remaining count.
+        let grid = Self.spectatorRollingGrids[min(rolledIndices.count, Self.spectatorRollingGrids.count - 1)]
+        for (row, dieIndex) in rolledIndices.enumerated() {
+            let offset = row < grid.count ? grid[row] : Self.spawnGrid[row % Self.spawnGrid.count]
+            let value  = dieIndex < values.count ? values[dieIndex] : 1
+            diceEntities[dieIndex].present(value: value, at: SIMD3<Float>(offset.x, presentationY, offset.y), isHeld: false)
         }
     }
 

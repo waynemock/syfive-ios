@@ -69,10 +69,18 @@ final class DiceEntity {
     /// die either settles normally or graduates to isNudgeable/isStuck.
     var isSuspectedStuck: Bool = false {
         didSet {
-            guard oldValue != isSuspectedStuck else { return }
             if isSuspectedStuck {
+                guard !oldValue else { return }  // Already pulsing — don't restart.
                 startSuspectedPulse()
             } else {
+                // Always cancel and clear, even when transitioning false→false.
+                // The pulse task can run one final iteration after cancel (the
+                // Task.sleep throws CancellationError but try? absorbs it, so the
+                // body executes once more before the while-guard exits). That final
+                // run re-sets suspectedTint after we cleared it. Without this
+                // unconditional clear, the die stays yellow for the rest of the
+                // session because isSuspectedStuck is already false so didSet's
+                // guard would skip cleanup on every subsequent call.
                 suspectedPulseTask?.cancel()
                 suspectedPulseTask = nil
                 suspectedTint = nil
@@ -511,9 +519,10 @@ final class DiceEntity {
 
     private func rebuildAppearance() {
         visualEntity.model?.materials = [makeMaterial(held: isHeld, stuck: isStuck, nudgeable: isNudgeable)]
+        let currentPipTint = isHeld ? palette.heldPip : pipTint
         for child in visualEntity.children {
             guard let modelEntity = child as? ModelEntity else { continue }
-            modelEntity.model?.materials = [UnlitMaterial(color: pipTint)]
+            modelEntity.model?.materials = [UnlitMaterial(color: currentPipTint)]
         }
     }
 
@@ -522,28 +531,23 @@ final class DiceEntity {
     private func startSuspectedPulse() {
         suspectedPulseTask?.cancel()
         suspectedPulseTask = Task { @MainActor [weak self] in
-            var t: Float = 0.0
-            var forward = true
+            var phase: Float = 0.0
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 50_000_000) // 50ms ≈ 20fps
-                guard let self else { return }
-                if forward { t += 0.08 } else { t -= 0.08 }
-                if t >= 1.0 { t = 1.0; forward = false }
-                if t <= 0.0 { t = 0.0; forward = true }
-                // Blend up to 55% of nudgeable yellow — visible but not alarming.
-                self.suspectedTint = Self.lerpColor(from: self.normalTint, to: self.nudgeableTint, t: t * 0.55)
+                // Re-check after sleep: Task.sleep throws CancellationError when
+                // cancelled but try? swallows it, so the body would execute one
+                // more time without this guard. That stale write is what races with
+                // the suspectedTint = nil cleanup in isSuspectedStuck.didSet.
+                guard let self, !Task.isCancelled else { return }
+                // Sweep the full hue wheel (~1.25 s per cycle) at full saturation and
+                // brightness. When the algorithm finally declares the die stuck and sets
+                // isNudgeable, the pulse is cleared and the nudgeable (yellow) tint takes
+                // over — the rainbow naturally "settles" on yellow.
+                phase += 0.04
+                let hue = CGFloat(phase.truncatingRemainder(dividingBy: 1.0))
+                self.suspectedTint = UIColor(hue: hue, saturation: 1.0, brightness: 0.95, alpha: 1.0)
                 self.rebuildAppearance()
             }
         }
-    }
-
-    private static func lerpColor(from a: UIColor, to b: UIColor, t: Float) -> UIColor {
-        var r0: CGFloat = 0, g0: CGFloat = 0, b0: CGFloat = 0, a0: CGFloat = 0
-        var r1: CGFloat = 0, g1: CGFloat = 0, b1: CGFloat = 0, a1: CGFloat = 0
-        a.getRed(&r0, green: &g0, blue: &b0, alpha: &a0)
-        b.getRed(&r1, green: &g1, blue: &b1, alpha: &a1)
-        let tt = CGFloat(t)
-        return UIColor(red: r0 + (r1 - r0) * tt, green: g0 + (g1 - g0) * tt,
-                       blue: b0 + (b1 - b0) * tt, alpha: a0 + (a1 - a0) * tt)
     }
 }

@@ -108,6 +108,12 @@ struct DiceAreaView: View {
                     let capturedHeld = model.held
                     let gn = gameNight
                     let dr = diceRoller
+                    // Notify watchers immediately so they can snap held dice to the row
+                    // before the roll starts. lastRecipe is the previous roll's recipe;
+                    // the recipe itself is ignored by watchers — only heldMask matters.
+                    if gn.isSessionActive && gn.phase == .inProgress, let recipe = dr.lastRecipe {
+                        gn.sendRollBegan(recipe: recipe, rollIndex: 0, heldMask: capturedHeld)
+                    }
                     Task {
                         await dr.roll(held: capturedHeld) { values in
                             model.receiveDiceResults(values)
@@ -132,7 +138,7 @@ struct DiceAreaView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(!canRoll)
 
-                if model.canUndoLastScore && isLocalTurn {
+                if model.canUndoLastScore && isUndoTurn {
                     Button {
                         suppressNextPlayerChangeDiceClear = true
                         if let restoration = model.undoLastScore() {
@@ -212,25 +218,15 @@ struct DiceAreaView: View {
         let mc = model
         let cc = celebrationCoordinator
 
-        // Captured by both onRollBegan and onRollResult so the held mask at roll-start
-        // is preserved when the settled values arrive. Swift captures this var by reference
-        // (heap-boxed), so the write in onRollBegan is visible in onRollResult.
-        var lastRollHeldMask: [Bool] = []
-
-        // Cache the held mask so onRollResult can restore dice with the correct held state.
-        // setHeld also tells the DiceRoller which dice to treat as kinematically fixed.
+        // When a roll begins, keep held dice visible in the far-wall row and
+        // hide the non-held dice. They reappear in pip-pattern when the result arrives.
         gn.onRollBegan = { _, heldMask in
-            lastRollHeldMask = heldMask
-            dr.setHeld(heldMask)
+            dr.prepareForSpectatorRoll(held: heldMask)
         }
-        // Show settled values statically — no physics replay on spectator devices.
-        // Use lastRollHeldMask so dice that were held before this roll remain visually held.
-        // Without this, restoreDice(allFalse) would wipe previously-held dice every roll.
+        // Show settled values: held dice in the far-wall row, non-held in the pip
+        // pattern matching the count. Uses currentHeld — kept accurate by onHoldToggled.
         gn.onRollResult = { values in
-            let held = lastRollHeldMask.isEmpty
-                ? Array(repeating: false, count: values.count)
-                : lastRollHeldMask
-            dr.restoreDice(values: values, held: held)
+            dr.displaySpectatorResult(values: values, held: dr.currentHeld)
             let isYatzy = !values.isEmpty && values.dropFirst().allSatisfy { $0 == values[0] }
             guard isYatzy else { return }
             let yahtzeeBox = mc.scores(for: mc.currentPlayerIndex)[.yahtzee]
@@ -252,7 +248,24 @@ struct DiceAreaView: View {
 
     // MARK: - Helpers
 
+    private var isUndoTurn: Bool {
+        guard let undoIndex = model.undoPlayerIndex else { return false }
+        guard gameNight.isSessionActive, gameNight.phase == .inProgress else { return true }
+        guard let localID = gameNight.localParticipantID else { return true }
+        let ids = model.participantIDs
+        guard undoIndex < ids.count else { return true }
+        return ids[undoIndex] == localID
+    }
+
     private var isLocalTurn: Bool {
+        // Pre-reconnect: participant ID was restored from UserDefaults — use it
+        // so the scorecard highlights the correct player while waiting.
+        if gameNight.isGuestAwaitingReconnect,
+           let localID = gameNight.localParticipantID {
+            let ids = model.participantIDs
+            guard model.currentPlayerIndex < ids.count else { return false }
+            return ids[model.currentPlayerIndex] == localID
+        }
         guard gameNight.isSessionActive, gameNight.phase == .inProgress else { return true }
         guard let localID = gameNight.localParticipantID else { return true }
         let ids = model.participantIDs
@@ -261,7 +274,8 @@ struct DiceAreaView: View {
     }
 
     private var canRoll: Bool {
-        isLocalTurn && model.rollsRemaining > 0 && !model.isGameOver && !model.isRolling
+        guard !gameNight.isGuestAwaitingReconnect else { return false }
+        return isLocalTurn && model.rollsRemaining > 0 && !model.isGameOver && !model.isRolling
     }
 
     private var shouldPrimeInitialTurn: Bool {
@@ -271,6 +285,9 @@ struct DiceAreaView: View {
     }
 
     private var rollButtonTitle: String {
+        if gameNight.isGuestAwaitingReconnect {
+            return "Waiting for Game Night…"
+        }
         if gameNight.isSessionActive, gameNight.phase == .inProgress, !isLocalTurn {
             let names = model.playerDisplayNames
             guard model.currentPlayerIndex < names.count else { return "Waiting…" }

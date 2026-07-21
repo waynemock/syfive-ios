@@ -46,6 +46,9 @@ final class GameNightController {
     /// Set when a game-in-progress session ended unexpectedly (host killed or abandoned).
     /// Cleared by `clearSessionEndedFlag()` after the user dismisses the alert.
     private(set) var sessionEndedDuringPlay = false
+    /// True on a guest device after loading a game night match at relaunch, until the
+    /// host's session arrives. Blocks rolling so the guest can't act as the wrong player.
+    private(set) var isGuestAwaitingReconnect = false
 
     /// Session-scoped commentary override. Host writes; guests receive via tableState.
     /// Never persisted — the session ends and solo settings reassert immediately.
@@ -166,14 +169,17 @@ final class GameNightController {
             return
         }
 
-        // Resolve role from activation intent, not from stale prior role.
-        // If WE activated this session (pendingHostSessionActivation), we are host.
-        // If another device activated it (the flag is false), step down to guest.
-        // This fixes the case where both devices restart and both tap Start — the
-        // device whose activate() call "won" is correctly identified as host, and
-        // the other device correctly falls through to guest even if its role was .host.
-        let takingHostRole = pendingHostSessionActivation
+        // Resolve role from activation intent OR a persisted host flag for this session.
+        // The session ID is stable across app relaunches (it's a system-level GroupActivities
+        // object tied to the FaceTime call), so persisting against it lets the host device
+        // recover its role automatically on relaunch without any user interaction.
+        let sessionHostKey = "gn.host.\(incomingSession.id.uuidString)"
+        let persistedAsHost = UserDefaults.standard.bool(forKey: sessionHostKey)
+        let takingHostRole = pendingHostSessionActivation || persistedAsHost
         pendingHostSessionActivation = false
+        if takingHostRole {
+            UserDefaults.standard.set(true, forKey: sessionHostKey)
+        }
 
         logger.info(self, "configureSession: takingHostRole=\(takingHostRole), calling tearDownSession")
         // Tear down any prior session cleanly.
@@ -200,14 +206,27 @@ final class GameNightController {
             // Announce ourselves so the host can version-check and send tableState.
             Task { await self.sendHello() }
         }
+        isGuestAwaitingReconnect = false
         sessionActivationCount += 1
         logger.info(self, "configureSession: *** COMPLETE *** role=\(String(describing: role)) activationCount=\(sessionActivationCount)")
     }
 
     // MARK: - Session teardown
 
+    /// Ends the session for ALL participants. Host-only path — guests should call `leaveSession()`.
     func endSession() {
         tearDownSession()
+    }
+
+    /// Guest-only: releases this device's seat without ending the session for others.
+    /// The GroupActivities session stays active so the guest can reopen the Game Night
+    /// sheet from the nav bar and reclaim a seat before the host starts the game.
+    func leaveSession() {
+        if let claimID = localSeatClaimID {
+            send(.seatRelease, payload: SeatReleasePayload(seatClaimID: claimID))
+        }
+        localSeatClaimID = nil
+        localParticipantID = nil
     }
 
     /// Host-only: reset to the table-setting phase with existing seats so players
@@ -231,11 +250,30 @@ final class GameNightController {
         sessionEndedDuringPlay = false
     }
 
+    /// Called when a guest device loads a game night match at relaunch. Restores
+    /// the persisted participant ID so the UI can identify the local player before
+    /// the session arrives, and blocks rolling until the host reconnects.
+    func prepareForGuestReconnect(matchID: UUID) {
+        isGuestAwaitingReconnect = true
+        if localParticipantID == nil {
+            let key = "gn.participantID.\(matchID.uuidString)"
+            if let stored = UserDefaults.standard.string(forKey: key),
+               let pid = UUID(uuidString: stored) {
+                localParticipantID = pid
+            }
+        }
+    }
+
     private func tearDownSession() {
         pendingHostSessionActivation = false
         isSessionPending = false
         messageListenTask?.cancel()
         messageListenTask = nil
+        // Clear the persisted host flag so a future relaunch doesn't auto-promote
+        // a stale device. Captured before the session reference is cleared.
+        if let id = session?.id {
+            UserDefaults.standard.removeObject(forKey: "gn.host.\(id.uuidString)")
+        }
         session?.end()
         session = nil
         messenger = nil
@@ -251,6 +289,7 @@ final class GameNightController {
         pendingAuthoritativeResult = nil
         onUndoWithDice = nil
         onMatchComplete = nil
+        isGuestAwaitingReconnect = false
         detachMatchController()
     }
 
@@ -419,6 +458,7 @@ final class GameNightController {
         case .matchState:     handleMatchState(envelope)                        // Phase 4
         case .matchComplete:  handleMatchComplete(envelope)                     // Phase 7
         case .matchAbandoned: handleMatchAbandoned()                            // Phase 8
+        case .seatRelease:    handleSeatRelease(envelope)
         }
     }
 
@@ -455,6 +495,10 @@ final class GameNightController {
         commentaryEnabled = payload.commentaryEnabled
         commentaryPackID = payload.commentaryPackID
         commentaryLevelRaw = payload.commentaryLevelRaw
+        // If the host removed our seat, clear the local claim so the Claim button reappears.
+        if let claimID = localSeatClaimID, !seats.contains(where: { $0.seatClaimID == claimID }) {
+            localSeatClaimID = nil
+        }
         logger.debug(self, "tableState received: \(seats.count) seats, phase=\(payload.phase.rawValue)")
     }
 
@@ -473,9 +517,20 @@ final class GameNightController {
         guard role != .host,
               let payload = try? envelope.decode(MatchStartPayload.self) else { return }
         phase = .inProgress
+        // Primary: match by seat claim ID.
         if let myClaimID = localSeatClaimID,
            let mapping = payload.seatMappings.first(where: { $0.seatClaimID == myClaimID }) {
             localParticipantID = mapping.participantID
+        }
+        // Fallback for reconnect: seatClaimID was cleared at relaunch.
+        // Match the guest's old participantID → playerID → new participantID.
+        else if let mc = matchController,
+                let oldPID = localParticipantID,
+                let myIndex = mc.participantIDs.firstIndex(of: oldPID),
+                myIndex < mc.playerIDs.count,
+                let myPlayerID = mc.playerIDs[myIndex],
+                let participant = payload.match.participants.first(where: { $0.playerID == myPlayerID }) {
+            localParticipantID = participant.id
         }
         sessionMatchID = payload.match.id
         sessionGameID = payload.match.gameID
@@ -512,6 +567,17 @@ final class GameNightController {
         guard role != .host,
               let mc = matchController,
               let payload = try? envelope.decode(MatchStatePayload.self) else { return }
+        // On reconnect the session resumes via matchState (not matchStart), so
+        // localParticipantID was never set. Restore it so send* methods work.
+        if localParticipantID == nil {
+            let pidKey = "gn.participantID.\(payload.match.id.uuidString)"
+            if let stored = UserDefaults.standard.string(forKey: pidKey),
+               let pid = UUID(uuidString: stored) {
+                localParticipantID = pid
+            }
+            if sessionMatchID == nil { sessionMatchID = payload.match.id }
+            if sessionGameID == nil { sessionGameID = payload.match.gameID }
+        }
         mc.loadFromGameNightMatch(payload.match, currentSeatIndex: payload.currentSeatIndex)
         if let dv = payload.diceValues, let rr = payload.rollsRemaining {
             mc.restoreDiceStateAfterUndo(values: dv, rollsRemaining: rr)
@@ -559,6 +625,12 @@ final class GameNightController {
         let wasInProgress = phase == .inProgress
         tearDownSession()
         if wasInProgress { sessionEndedDuringPlay = true }
+    }
+
+    private func handleSeatRelease(_ envelope: GameNightEnvelope) {
+        guard role == .host, phase == .settingTable else { return }
+        guard let payload = try? envelope.decode(SeatReleasePayload.self) else { return }
+        removeSeat(seatClaimID: payload.seatClaimID)
     }
 
     // MARK: - Send helper
@@ -662,6 +734,7 @@ final class GameNightController {
             localParticipantID = mapping.participantID
         }
         persistLocalParticipantID()
+        UserDefaults.standard.set(true, forKey: "gn.wasHost.\(match.id.uuidString)")
         matchController?.loadFromGameNightMatch(match, currentSeatIndex: currentSeatIndex)
         send(.matchStart, payload: MatchStartPayload(match: match, seatMappings: mappings, currentSeatIndex: currentSeatIndex))
         Task { await self.broadcastTableState() }
@@ -671,8 +744,11 @@ final class GameNightController {
     /// current session. Builds a fresh match (new UUIDs, zeroed scores) from the existing
     /// seat list and broadcasts a `matchStart` so all guests reset alongside the host.
     func broadcastRematch(gameID: UUID) {
-        guard role == .host, phase == .inProgress, matchController != nil else { return }
+        guard role == .host,
+              phase == .inProgress || phase == .completed,
+              matchController != nil else { return }
         let (match, mappings) = buildInitialMatch(gameID: gameID)
+        phase = .inProgress
         sessionMatchID = match.id
         sessionGameID = gameID
         if let myClaimID = localSeatClaimID,
@@ -680,6 +756,7 @@ final class GameNightController {
             localParticipantID = mapping.participantID
         }
         persistLocalParticipantID()
+        UserDefaults.standard.set(true, forKey: "gn.wasHost.\(match.id.uuidString)")
         matchController?.loadFromGameNightMatch(match, currentSeatIndex: 0)
         send(.matchStart, payload: MatchStartPayload(match: match, seatMappings: mappings, currentSeatIndex: 0))
         Task { await broadcastTableState() }
@@ -697,6 +774,27 @@ final class GameNightController {
         if let idStr = UserDefaults.standard.string(forKey: key),
            let id = UUID(uuidString: idStr) {
             localParticipantID = id
+        }
+        UserDefaults.standard.set(true, forKey: "gn.wasHost.\(matchID.uuidString)")
+        // Rebuild seat snapshots from the current match so broadcastRematch / playAgain
+        // have a populated seat list even after a cold relaunch (tearDownSession clears seats).
+        if let mc = matchController, mc.playerCount > 0 {
+            var rebuilt: [SeatSnapshot] = []
+            for i in 0..<mc.playerCount {
+                let claimID = UUID()
+                let isLocal = mc.participantIDs[i] == localParticipantID
+                if isLocal { localSeatClaimID = claimID }
+                rebuilt.append(SeatSnapshot(
+                    seatClaimID: claimID,
+                    seat: i,
+                    playerID: mc.playerIDs[i],
+                    displayName: mc.playerDisplayNames[i],
+                    displayInitials: mc.playerDisplayInitials[i],
+                    displayThemeID: mc.playerThemes[i].rawValue,
+                    isLocal: isLocal
+                ))
+            }
+            seats = rebuilt
         }
         phase = .inProgress
         Task {

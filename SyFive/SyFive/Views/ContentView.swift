@@ -13,12 +13,18 @@ struct ContentView: View {
     @State private var showsGameNight = false
     @State private var showsSessionEndedAlert = false
     @State private var showsGameNightReconnect = false
+    @State private var showsGameNightGuestReconnect = false
+    @State private var showsGameNightLocalConflictAlert = false
     @State private var showsInviteInstructions = false
     @State private var showsCancelGameNightAlert = false
+    @State private var showsGameNightHelp = false
     /// Set when the reconnect alert's "Restart as Host" is tapped, so isSessionActive handler
     /// can skip the seating sheet and jump straight to the in-progress match.
     @State private var pendingResumeMatchID: UUID? = nil
     @State private var pendingResumeGameID: UUID? = nil
+    /// Match ID held across the guest reconnect alert — passed to prepareForGuestReconnect
+    /// only if the user explicitly taps Rejoin.
+    @State private var pendingGuestReconnectMatchID: UUID? = nil
     @State private var celebrationCoordinator = CelebrationCoordinator()
     @State private var commentaryEngine: CommentaryEngine? = nil
     @State private var isUpdateAvailable = false
@@ -38,40 +44,7 @@ struct ContentView: View {
         let theme = Theme(type: model.themeType(for: model.currentPlayerIndex), colorScheme: colorScheme)
         NavigationStack {
             GeometryReader { proxy in
-                let isPortrait = proxy.size.height >= proxy.size.width
-                let contentWidth = max(0, proxy.size.width - 48)
-                let scorecardAvailableWidth = isPortrait
-                    ? proxy.size.width
-                    : max(0, (contentWidth - 20) / 2 + 48)
-                // AnyLayout switches between VStack/HStack while preserving
-                // subview identity — this prevents DiceAreaView (and its
-                // embedded RealityView) from being destroyed on rotation.
-                let layout = isPortrait
-                    ? AnyLayout(VStackLayout(spacing: 12))
-                    : AnyLayout(HStackLayout(spacing: 20))
-                layout {
-                    DiceAreaView(model: model)
-                        .background(debugColor(Color.red.opacity(0.25)))
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    ScorecardView(model: model, availableWidth: scorecardAvailableWidth)
-                        .padding(.horizontal, -24)
-                        .background(debugColor(Color.green.opacity(0.25)))
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .padding(.horizontal, 24)
-                .background(Color.clear.preference(key: ContentLayoutSizePreferenceKey.self, value: proxy.size))
-                .onAppear {
-                    logger.debug(self, "geometry size onAppear: \(proxy.size.width)x\(proxy.size.height)")
-                }
-                .onChange(of: proxy.size) { _, newSize in
-                    let newContentWidth = max(0, newSize.width - 48)
-                    let newScorecardWidth = isPortrait
-                        ? newSize.width
-                        : max(0, (newContentWidth - 20) / 2 + 48)
-                    logger.debug(self, "geometry size onChange: \(newSize.width)x\(newSize.height)")
-                    logger.debug(self, "scorecardAvailableWidth: \(newScorecardWidth)")
-                }
+                geometryContent(proxy: proxy)
             }
             .background(debugColor(Color.yellow.opacity(0.25)))
             .background(theme.backgroundColor)
@@ -84,8 +57,14 @@ struct ContentView: View {
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItemGroup(placement: .topBarLeading) {
                     leadingNavButton
+                    if showsGameNightHelpButton {
+                        Button { showsGameNightHelp = true } label: {
+                            Image(systemName: "questionmark.circle")
+                        }
+                        .accessibilityLabel("Game Night Help")
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
@@ -172,6 +151,19 @@ struct ContentView: View {
             } message: {
                 Text("Your progress has been saved. Start a new Game Night session to continue.")
             }
+            .alert("Reconnect to Game Night?", isPresented: $showsGameNightGuestReconnect) {
+                Button("Rejoin") {
+                    if let matchID = pendingGuestReconnectMatchID {
+                        gameNight.prepareForGuestReconnect(matchID: matchID)
+                    }
+                    pendingGuestReconnectMatchID = nil
+                }
+                Button("Play Locally", role: .cancel) {
+                    pendingGuestReconnectMatchID = nil
+                }
+            } message: {
+                Text("Your scores are intact. If the host restarts the session you'll rejoin automatically.")
+            }
             .alert("Reconnect Game Night?", isPresented: $showsGameNightReconnect) {
                 Button("Resume as Host") {
                     gameNight.prepareAsHost()
@@ -190,6 +182,11 @@ struct ContentView: View {
                                     showsGameNight = true
                                 }
                             }
+                        },
+                        onCancelled: {
+                            gameNight.cancelHostPreparation()
+                            pendingResumeMatchID = nil
+                            pendingResumeGameID = nil
                         }
                     )
                 }
@@ -208,8 +205,11 @@ struct ContentView: View {
                        role: .destructive) {
                     if gameNight.isSessionPending {
                         gameNight.cancelHostPreparation()
-                    } else {
+                    } else if gameNight.role == .host {
                         gameNight.abandonSession()
+                    } else {
+                        // Guest ending the session — nuclear option for broken/stuck states.
+                        gameNight.endSession()
                     }
                 }
                 Button(gameNight.isSessionPending ? "Keep Waiting" : "Keep Playing",
@@ -218,6 +218,14 @@ struct ContentView: View {
                 Text(gameNight.isSessionPending
                      ? "Your invite will be cancelled and the other player won't be able to join."
                      : "This will end the Game Night session for all players.")
+            }
+            .alert("Local Game in Progress", isPresented: $showsGameNightLocalConflictAlert) {
+                Button("Play Game Night") {
+                    showsGameNight = true
+                }
+                Button("Keep Playing", role: .cancel) {}
+            } message: {
+                Text("Starting Game Night will set aside your current game. You can resume it from History later.")
             }
             .onChange(of: gameNight.sessionEndedDuringPlay) { _, ended in
                 if ended { showsSessionEndedAlert = true }
@@ -249,8 +257,12 @@ struct ContentView: View {
             syncCommentaryEngine()
         }
         // Restore commentary when session ends (isSessionActive false→true is handled below).
+        // Also dismiss the Game Night sheet so guests aren't left stranded if the host ends the session.
         .onChange(of: gameNight.isSessionActive) { _, active in
-            if !active { syncCommentaryEngine() }
+            if !active {
+                showsGameNight = false
+                syncCommentaryEngine()
+            }
         }
         // Keyed off sessionActivationCount rather than isSessionActive so this always fires,
         // even when tearDownSession() + reconfigure flips isSessionActive false→true in the
@@ -302,8 +314,11 @@ struct ContentView: View {
                 Task { @MainActor in
                     try? await Task.sleep(nanoseconds: 500_000_000)
                     guard gameNight.isSessionActive else { return }
+                    // Don't show the seating sheet when the game is already running —
+                    // the host's matchState arrives during the 500ms window on reconnect.
+                    guard gameNight.phase != .inProgress else { return }
                     logger.info(self, "onChange(sessionActivationCount): showing Game Night sheet")
-                    showsGameNight = true
+                    presentGameNightSheetOrAlert()
                 }
             }
         }
@@ -359,6 +374,48 @@ struct ContentView: View {
         .sheet(isPresented: $showsInviteInstructions) {
             GameNightInviteInstructions()
         }
+        .sheet(isPresented: $showsGameNightHelp) {
+            GameNightHelpSheet(context: gameNightHelpContext, isEligibleForGroupSession: gameNight.isEligibleForGroupSession)
+                .environment(\.theme, theme)
+        }
+    }
+
+    @ViewBuilder
+    private func geometryContent(proxy: GeometryProxy) -> some View {
+        let isPortrait = proxy.size.height >= proxy.size.width
+        let contentWidth = max(0, proxy.size.width - 48)
+        let scorecardAvailableWidth = isPortrait
+            ? proxy.size.width
+            : max(0, (contentWidth - 20) / 2 + 48)
+        // AnyLayout switches between VStack/HStack while preserving
+        // subview identity — this prevents DiceAreaView (and its
+        // embedded RealityView) from being destroyed on rotation.
+        let layout = isPortrait
+            ? AnyLayout(VStackLayout(spacing: 12))
+            : AnyLayout(HStackLayout(spacing: 20))
+        layout {
+            DiceAreaView(model: model)
+                .background(debugColor(Color.red.opacity(0.25)))
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            ScorecardView(model: model, availableWidth: scorecardAvailableWidth)
+                .padding(.horizontal, -24)
+                .background(debugColor(Color.green.opacity(0.25)))
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .padding(.horizontal, 24)
+        .background(Color.clear.preference(key: ContentLayoutSizePreferenceKey.self, value: proxy.size))
+        .onAppear {
+            logger.debug(self, "geometry size onAppear: \(proxy.size.width)x\(proxy.size.height)")
+        }
+        .onChange(of: proxy.size) { _, newSize in
+            let newContentWidth = max(0, newSize.width - 48)
+            let newScorecardWidth = isPortrait
+                ? newSize.width
+                : max(0, (newContentWidth - 20) / 2 + 48)
+            logger.debug(self, "geometry size onChange: \(newSize.width)x\(newSize.height)")
+            logger.debug(self, "scorecardAvailableWidth: \(newScorecardWidth)")
+        }
     }
 
     private func syncCommentaryEngine() {
@@ -401,12 +458,21 @@ struct ContentView: View {
             model.load(from: matchModel)
             ensurePlayerModels(for: matchModel.participants)
             if matchModel.isGameNight && !gameNight.isSessionActive {
-                showsGameNightReconnect = true
-                pendingResumeMatchID = matchModel.id
-                let gameDesc = FetchDescriptor<GameModel>(
-                    predicate: #Predicate { $0.scoringSystemID == "yatzy" }
-                )
-                pendingResumeGameID = (try? modelContext.fetch(gameDesc))?.first?.id
+                let wasHost = UserDefaults.standard.bool(forKey: "gn.wasHost.\(matchModel.id.uuidString)")
+                if wasHost {
+                    // Host re-initiates the session from the reconnect alert.
+                    showsGameNightReconnect = true
+                    pendingResumeMatchID = matchModel.id
+                    let gameDesc = FetchDescriptor<GameModel>(
+                        predicate: #Predicate { $0.scoringSystemID == "yatzy" }
+                    )
+                    pendingResumeGameID = (try? modelContext.fetch(gameDesc))?.first?.id
+                } else {
+                    // Guest (or host whose wasHost flag was lost): show a choice rather than
+                    // silently blocking rolling. prepareForGuestReconnect is called only on opt-in.
+                    showsGameNightGuestReconnect = true
+                    pendingGuestReconnectMatchID = matchModel.id
+                }
             }
             return
         }
@@ -563,12 +629,14 @@ struct ContentView: View {
                 Image(systemName: "person.3.fill")
             }
             .accessibilityLabel("Cancel Game Night Invite")
+            .tint(Color.green)
         } else if gameNight.isSessionActive {
             if gameNight.phase == .settingTable {
                 Button { showsGameNight = true } label: {
                     Image(systemName: "person.3.fill")
                 }
                 .accessibilityLabel("Game Night Setup")
+                .tint(Color.green)
             } else if gameNight.phase == .inProgress && gameNight.role == .host {
                 Button {
                     showsCancelGameNightAlert = true
@@ -576,19 +644,18 @@ struct ContentView: View {
                     Image(systemName: "person.3.fill")
                 }
                 .accessibilityLabel("End Game Night")
+                .tint(Color.green)
             } else if gameNight.phase == .completed && gameNight.role == .host {
                 Button {
-                    model.abandonMatch(in: modelContext)
-                    model.resetGame()
-                    gameNight.playAgain()
+                    startGameNightRematch()
                 } label: {
                     Image(systemName: "arrow.clockwise.circle")
                 }
                 .accessibilityLabel("Play Again")
             } else {
-                // Guest during active session — visual indicator only.
+                // Guest during active session — green indicator, non-interactive.
                 Image(systemName: "person.3.fill")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.green)
             }
         } else if gameNight.isEligibleForGroupSession {
             // Active FaceTime/iMessage call — promote Game Night as the primary action.
@@ -604,9 +671,12 @@ struct ContentView: View {
                             Task { @MainActor in
                                 try? await Task.sleep(nanoseconds: 500_000_000)
                                 guard gameNight.isSessionActive && gameNight.phase == .settingTable else { return }
-                                showsGameNight = true
+                                presentGameNightSheetOrAlert()
                             }
                         }
+                    },
+                    onCancelled: {
+                        gameNight.cancelHostPreparation()
                     }
                 )
             } label: {
@@ -656,13 +726,19 @@ struct ContentView: View {
                             Task { @MainActor in
                                 try? await Task.sleep(nanoseconds: 500_000_000)
                                 guard gameNight.isSessionActive && gameNight.phase == .settingTable else { return }
-                                showsGameNight = true
+                                presentGameNightSheetOrAlert()
                             }
                         }
+                    },
+                    onCancelled: {
+                        gameNight.cancelHostPreparation()
                     }
                 )
             } label: {
-                Label("Game Night", systemImage: "person.3.fill")
+                Label("Start Game Night", systemImage: "person.3.fill")
+            }
+            Button { showsGameNightHelp = true } label: {
+                Label("Game Night Help", systemImage: "questionmark.circle")
             }
         } else if gameNight.isSessionPending {
             // Invite sent — waiting for recipients to accept. Block a second invite.
@@ -670,6 +746,9 @@ struct ContentView: View {
                 showsCancelGameNightAlert = true
             } label: {
                 Label("Cancel Game Night Invite", systemImage: "xmark.circle")
+            }
+            Button { showsGameNightHelp = true } label: {
+                Label("Game Night Help", systemImage: "questionmark.circle")
             }
         } else {
             // Active session — show phase-appropriate actions; never re-activate.
@@ -688,14 +767,55 @@ struct ContentView: View {
                 }
                 if gameNight.phase == .completed {
                     Button {
-                        model.abandonMatch(in: modelContext)
-                        model.resetGame()
-                        gameNight.playAgain()
+                        startGameNightRematch()
                     } label: {
                         Label("Play Again", systemImage: "arrow.clockwise.circle")
                     }
                 }
+            } else if gameNight.phase == .settingTable {
+                // Escape hatch: when both devices relaunch as guests with no host,
+                // let a non-host end the broken session from the menu.
+                Button(role: .destructive) {
+                    showsCancelGameNightAlert = true
+                } label: {
+                    Label("End Game Night", systemImage: "xmark.circle")
+                }
+            } else if gameNight.role != .host && gameNight.phase == .inProgress {
+                // Guest during active game — green status indicator, no action.
+                Button { } label: {
+                    Label("Game Night Active", systemImage: "person.3.fill")
+                }
+                .tint(Color.green)
             }
+            Button { showsGameNightHelp = true } label: {
+                Label("Game Night Help", systemImage: "questionmark.circle")
+            }
+        }
+    }
+
+    /// True when the leading area is showing a Game Night action (not the plain + / ↺ button).
+    /// Controls visibility of the help (?) button that sits to the right of it.
+    private var showsGameNightHelpButton: Bool {
+        (gameNight.isEligibleForGroupSession && !gameNight.isSessionActive && !gameNight.isSessionPending) ||
+        gameNight.isSessionPending ||
+        (gameNight.isSessionActive && gameNight.phase == .settingTable)
+    }
+
+    private var gameNightHelpContext: GameNightHelpSheet.Context {
+        if gameNight.isSessionPending || (gameNight.isSessionActive && gameNight.role == .host) {
+            return .hosting
+        } else if gameNight.isSessionActive && gameNight.role != .host {
+            return .joined
+        } else {
+            return .preSession
+        }
+    }
+
+    private func presentGameNightSheetOrAlert() {
+        if model.hasStarted && !model.isGameOver {
+            showsGameNightLocalConflictAlert = true
+        } else {
+            showsGameNight = true
         }
     }
 

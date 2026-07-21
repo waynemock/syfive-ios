@@ -9,19 +9,22 @@ struct SeatClaimSheet: View {
     @Environment(\.colorScheme) private var colorScheme
     @Query(sort: \PlayerModel.name) private var players: [PlayerModel]
 
-    private var activePlayers: [PlayerModel] { players.filter { !$0.isArchived } }
+    private var availablePlayers: [PlayerModel] {
+        let seatedIDs = Set(gameNight.seats.compactMap(\.playerID))
+        return players.filter { !$0.isArchived && !seatedIDs.contains($0.id) }
+    }
 
     var body: some View {
         NavigationStack {
             Group {
-                if activePlayers.isEmpty {
+                if availablePlayers.isEmpty {
                     ContentUnavailableView(
-                        "No Players",
-                        systemImage: "person.slash",
-                        description: Text("Add a player in Settings to join the table.")
+                        "Everyone's Seated",
+                        systemImage: "person.3.fill",
+                        description: Text("All players in your roster are already at the table.")
                     )
                 } else {
-                    List(activePlayers, id: \.id) { player in
+                    List(availablePlayers, id: \.id) { player in
                         Button {
                             gameNight.claimSeat(
                                 displayName: player.name,

@@ -142,3 +142,9 @@ struct MatchCompletePayload: Codable, Sendable {
 /// Broadcast when the host abandons the session. Devices close gracefully.
 /// Intentionally empty — the message kind is sufficient.
 struct MatchAbandonedPayload: Codable, Sendable {}
+
+/// Sent by a guest who voluntarily leaves during table setup, so the host
+/// can remove their seat and rebroadcast the updated table state.
+struct SeatReleasePayload: Codable, Sendable {
+    let seatClaimID: UUID
+}

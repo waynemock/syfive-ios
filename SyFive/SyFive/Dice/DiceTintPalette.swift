@@ -8,5 +8,6 @@ struct DiceTintPalette {
     var held: UIColor        // held aside for next roll
     var nudgeable: UIColor   // yellow: stuck, tap to nudge
     var stuck: UIColor       // red: nudge failed, tap to reroll
-    var pip: UIColor         // dot faces
+    var pip: UIColor         // dot faces (rolling / unselected)
+    var heldPip: UIColor     // dot faces when die is held (white on near-black for Paper)
 }
