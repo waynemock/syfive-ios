@@ -67,7 +67,6 @@ struct SoundRenderer {
         let out = buffer.floatChannelData![0]
 
         var rng = FeelLCG(seed: recipe.seeds[seedIndex])
-        let grainAmp = dbToAmp(recipe.grainLevelDb)
         let tailFadeStart = Int((recipe.durationMs - recipe.tailFadeMs) * sampleRate / 1_000.0)
         let bandCount = recipe.grainBandsHz.count
 
@@ -91,14 +90,6 @@ struct SoundRenderer {
             let bandIdx  = Int(rng.next() % UInt64(bandCount))
             let jitter   = -rng.nextDouble() * abs(recipe.grainLevelJitterDb)
             let band     = recipe.grainBandsHz[bandIdx]
-            let noise    = SoundRecipe.Noise(
-                bandLowHz:    band[0],
-                bandHighHz:   band[1],
-                levelDb:      recipe.grainLevelDb + jitter,
-                startMs:      t * 1_000.0,
-                attackMs:     recipe.grainAttackMs,
-                decayTauMs:   recipe.grainDecayTauMs
-            )
             // Render this grain into a temporary slice, then add to output.
             let grainStart  = Int(t * sampleRate)
             let grainFrames = min(Int(recipe.grainDurMs * sampleRate / 1_000.0) + 1,

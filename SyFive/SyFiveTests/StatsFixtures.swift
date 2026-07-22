@@ -160,7 +160,7 @@ enum StatsFixtures {
         Match(
             id: UUID(),
             gameID: FixtureID.yatzyGame,
-            scoringSystemID: "yatzy",
+            scoringSystemID: ScoringSystemID.yatzy.rawValue,
             scoringSystemVersion: 1,
             status: .completed,
             startedAt: startedAt,

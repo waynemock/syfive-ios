@@ -460,7 +460,7 @@ struct StatsTests {
             scoreEntries: [entry]
         )
         let match = Match(
-            id: UUID(), gameID: FixtureID.yatzyGame, scoringSystemID: "yatzy",
+            id: UUID(), gameID: FixtureID.yatzyGame, scoringSystemID: ScoringSystemID.yatzy.rawValue,
             scoringSystemVersion: 1, status: .completed,
             startedAt: FixtureID.epoch,
             completedAt: FixtureID.epoch.addingTimeInterval(1800),

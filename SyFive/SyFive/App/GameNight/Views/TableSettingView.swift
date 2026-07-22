@@ -174,8 +174,9 @@ private struct StartGameButton: View {
     }
 
     private func fetchYatzyGameID() -> UUID? {
+        let yatzyID = ScoringSystemID.yatzy.rawValue
         let descriptor = FetchDescriptor<GameModel>(
-            predicate: #Predicate { $0.scoringSystemID == "yatzy" }
+            predicate: #Predicate { $0.scoringSystemID == yatzyID }
         )
         return (try? modelContext.fetch(descriptor))?.first?.id
     }

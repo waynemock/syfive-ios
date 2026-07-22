@@ -155,10 +155,14 @@ struct PlayerProfileView: View {
             VStack(alignment: .leading, spacing: 6) {
                 insightRow(label: backHalfLabel(clutch.backHalfVsFront))
                 if clutch.comebacksWon > 0 {
-                    insightRow(label: "\(clutch.comebacksWon) comeback \(clutch.comebacksWon == 1 ? "win" : "wins") from behind")
+                    insightRow(label: clutch.comebacksWon == 1
+                        ? "1 comeback win from behind"
+                        : "\(clutch.comebacksWon) comeback wins from behind")
                 }
                 if clutch.leadsSurrendered > 0 {
-                    insightRow(label: "\(clutch.leadsSurrendered) lead\(clutch.leadsSurrendered == 1 ? "" : "s") surrendered late")
+                    insightRow(label: clutch.leadsSurrendered == 1
+                        ? "1 lead surrendered late"
+                        : "\(clutch.leadsSurrendered) leads surrendered late")
                 }
             }
         }

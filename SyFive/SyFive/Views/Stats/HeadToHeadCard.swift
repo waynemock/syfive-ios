@@ -63,9 +63,9 @@ struct HeadToHeadCard: View {
     }
 
     private var metaText: Text {
-        var parts: [String] = ["\(h2h.sharedMatches) \(h2h.sharedMatches == 1 ? "game" : "games")"]
+        var parts: [String] = [h2h.sharedMatches == 1 ? "1 game" : "\(h2h.sharedMatches) games"]
         if h2h.sharedTies > 0 {
-            parts.append("\(h2h.sharedTies) \(h2h.sharedTies == 1 ? "tie" : "ties")")
+            parts.append(h2h.sharedTies == 1 ? "1 tie" : "\(h2h.sharedTies) ties")
         }
         if let last = h2h.lastMeeting {
             parts.append("Last: \(last.formatted(date: .abbreviated, time: .omitted))")

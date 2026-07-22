@@ -40,7 +40,7 @@ enum AppColorScheme: String, CaseIterable, Codable {
         suggestedMoveEnabled: Bool = true,
         commentaryEnabled: Bool = false,
         commentaryLevelRaw: String = CommentaryLevel.celebrations.rawValue,
-        commentaryPersonalityID: String = "steady"
+        commentaryPersonalityID: String = CommentaryPersonality.steady.id
     ) {
         self.colorSchemeRaw = colorSchemeRaw
         self.soundEnabled = soundEnabled

@@ -53,8 +53,8 @@ final class GameNightController {
     /// Session-scoped commentary override. Host writes; guests receive via tableState.
     /// Never persisted — the session ends and solo settings reassert immediately.
     var commentaryEnabled: Bool = false
-    var commentaryPackID: String = "steady"
-    var commentaryLevelRaw: String = "celebrations"
+    var commentaryPackID: String = CommentaryPersonality.steady.id
+    var commentaryLevelRaw: String = CommentaryLevel.celebrations.rawValue
 
     // MARK: - Private session state
 
@@ -173,12 +173,11 @@ final class GameNightController {
         // The session ID is stable across app relaunches (it's a system-level GroupActivities
         // object tied to the FaceTime call), so persisting against it lets the host device
         // recover its role automatically on relaunch without any user interaction.
-        let sessionHostKey = "gn.host.\(incomingSession.id.uuidString)"
-        let persistedAsHost = UserDefaults.standard.bool(forKey: sessionHostKey)
+        let persistedAsHost = UserDefaults.standard.gnIsHost(for: incomingSession.id)
         let takingHostRole = pendingHostSessionActivation || persistedAsHost
         pendingHostSessionActivation = false
         if takingHostRole {
-            UserDefaults.standard.set(true, forKey: sessionHostKey)
+            UserDefaults.standard.setGnIsHost(for: incomingSession.id)
         }
 
         logger.info(self, "configureSession: takingHostRole=\(takingHostRole), calling tearDownSession")
@@ -256,11 +255,7 @@ final class GameNightController {
     func prepareForGuestReconnect(matchID: UUID) {
         isGuestAwaitingReconnect = true
         if localParticipantID == nil {
-            let key = "gn.participantID.\(matchID.uuidString)"
-            if let stored = UserDefaults.standard.string(forKey: key),
-               let pid = UUID(uuidString: stored) {
-                localParticipantID = pid
-            }
+            localParticipantID = UserDefaults.standard.gnParticipantID(for: matchID)
         }
     }
 
@@ -272,7 +267,7 @@ final class GameNightController {
         // Clear the persisted host flag so a future relaunch doesn't auto-promote
         // a stale device. Captured before the session reference is cleared.
         if let id = session?.id {
-            UserDefaults.standard.removeObject(forKey: "gn.host.\(id.uuidString)")
+            UserDefaults.standard.removeGnIsHost(for: id)
         }
         session?.end()
         session = nil
@@ -484,7 +479,7 @@ final class GameNightController {
 
     private func persistLocalParticipantID() {
         guard let pid = localParticipantID, let mid = sessionMatchID else { return }
-        UserDefaults.standard.set(pid.uuidString, forKey: "gn.participantID.\(mid.uuidString)")
+        UserDefaults.standard.setGnParticipantID(pid, for: mid)
     }
 
     private func handleTableState(_ envelope: GameNightEnvelope) {
@@ -570,11 +565,7 @@ final class GameNightController {
         // On reconnect the session resumes via matchState (not matchStart), so
         // localParticipantID was never set. Restore it so send* methods work.
         if localParticipantID == nil {
-            let pidKey = "gn.participantID.\(payload.match.id.uuidString)"
-            if let stored = UserDefaults.standard.string(forKey: pidKey),
-               let pid = UUID(uuidString: stored) {
-                localParticipantID = pid
-            }
+            localParticipantID = UserDefaults.standard.gnParticipantID(for: payload.match.id)
             if sessionMatchID == nil { sessionMatchID = payload.match.id }
             if sessionGameID == nil { sessionGameID = payload.match.gameID }
         }
@@ -734,7 +725,7 @@ final class GameNightController {
             localParticipantID = mapping.participantID
         }
         persistLocalParticipantID()
-        UserDefaults.standard.set(true, forKey: "gn.wasHost.\(match.id.uuidString)")
+        UserDefaults.standard.setGnWasHost(for: match.id)
         matchController?.loadFromGameNightMatch(match, currentSeatIndex: currentSeatIndex)
         send(.matchStart, payload: MatchStartPayload(match: match, seatMappings: mappings, currentSeatIndex: currentSeatIndex))
         Task { await self.broadcastTableState() }
@@ -756,7 +747,7 @@ final class GameNightController {
             localParticipantID = mapping.participantID
         }
         persistLocalParticipantID()
-        UserDefaults.standard.set(true, forKey: "gn.wasHost.\(match.id.uuidString)")
+        UserDefaults.standard.setGnWasHost(for: match.id)
         matchController?.loadFromGameNightMatch(match, currentSeatIndex: 0)
         send(.matchStart, payload: MatchStartPayload(match: match, seatMappings: mappings, currentSeatIndex: 0))
         Task { await broadcastTableState() }
@@ -770,12 +761,8 @@ final class GameNightController {
         guard role == .host, isSessionActive, phase == .settingTable else { return }
         sessionMatchID = matchID
         sessionGameID = gameID
-        let key = "gn.participantID.\(matchID.uuidString)"
-        if let idStr = UserDefaults.standard.string(forKey: key),
-           let id = UUID(uuidString: idStr) {
-            localParticipantID = id
-        }
-        UserDefaults.standard.set(true, forKey: "gn.wasHost.\(matchID.uuidString)")
+        localParticipantID = UserDefaults.standard.gnParticipantID(for: matchID)
+        UserDefaults.standard.setGnWasHost(for: matchID)
         // Rebuild seat snapshots from the current match so broadcastRematch / playAgain
         // have a populated seat list even after a cold relaunch (tearDownSession clears seats).
         if let mc = matchController, mc.playerCount > 0 {
@@ -839,7 +826,7 @@ final class GameNightController {
         let match = Match(
             id: UUID(),
             gameID: gameID,
-            scoringSystemID: "yatzy",
+            scoringSystemID: ScoringSystemID.yatzy.rawValue,
             scoringSystemVersion: 1,
             status: .inProgress,
             startedAt: Date(),

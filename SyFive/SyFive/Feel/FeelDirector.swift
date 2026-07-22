@@ -20,7 +20,11 @@ final class FeelDirector {
     // Rattle bed: round-robin across the 4 seeds (§5.2)
     private var rattleBedSeedIndex = 0
 
-    init(catalog: FeelCatalog = .syFive) {
+    init() {
+        self.catalog = .syFive
+    }
+
+    init(catalog: FeelCatalog) {
         self.catalog = catalog
     }
 
@@ -33,13 +37,15 @@ final class FeelDirector {
         var liveKeys = Set<String>()
 
         // Sound recipes — one buffer per variant
+        // Task.yield() between each item keeps the main actor cooperative (AVFoundation APIs
+        // that create AVAudioPCMBuffer/AVAudioFile are @MainActor in iOS 18).
         for (_, recipe) in catalog.sounds {
             let variantCount = max(1, recipe.variants.count)
             for vi in 0..<variantCount {
                 let key = cache.key(sound: recipe, variantIndex: vi)
                 liveKeys.insert(key)
-                let buffer = await loadOrRender(recipe: recipe, variantIndex: vi, key: key)
-                if let buffer {
+                await Task.yield()
+                if let buffer = loadOrRender(recipe: recipe, variantIndex: vi, key: key) {
                     audio.loadBuffer(buffer, forKey: bufferKey(recipe.id, variant: vi))
                 }
             }
@@ -50,8 +56,8 @@ final class FeelDirector {
             for si in recipe.seeds.indices {
                 let key = cache.key(rattle: recipe, seedIndex: si)
                 liveKeys.insert(key)
-                let buffer = await loadOrRender(rattle: recipe, seedIndex: si, key: key)
-                if let buffer {
+                await Task.yield()
+                if let buffer = loadOrRender(rattle: recipe, seedIndex: si, key: key) {
                     audio.loadBuffer(buffer, forKey: rattleKey(recipe.id, seed: si))
                 }
             }
@@ -175,21 +181,17 @@ final class FeelDirector {
         "\(id)@\(seed)"
     }
 
-    private func loadOrRender(recipe: SoundRecipe, variantIndex: Int, key: String) async -> AVAudioPCMBuffer? {
-        await Task.detached(priority: .utility) { [cache] in
-            if let hit = cache.load(key: key) { return hit }
-            guard let buffer = SoundRenderer.render(recipe, variantIndex: variantIndex) else { return nil }
-            cache.store(buffer, key: key)
-            return buffer
-        }.value
+    private func loadOrRender(recipe: SoundRecipe, variantIndex: Int, key: String) -> AVAudioPCMBuffer? {
+        if let hit = cache.load(key: key) { return hit }
+        guard let buffer = SoundRenderer.render(recipe, variantIndex: variantIndex) else { return nil }
+        cache.store(buffer, key: key)
+        return buffer
     }
 
-    private func loadOrRender(rattle recipe: RattleRecipe, seedIndex: Int, key: String) async -> AVAudioPCMBuffer? {
-        await Task.detached(priority: .utility) { [cache] in
-            if let hit = cache.load(key: key) { return hit }
-            guard let buffer = SoundRenderer.render(recipe, seedIndex: seedIndex) else { return nil }
-            cache.store(buffer, key: key)
-            return buffer
-        }.value
+    private func loadOrRender(rattle recipe: RattleRecipe, seedIndex: Int, key: String) -> AVAudioPCMBuffer? {
+        if let hit = cache.load(key: key) { return hit }
+        guard let buffer = SoundRenderer.render(recipe, seedIndex: seedIndex) else { return nil }
+        cache.store(buffer, key: key)
+        return buffer
     }
 }

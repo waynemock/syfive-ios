@@ -328,7 +328,7 @@ final class MatchController {
         let match = Match(
             id: matchModel.id,
             gameID: gameID,
-            scoringSystemID: "yatzy",
+            scoringSystemID: ScoringSystemID.yatzy.rawValue,
             scoringSystemVersion: 1,
             status: isGameOver ? .completed : .inProgress,
             startedAt: matchStartedAt ?? Date(),
@@ -728,7 +728,7 @@ final class MatchController {
         Match(
             id: matchID,
             gameID: gameID,
-            scoringSystemID: "yatzy",
+            scoringSystemID: ScoringSystemID.yatzy.rawValue,
             scoringSystemVersion: 1,
             status: isGameOver ? .completed : .inProgress,
             startedAt: matchStartedAt ?? Date(),

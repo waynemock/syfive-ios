@@ -14,13 +14,13 @@ struct CommentarySettingsView: View {
     }
 
     private var selectedVoice: AVSpeechSynthesisVoice? {
-        let storedID = UserDefaults.standard.string(forKey: "commentaryVoiceID")
-        return storedID.flatMap { AVSpeechSynthesisVoice(identifier: $0) }
+        UserDefaults.standard.commentaryVoiceID
+            .flatMap { AVSpeechSynthesisVoice(identifier: $0) }
             ?? AVSpeechSynthesisVoice(language: Locale.current.language.languageCode?.identifier ?? "en")
     }
 
     private var selectedVoiceID: String? {
-        UserDefaults.standard.string(forKey: "commentaryVoiceID")
+        UserDefaults.standard.commentaryVoiceID
     }
 
     var body: some View {
@@ -34,7 +34,7 @@ struct CommentarySettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showsVoicePicker) {
             VoicePickerView(personality: personality, selectedVoiceID: selectedVoiceID) { voiceID in
-                UserDefaults.standard.set(voiceID, forKey: "commentaryVoiceID")
+                UserDefaults.standard.commentaryVoiceID = voiceID
             }
             .environment(\.theme, theme)
         }

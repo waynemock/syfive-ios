@@ -11,10 +11,49 @@ import UIKit
 
 extension UserDefaults {
 
-	private struct Keys	{
+	private struct Keys {
 		static let acknowledgedUpdateVersion = "AcknowledgedUpdateVersion"
 		static let deviceID = "DeviceID"
+        static let commentaryVoiceID = "commentaryVoiceID"
 	}
+
+    // MARK: - Commentary
+
+    var commentaryVoiceID: String? {
+        get { string(forKey: Keys.commentaryVoiceID) }
+        set { set(newValue, forKey: Keys.commentaryVoiceID) }
+    }
+
+    // MARK: - Game Night
+
+    func gnIsHost(for sessionID: UUID) -> Bool {
+        bool(forKey: "gn.host.\(sessionID.uuidString)")
+    }
+
+    func setGnIsHost(for sessionID: UUID) {
+        set(true, forKey: "gn.host.\(sessionID.uuidString)")
+    }
+
+    func removeGnIsHost(for sessionID: UUID) {
+        removeObject(forKey: "gn.host.\(sessionID.uuidString)")
+    }
+
+    func gnParticipantID(for matchID: UUID) -> UUID? {
+        guard let str = string(forKey: "gn.participantID.\(matchID.uuidString)") else { return nil }
+        return UUID(uuidString: str)
+    }
+
+    func setGnParticipantID(_ pid: UUID, for matchID: UUID) {
+        set(pid.uuidString, forKey: "gn.participantID.\(matchID.uuidString)")
+    }
+
+    func gnWasHost(for matchID: UUID) -> Bool {
+        bool(forKey: "gn.wasHost.\(matchID.uuidString)")
+    }
+
+    func setGnWasHost(for matchID: UUID) {
+        set(true, forKey: "gn.wasHost.\(matchID.uuidString)")
+    }
 
 	/// The app version that the user has acknowledged for updates.
 	///

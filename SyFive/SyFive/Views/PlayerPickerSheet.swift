@@ -278,13 +278,13 @@ struct PlayerPickerSheet: View {
     let p1 = PlayerModel()
     p1.name = "Wayne"
     p1.initials = "WM"
-    p1.themeID = "midnight"
+    p1.themeID = Theme.ThemeType.midnight.rawValue
     container.mainContext.insert(p1)
 
     let p2 = PlayerModel()
     p2.name = "Sherida"
     p2.initials = "SM"
-    p2.themeID = "forest"
+    p2.themeID = Theme.ThemeType.forest.rawValue
     container.mainContext.insert(p2)
 
     let model = MatchController()

@@ -4,7 +4,7 @@ import AVFoundation
 
 struct ContentView: View {
     @State private var model = MatchController()
-    @State private var director = FeelDirector(catalog: .syFive)
+    @State private var director = FeelDirector()
     @State private var showsResetAlert = false
     @State private var showsHistory = false
     @State private var showsSettings = false
@@ -434,7 +434,7 @@ struct ContentView: View {
         }
         let personality = CommentaryPersonality.find(id: settings.commentaryPersonalityID)
         let level = CommentaryLevel(rawValue: settings.commentaryLevelRaw) ?? .celebrations
-        let voiceID = UserDefaults.standard.string(forKey: "commentaryVoiceID")
+        let voiceID = UserDefaults.standard.commentaryVoiceID
         let voice = voiceID.flatMap { AVSpeechSynthesisVoice(identifier: $0) }
             ?? AVSpeechSynthesisVoice(language: Locale.current.language.languageCode?.identifier ?? "en")
         if let engine = commentaryEngine {
@@ -458,13 +458,14 @@ struct ContentView: View {
             model.load(from: matchModel)
             ensurePlayerModels(for: matchModel.participants)
             if matchModel.isGameNight && !gameNight.isSessionActive {
-                let wasHost = UserDefaults.standard.bool(forKey: "gn.wasHost.\(matchModel.id.uuidString)")
+                let wasHost = UserDefaults.standard.gnWasHost(for: matchModel.id)
                 if wasHost {
                     // Host re-initiates the session from the reconnect alert.
                     showsGameNightReconnect = true
                     pendingResumeMatchID = matchModel.id
+                    let yatzyID = ScoringSystemID.yatzy.rawValue
                     let gameDesc = FetchDescriptor<GameModel>(
-                        predicate: #Predicate { $0.scoringSystemID == "yatzy" }
+                        predicate: #Predicate { $0.scoringSystemID == yatzyID }
                     )
                     pendingResumeGameID = (try? modelContext.fetch(gameDesc))?.first?.id
                 } else {
@@ -557,8 +558,9 @@ struct ContentView: View {
     }
 
     private func startGameNightRematch() {
+        let yatzyID = ScoringSystemID.yatzy.rawValue
         let descriptor = FetchDescriptor<GameModel>(
-            predicate: #Predicate { $0.scoringSystemID == "yatzy" }
+            predicate: #Predicate { $0.scoringSystemID == yatzyID }
         )
         guard let gameID = (try? modelContext.fetch(descriptor))?.first?.id else { return }
         gameNight.broadcastRematch(gameID: gameID)
@@ -568,8 +570,9 @@ struct ContentView: View {
     private func saveMatch() {
         guard model.hasGameActivity else { return }
         guard model.playerCount > 0 else { return }
+        let yatzyID = ScoringSystemID.yatzy.rawValue
         let gameDescriptor = FetchDescriptor<GameModel>(
-            predicate: #Predicate { $0.scoringSystemID == "yatzy" }
+            predicate: #Predicate { $0.scoringSystemID == yatzyID }
         )
         guard let gameID = (try? modelContext.fetch(gameDescriptor))?.first?.id else { return }
         model.save(to: modelContext, gameID: gameID)
@@ -582,14 +585,15 @@ struct ContentView: View {
     }
 
     private func seedYatzyGameIfNeeded() {
+        let yatzyID = ScoringSystemID.yatzy.rawValue
         let descriptor = FetchDescriptor<GameModel>(
-            predicate: #Predicate { $0.scoringSystemID == "yatzy" }
+            predicate: #Predicate { $0.scoringSystemID == yatzyID }
         )
         let existing = (try? modelContext.fetch(descriptor)) ?? []
         guard existing.isEmpty else { return }
         let game = GameModel()
         game.name = "Yatzy"
-        game.scoringSystemID = "yatzy"
+        game.scoringSystemID = ScoringSystemID.yatzy.rawValue
         game.scoringSystemVersion = 1
         game.isBuiltIn = true
         game.supportsTeams = false
@@ -866,7 +870,7 @@ private struct ContentLayoutSizePreferenceKey: PreferenceKey {
     let p1 = ParticipantModel()
     p1.displayName = "Wayne"
     p1.displayInitials = "WM"
-    p1.displayThemeID = "midnight"
+    p1.displayThemeID = Theme.ThemeType.midnight.rawValue
     p1.seat = 0
     p1.playerID = UUID()
     p1.match = match
@@ -875,7 +879,7 @@ private struct ContentLayoutSizePreferenceKey: PreferenceKey {
     let p2 = ParticipantModel()
     p2.displayName = "Sherida"
     p2.displayInitials = "SM"
-    p2.displayThemeID = "forest"
+    p2.displayThemeID = Theme.ThemeType.forest.rawValue
     p2.seat = 1
     p2.playerID = UUID()
     p2.match = match

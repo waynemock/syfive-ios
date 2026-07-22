@@ -38,10 +38,10 @@ final class DiceRoller {
         /// Seconds a still-and-stacked die must wait before the hop rescue fires.
         var stackedRescueDelay: Float = 0.15
         /// Seconds a still-and-wall-blocked die is allowed before being marked stuck.
-        var wallStuckSeconds: Float = 2.0
+        var wallStuckSeconds: Float = 1.2
         /// Seconds a floor-stuck die is allowed before being marked stuck as a last resort.
         /// Catches stable box-edge equilibria that no angular kick can overcome.
-        var floorStuckSeconds: Float = 6.0
+        var floorStuckSeconds: Float = 4.0
         /// Base downward force (N) per frame applied to a still-but-tilted die in open space.
         var gravityBoostBase: Float = 0.05
         /// Log-curve rate for gravity boost — higher values ramp faster.
@@ -64,6 +64,14 @@ final class DiceRoller {
         )
     }
 
+    enum StuckReason: String {
+        case floorStuckTimeout = "floor-stuck-timeout"
+        case stackedTimeout    = "stacked-timeout"
+        case wallBlocked       = "wall-blocked"
+        case nonFiniteTransform = "non-finite-transform"
+        case outOfBounds       = "out-of-bounds"
+    }
+
     // MARK: - Public state
 
     var isRolling: Bool = false
@@ -79,12 +87,14 @@ final class DiceRoller {
     var stuckDiceMessage: String? {
         guard hasStuckDice else { return nil }
         if stuckDieIndices.isEmpty {
-            let noun = nudgeableDieIndices.count == 1 ? "die" : "dice"
-            return "Tap highlighted \(noun) to nudge"
+            return nudgeableDieIndices.count == 1
+                ? "Tap highlighted die to nudge"
+                : "Tap highlighted dice to nudge"
         }
         if nudgeableDieIndices.isEmpty {
-            let noun = stuckDieIndices.count == 1 ? "die" : "dice"
-            return "Tap highlighted \(noun) to reroll"
+            return stuckDieIndices.count == 1
+                ? "Tap highlighted die to reroll"
+                : "Tap highlighted dice to reroll"
         }
         return "Tap highlighted dice to nudge or reroll"
     }
@@ -316,7 +326,6 @@ final class DiceRoller {
             die.isHeld = heldFlag
             die.isStuck = false
             die.isNudgeable = false
-            die.isSuspectedStuck = false
             die.entity.isEnabled = true
 
             guard !heldFlag else { continue }
@@ -497,7 +506,6 @@ final class DiceRoller {
         die.isHeld = false
         die.isStuck = false
         die.isNudgeable = false
-        die.isSuspectedStuck = false
         die.entity.isEnabled = true
 
         logDiagnostics("Rerolling stuck die \(index) on roll \(activeRollNumber)")
@@ -614,7 +622,6 @@ final class DiceRoller {
             die.isHeld = false
             die.isStuck = false
             die.isNudgeable = false
-            die.isSuspectedStuck = false
             die.entity.isEnabled = false
         }
     }
@@ -769,7 +776,6 @@ final class DiceRoller {
                 stillUnsettledTime[index] = 0
                 flattenNudgeAxes[index] = nil
                 floorStuckTime[index] = 0
-                if !isTheaterReplay { die.isSuspectedStuck = false }
                 if isFirstSettleFrame && !settleAnnounced[index] {
                     settleAnnounced[index] = true
                     notify { audioController?.onDieSettled(index: index, value: die.topFaceValue) }
@@ -779,15 +785,9 @@ final class DiceRoller {
                 settleReviveCounters[index] = 0  // still but tilted — not resuming motion
                 stillUnsettledTime[index] += deltaTime
                 applySettleAssistance(for: index, die: die)
-                // Start pulsing once the die has been watched long enough to notice.
-                if !isTheaterReplay && !die.isNudgeable && !die.isStuck
-                   && stillUnsettledTime[index] >= 1.0 && !die.isSuspectedStuck {
-                    die.isSuspectedStuck = true
-                }
             } else {
                 settleCounters[index] = 0
                 stillUnsettledTime[index] = 0
-                if !isTheaterReplay { die.isSuspectedStuck = false }
                 // Revive: re-arm settle hook after 6 consecutive moving frames (hysteresis).
                 if settleAnnounced[index] {
                     settleReviveCounters[index] += 1
@@ -830,7 +830,7 @@ final class DiceRoller {
                 if floorStuckTime[index] >= config.floorStuckSeconds {
                     logDiagnostics("d\(index) floor-stuck timeout fst=\(rounded(floorStuckTime[index])) align=\(rounded(die.topFaceAlignment))")
                     currentRollRescueKinds[index].insert("floor")
-                    markDieStuck(index, reason: "floor-stuck-timeout")
+                    markDieStuck(index, reason: .floorStuckTimeout)
                 }
             } else {
                 floorStuckTime[index] = 0
@@ -941,7 +941,7 @@ final class DiceRoller {
             if stillUnsettledTime[index] >= config.wallStuckSeconds {
                 // Repeated hops haven't resolved it — give up and go red.
                 currentRollRescueKinds[index].insert("stacked")
-                markDieStuck(index, reason: "stacked-timeout")
+                markDieStuck(index, reason: .stackedTimeout)
             } else if stillUnsettledTime[index] >= config.stackedRescueDelay {
                 let supportingDie = diceEntities[supportIdx]
                 let separation = SIMD3<Float>(
@@ -960,7 +960,7 @@ final class DiceRoller {
             if stillUnsettledTime[index] >= config.wallStuckSeconds {
                 logDiagnostics("Wall-blocked die \(index) timed out at \(String(format: "%.1f", stillUnsettledTime[index]))s on roll \(activeRollNumber)")
                 currentRollRescueKinds[index].insert("wall")
-                markDieStuck(index, reason: "wall-blocked")
+                markDieStuck(index, reason: .wallBlocked)
             }
         } else {
             // No timeout — nothing is blocking this die, so gravity escalates until it settles.
@@ -1017,14 +1017,14 @@ final class DiceRoller {
 
         guard hasInvalidPosition || isOutOfBounds else { return false }
 
-        let reason = hasInvalidPosition ? "non-finite-transform" : "out-of-bounds"
+        let reason: StuckReason = hasInvalidPosition ? .nonFiniteTransform : .outOfBounds
         let wasPendingLaunch = pendingLaunchIndices.contains(index)
         let wasActiveRolling = activeRollingIndices.contains(index)
         let held = index < currentHeld.count ? currentHeld[index] : false
         let velocity = die.entity.physicsMotion?.linearVelocity ?? .zero
         let angularVelocity = die.entity.physicsMotion?.angularVelocity ?? .zero
         logDiagnostics(
-            "Detected \(reason) die state on roll \(activeRollNumber) die=\(index) " +
+            "Detected \(reason.rawValue) die state on roll \(activeRollNumber) die=\(index) " +
             "position=\(position) linearVelocity=\(velocity) angularVelocity=\(angularVelocity) " +
             "pendingLaunch=\(wasPendingLaunch) activeRolling=\(wasActiveRolling) held=\(held) " +
             "state=\(describeDie(at: index))"
@@ -1115,13 +1115,13 @@ final class DiceRoller {
         logger.debug(self, message)
     }
 
-    private func markDieStuck(_ index: Int, reason: String) {
+    private func markDieStuck(_ index: Int, reason: StuckReason) {
         guard activeRollingIndices.contains(index) else { return }
 
         // Capture diagnostic snapshot before any state is cleared.
         if diceEntities.indices.contains(index) {
             let die = diceEntities[index]
-            currentRollStuckReason[index] = reason
+            currentRollStuckReason[index] = reason.rawValue
             currentRollFinalAlign[index] = die.topFaceAlignment
             currentRollUnsettledSecs[index] = stillUnsettledTime[index]
             currentRollFinalX[index] = die.entity.position.x
@@ -1144,19 +1144,23 @@ final class DiceRoller {
         die.entity.components.set(motion)
 
         // If a nudge was already attempted, go straight to red (stuck/reroll).
+        // Wall-blocked dice also skip yellow — the nudge (downward press + random spin) is
+        // designed for floor equilibria and doesn't address the wall constraint; reroll is
+        // the right intervention and adds it immediately without a wasted interaction step.
         // Otherwise go to yellow (nudgeable) first — in gameplay the player taps;
         // in batch autoRerollStuckDiceForBatch() will auto-nudge, just like a player would.
         // In theater replay, track state internally but skip visual indicators — tick() will
         // call finishRoll() anyway and applyAuthoritativeResult will correct the face value.
-        let nudgeAttempted = diceEntities.indices.contains(index) && dieNudgeAttempted[index]
+        let nudgeAttempted = (diceEntities.indices.contains(index) && dieNudgeAttempted[index])
+                             || reason == .wallBlocked
         if nudgeAttempted {
             stuckDieIndices.insert(index)
             if !isTheaterReplay { die.isStuck = true }
-            logDiagnostics("Marked die \(index) stuck(red) on roll \(activeRollNumber) reason=\(reason) nudgeAttempted=true theaterReplay=\(isTheaterReplay) state=\(describeDie(at: index))")
+            logDiagnostics("Marked die \(index) stuck(red) on roll \(activeRollNumber) reason=\(reason.rawValue) nudgeAttempted=true theaterReplay=\(isTheaterReplay) state=\(describeDie(at: index))")
         } else {
             nudgeableDieIndices.insert(index)
             if !isTheaterReplay { die.isNudgeable = true }
-            logDiagnostics("Marked die \(index) stuck(yellow) on roll \(activeRollNumber) reason=\(reason) theaterReplay=\(isTheaterReplay) state=\(describeDie(at: index))")
+            logDiagnostics("Marked die \(index) stuck(yellow) on roll \(activeRollNumber) reason=\(reason.rawValue) theaterReplay=\(isTheaterReplay) state=\(describeDie(at: index))")
         }
     }
 
@@ -1203,12 +1207,12 @@ final class DiceRoller {
                 let _ = await launchDie(at: index)
                 pendingLaunchIndices.remove(index)
                 activeRollingIndices.insert(index)
-                notify { audioController?.onDieLaunched(index: index) }
+                notify { self.audioController?.onDieLaunched(index: index) }
             }
         }
     }
 
-    private func recoverEscapedDieIfPossible(at index: Int, reason: String) -> Bool {
+    private func recoverEscapedDieIfPossible(at index: Int, reason: StuckReason) -> Bool {
         guard diceEntities.indices.contains(index) else { return false }
         guard !pendingLaunchIndices.contains(index) else { return false }
 
@@ -1217,7 +1221,7 @@ final class DiceRoller {
         guard recoveryAttempt <= Self.maxEscapeRecoveriesPerDie else {
             logDiagnostics(
                 "Escaped die recovery limit exceeded on roll \(activeRollNumber) die=\(index) " +
-                "attempt=\(recoveryAttempt) reason=\(reason)"
+                "attempt=\(recoveryAttempt) reason=\(reason.rawValue)"
             )
             return false
         }

@@ -126,6 +126,52 @@ Inject the theme in previews:
 
 ---
 
+## Enums Over Strings and Magic Numbers
+
+**Whenever a value belongs to a fixed, known set, model it as an enum — not a `String`, `Int`, or other raw type.**
+
+This applies everywhere: function parameters, stored properties, dictionary keys, persistence fields, UserDefaults keys, and inter-module APIs.
+
+Bad:
+
+```swift
+// String parameter with implicit vocabulary
+func markDieStuck(_ index: Int, reason: String) {
+    if reason == "wall-blocked" { ... }   // silent typo risk, no exhaustiveness
+}
+
+// Int magic number for state
+if phase == 2 { ... }
+
+// String dictionary key with a fixed key set
+var counts: [String: Int] = [:]
+counts["floor-stuck"] = 1
+```
+
+Good:
+
+```swift
+enum StuckReason: String {
+    case floorStuckTimeout = "floor-stuck-timeout"
+    case stackedTimeout    = "stacked-timeout"
+    case wallBlocked       = "wall-blocked"
+}
+
+func markDieStuck(_ index: Int, reason: StuckReason) {
+    if reason == .wallBlocked { ... }   // exhaustive, compiler-checked
+}
+```
+
+Rules:
+
+- If an API accepts a `String` or `Int` but only a fixed set of values is valid, define an enum.
+- Enum `rawValue` is acceptable *only* at system boundaries where a `String` or `Int` is forced (JSON, UserDefaults, logging, external APIs). The raw value must never be used for branching inside the app.
+- `switch` on an enum must be exhaustive — no `default:` catch-alls that hide new cases.
+- Dictionary keys that form a fixed vocabulary use the enum as the key type, not `String`.
+- If a strings/numbers smell is found during a task, fix it in the same PR rather than deferring it.
+
+---
+
 ## Localisation Safety
 
 **Never use a displayed string as a conditional or state discriminator.**

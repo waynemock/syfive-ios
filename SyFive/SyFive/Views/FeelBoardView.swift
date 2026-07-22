@@ -113,7 +113,7 @@ struct FeelBoardView: View {
                 }
 
                 // Layer editors
-                if var recipe = workingSounds[id] {
+                if let recipe = workingSounds[id] {
                     soundEditor(id: id, recipe: Binding(
                         get: { workingSounds[id] ?? recipe },
                         set: { workingSounds[id] = $0 }
@@ -170,7 +170,7 @@ struct FeelBoardView: View {
             AuditionButton("Sound") {
                 // Rattle: use seed 0 for audition
                 if let recipe = FeelCatalog.syFive.rattles[id],
-                   let buffer = SoundRenderer.render(recipe, seedIndex: 0) {
+                   SoundRenderer.render(recipe, seedIndex: 0) != nil {
                     // director has no dedicated rattle audition yet — play via buffer
                     director.rollStarted(unheldCount: 5)
                 }

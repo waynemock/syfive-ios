@@ -83,7 +83,7 @@ struct HapticRecipe: Codable, Hashable {
 
 // MARK: - FeelCatalog
 
-struct FeelCatalog: Codable {
+struct FeelCatalog: Codable, Sendable {
     var sounds: [String: SoundRecipe]
     var rattles: [String: RattleRecipe]
     var haptics: [String: HapticRecipe]

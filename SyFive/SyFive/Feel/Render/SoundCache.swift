@@ -4,7 +4,7 @@ import AVFoundation
 // Content-addressed buffer cache. Key = SHA-256(canonicalJSON ‖ rendererVersion ‖ formatTag ‖ selector).
 // Stored in Library/Caches/Feel/ as CAF/Float32/48kHz/mono files.
 // Purge by the OS is safe: same catalog + same renderer version → byte-identical rebuild on next launch.
-final class SoundCache {
+final class SoundCache: @unchecked Sendable {
 
     private static let formatTag = "caf-f32-48k-mono"
     private static let subdirectory = "Feel"
@@ -113,7 +113,7 @@ private func sha256(_ bytes: [UInt8]) -> String {
     msg.append(0x80)
     while msg.count % 64 != 56 { msg.append(0) }
     var bitLen = UInt64(origLen) * 8
-    for i in stride(from: 7, through: 0, by: -1) {
+    for _ in stride(from: 7, through: 0, by: -1) {
         msg.append(UInt8(bitLen & 0xff))
         bitLen >>= 8
     }

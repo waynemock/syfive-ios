@@ -184,7 +184,7 @@ struct PlayerEditSheet: View {
     let pm = PlayerModel()
     pm.name = "Wayne"
     pm.initials = "WM"
-    pm.themeID = "midnight"
+    pm.themeID = Theme.ThemeType.midnight.rawValue
     container.mainContext.insert(pm)
     return PlayerEditSheet(mode: .edit(pm, matchSlot: 0), matchModel: MatchController())
         .modelContainer(container)
