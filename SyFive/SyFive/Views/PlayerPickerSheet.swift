@@ -10,8 +10,6 @@ struct PlayerPickerSheet: View {
 
     @State private var playerEditMode: PlayerEditSheet.Mode? = nil
     @State private var pendingArchive: PlayerModel? = nil
-    @ScaledMetric private var initialsCircleSize: CGFloat = 28
-    @ScaledMetric private var initialsFontSize: CGFloat = 10
 
     private var playerIDsInMatch: Set<UUID> {
         Set(model.playerIDs.compactMap { $0 })
@@ -108,13 +106,7 @@ struct PlayerPickerSheet: View {
         let name = model.playerDisplayNames.indices.contains(index) ? model.playerDisplayNames[index] : ""
 
         return HStack(spacing: 12) {
-            ZStack {
-                Circle().fill(theme.primaryAccent)
-                Text(model.playerInitials(for: index))
-                    .font(.system(size: initialsFontSize, weight: .bold))
-                    .foregroundStyle(.white)
-            }
-            .frame(width: initialsCircleSize, height: initialsCircleSize)
+            PlayerInitialsCircle(initials: model.playerInitials(for: index), themeType: model.themeType(for: index))
 
             Text(name)
                 .font(.body)
@@ -167,14 +159,8 @@ struct PlayerPickerSheet: View {
         )
 
         return HStack(spacing: 12) {
-            ZStack {
-                Circle().fill(theme.primaryAccent)
-                Text(playerModel.initials)
-                    .font(.system(size: initialsFontSize, weight: .bold))
-                    .foregroundStyle(.white)
-            }
-            .frame(width: initialsCircleSize, height: initialsCircleSize)
- 
+            PlayerInitialsCircle(initials: playerModel.initials, themeType: Theme.ThemeType(rawValue: playerModel.themeID) ?? .midnight)
+
             Text(playerModel.name)
                 .font(.body)
                 .foregroundStyle(theme.secondaryAccent)
@@ -216,13 +202,7 @@ struct PlayerPickerSheet: View {
         )
 
         return HStack(spacing: 12) {
-            ZStack {
-                Circle().fill(theme.primaryAccent.opacity(0.4))
-                Text(playerModel.initials)
-                    .font(.system(size: initialsFontSize, weight: .bold))
-                    .foregroundStyle(.white)
-            }
-            .frame(width: initialsCircleSize, height: initialsCircleSize)
+            PlayerInitialsCircle(initials: playerModel.initials, themeType: Theme.ThemeType(rawValue: playerModel.themeID) ?? .midnight, opacity: 0.4)
 
             Text(playerModel.name)
                 .font(.body)

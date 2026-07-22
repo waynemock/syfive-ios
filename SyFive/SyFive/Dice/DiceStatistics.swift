@@ -63,7 +63,7 @@ final class DiceStatistics {
         return faceCounts.mapValues { Double($0) / n }
     }
 
-    // MARK: - O(1) rescue counters (cumulative, all-time)
+    // MARK: - O(1) rescue counters (window-matched, decremented on trim)
 
     private(set) var totalRescues: Int = 0
     private(set) var totalNudges: Int = 0
@@ -244,7 +244,7 @@ final class DiceStatistics {
 
         // Trim the window in large batches (11k→10k) rather than 5 elements per roll.
         // removeFirst on a 10k array is O(n) — batching reduces that to ~once per 200 rolls.
-        // Decrement faceCounts for trimmed values so chi-square stays accurate.
+        // Decrement all window-matched counters for trimmed entries so HUD stays in sync with CSV.
         let maxWindow = 11_000
         let targetWindow = 10_000
         if history.count > maxWindow {
@@ -255,8 +255,32 @@ final class DiceStatistics {
                     else { faceCounts.removeValue(forKey: value) }
                 }
             }
+            let trimCount = min(overflow, records.count)
+            for record in records.prefix(trimCount) {
+                if record.rescued {
+                    totalRescues = max(0, totalRescues - 1)
+                    if let c = rescueCountsPerDie[record.dieIndex] {
+                        if c > 1 { rescueCountsPerDie[record.dieIndex] = c - 1 }
+                        else { rescueCountsPerDie.removeValue(forKey: record.dieIndex) }
+                    }
+                }
+                if record.stuckNudge {
+                    totalNudges = max(0, totalNudges - 1)
+                    if let c = nudgeCountsPerDie[record.dieIndex] {
+                        if c > 1 { nudgeCountsPerDie[record.dieIndex] = c - 1 }
+                        else { nudgeCountsPerDie.removeValue(forKey: record.dieIndex) }
+                    }
+                }
+                if record.stuckReroll {
+                    totalStuckRerolls = max(0, totalStuckRerolls - 1)
+                    if let c = stuckRerollCountsPerDie[record.dieIndex] {
+                        if c > 1 { stuckRerollCountsPerDie[record.dieIndex] = c - 1 }
+                        else { stuckRerollCountsPerDie.removeValue(forKey: record.dieIndex) }
+                    }
+                }
+            }
             history.removeFirst(overflow)
-            records.removeFirst(min(overflow, records.count))
+            records.removeFirst(trimCount)
             _cacheComputedAt = -1  // history changed significantly, invalidate sequential cache
         }
     }

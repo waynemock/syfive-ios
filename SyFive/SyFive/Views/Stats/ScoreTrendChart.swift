@@ -25,14 +25,14 @@ struct ScoreTrendChart: View {
                     x: .value("Date", point.at),
                     y: .value("Score", score)
                 )
-                .foregroundStyle(theme.primaryAccent)
+                .foregroundStyle(theme.secondaryAccent)
                 .interpolationMethod(.catmullRom)
 
                 PointMark(
                     x: .value("Date", point.at),
                     y: .value("Score", score)
                 )
-                .foregroundStyle(theme.primaryAccent)
+                .foregroundStyle(theme.secondaryAccent)
                 .symbolSize(36)
             }
         }

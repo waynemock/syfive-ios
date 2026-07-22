@@ -13,16 +13,46 @@ struct PlayerProfileView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
 
+    @State private var profileMode: ProfileMode = .pvp
+
+    private enum ProfileMode: Hashable { case pvp, solo }
+
     private var theme: Theme { Theme(type: themeType, colorScheme: colorScheme) }
     private var matches: [Match] { completedModels.map { $0.toDomain() } }
 
-    private var insights: PlayerInsights? { playerInsights(playerID: playerID, matches: matches) }
-    private var summary: PlayerSummary?   { playerSummary(playerID: playerID, matches: matches) }
+    private var pvpMatches: [Match]  { matches.filter { $0.participants.count > 1 } }
+    private var soloMatches: [Match] { matches.filter { $0.participants.count == 1 } }
+
+    /// True only when both PvP and solo data exist — drives picker visibility.
+    private var showsModePicker: Bool { !pvpMatches.isEmpty && !soloMatches.isEmpty }
+
+    /// Resolved match set: falls back to whichever kind has data when there's no choice.
+    private var activeMatches: [Match] {
+        if pvpMatches.isEmpty  { return soloMatches }
+        if soloMatches.isEmpty { return pvpMatches }
+        return profileMode == .pvp ? pvpMatches : soloMatches
+    }
+
+    /// True when `activeMatches` resolves to solo games (controls badge set and chart visibility).
+    private var showingSoloStats: Bool {
+        !soloMatches.isEmpty && (pvpMatches.isEmpty || profileMode == .solo)
+    }
+
+    private var insights: PlayerInsights? { playerInsights(playerID: playerID, matches: activeMatches) }
+    private var summary: PlayerSummary?   { playerSummary(playerID: playerID, matches: activeMatches) }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
+                    if showsModePicker {
+                        Picker("Mode", selection: $profileMode) {
+                            Text("PvP").tag(ProfileMode.pvp)
+                            Text("Solo").tag(ProfileMode.solo)
+                        }
+                        .pickerStyle(.segmented)
+                    }
+
                     if summary != nil || insights != nil {
                         profileContent
                     } else {
@@ -66,8 +96,15 @@ struct PlayerProfileView: View {
                 )
         }
 
-        // Summary badges — secondary beneath the sentence.
-        if let s = summary { statBadges(s) }
+        // PvP badges: Games / Wins / Win% / Avg
+        // Solo badges: Games / Best / Avg / Median  (rank and win-rate are meaningless solo)
+        if let s = summary {
+            if showingSoloStats {
+                soloBadges(s)
+            } else {
+                statBadges(s)
+            }
+        }
 
         // §5.1: Decisions above outcomes.
         if let style = insights?.style { styleCard(style) }
@@ -79,15 +116,17 @@ struct PlayerProfileView: View {
         if let cons = insights?.consistency { consistencyCard(cons) }
 
         // Trajectory.
-        let trendPoints = scoreTrend(playerID: playerID, matches: matches)
+        let trendPoints = scoreTrend(playerID: playerID, matches: activeMatches)
         if !trendPoints.isEmpty {
             statsCard(title: "Score Trend") {
                 ScoreTrendChart(points: trendPoints).frame(height: 160)
             }
         }
 
-        let dist = placementSeries(playerID: playerID, matches: matches)
-        if !dist.bins.isEmpty {
+        // Placement distribution is only meaningful for competitive games —
+        // solo always places 1st, so the histogram is a single full bar.
+        let dist = placementSeries(playerID: playerID, matches: activeMatches)
+        if !showingSoloStats && !dist.bins.isEmpty {
             statsCard(title: "Placements") {
                 PlacementDistributionChart(distribution: dist).frame(height: 140)
             }
@@ -97,19 +136,34 @@ struct PlayerProfileView: View {
     // MARK: - Cards
 
     private func statBadges(_ s: PlayerSummary) -> some View {
-        Grid(horizontalSpacing: 12, verticalSpacing: 0) {
+        Grid(horizontalSpacing: 12, verticalSpacing: 12) {
             GridRow {
                 badge(title: "Games", value: "\(s.matchesPlayed)")
                 badge(title: "Wins",  value: "\(s.wins)")
                 badge(title: "Win %", value: "\(Int(s.winRate * 100))%")
-                badge(title: "Avg",   value: "\(Int(truncating: s.averageScore as NSDecimalNumber))")
+            }
+            GridRow {
+                badge(title: "Best",   value: "\(Int(truncating: s.bestScore as NSDecimalNumber))")
+                badge(title: "Avg",    value: "\(Int(truncating: s.averageScore as NSDecimalNumber))")
+                badge(title: "Median", value: "\(Int(truncating: s.medianScore as NSDecimalNumber))")
+            }
+        }
+    }
+
+    private func soloBadges(_ s: PlayerSummary) -> some View {
+        Grid(horizontalSpacing: 12, verticalSpacing: 0) {
+            GridRow {
+                badge(title: "Games",  value: "\(s.matchesPlayed)")
+                badge(title: "Best",   value: "\(Int(truncating: s.bestScore as NSDecimalNumber))")
+                badge(title: "Avg",    value: "\(Int(truncating: s.averageScore as NSDecimalNumber))")
+                badge(title: "Median", value: "\(Int(truncating: s.medianScore as NSDecimalNumber))")
             }
         }
     }
 
     private func badge(title: String, value: String) -> some View {
         VStack(spacing: 4) {
-            Text(value).font(.title3.weight(.bold)).foregroundStyle(theme.primaryAccent)
+            Text(value).font(.title3.weight(.bold)).foregroundStyle(theme.secondaryAccent)
             Text(title).font(.caption2).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)

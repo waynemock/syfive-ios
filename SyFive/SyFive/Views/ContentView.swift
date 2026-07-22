@@ -7,6 +7,7 @@ struct ContentView: View {
     @State private var director = FeelDirector()
     @State private var showsResetAlert = false
     @State private var showsHistory = false
+    @State private var showsPlayers = false
     @State private var showsSettings = false
     @State private var showsAbout = false
     @State private var showsFeelBoard = false
@@ -75,6 +76,11 @@ struct ContentView: View {
                                 Label("Update Available", systemImage: "arrow.down.circle")
                             }
                             Divider()
+                        }
+                        Button {
+                            showsPlayers = true
+                        } label: {
+                            Label("Players", systemImage: "person.2")
                         }
                         Button {
                             showsHistory = true
@@ -277,6 +283,7 @@ struct ContentView: View {
             showsGameNightReconnect = false
             // Close any open sheets so the seating sheet can present immediately.
             showsHistory = false
+            showsPlayers = false
             showsSettings = false
             showsAbout = false
             showsFeelBoard = false
@@ -355,6 +362,9 @@ struct ContentView: View {
                 onActiveMatchDeleted: { model.resetGame() }
             )
             .environment(\.theme, theme)
+        }
+        .sheet(isPresented: $showsPlayers) {
+            PlayersView()
         }
         .sheet(isPresented: $showsSettings, onDismiss: { syncCommentaryEngine() }) {
             SettingsView()

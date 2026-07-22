@@ -39,7 +39,7 @@ struct PlacementDistributionChart: View {
                     x: .value("Place", entry.label),
                     y: .value("Games", entry.count)
                 )
-                .foregroundStyle(theme.primaryAccent)
+                .foregroundStyle(theme.secondaryAccent)
             }
             .chartXAxis {
                 AxisMarks { _ in
