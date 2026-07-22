@@ -215,7 +215,7 @@ struct PlayerPickerSheet: View {
             } label: {
                 Image(systemName: "arrow.up.trash")
                     .foregroundStyle(.secondary)
-                    .font(.title)
+                    .font(.title2)
             }
             .buttonStyle(.plain)
         }

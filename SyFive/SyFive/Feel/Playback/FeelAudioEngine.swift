@@ -11,6 +11,7 @@ final class FeelAudioEngine {
     private let bedNode = AVAudioPlayerNode()
     private var nextOneShotIndex = 0
     private(set) var isStarted = false
+    private let logger = AppLogger(category: "FeelAudioEngine")
 
     private var loadedBuffers: [String: AVAudioPCMBuffer] = [:]
     private(set) var currentBedVolume: Float = 0
@@ -78,7 +79,7 @@ final class FeelAudioEngine {
             isStarted = true
         } catch {
             // Silent failure — failed engine → feel goes silent, never alert (§2.2, §6.1).
-            print("[FeelAudioEngine] engine start failed: \(error)")
+            logger.warning(self, "engine start failed: \(error)")
         }
     }
 

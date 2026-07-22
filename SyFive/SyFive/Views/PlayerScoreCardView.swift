@@ -12,6 +12,13 @@ struct PlayerScoreCardView: View {
     var horizontalPadding: CGFloat = 16
     var sectionGap: CGFloat = 14
 
+    static func metrics(for cardWidth: CGFloat) -> (horizontalPadding: CGFloat, sectionGap: CGFloat) {
+        // Wider cards get slightly more breathing room.
+        cardWidth > 340
+            ? (horizontalPadding: 14, sectionGap: 12)
+            : (horizontalPadding: 10, sectionGap: 10)
+    }
+
     @Environment(FeelDirector.self) private var director
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.sizeCategory) private var sizeCategory

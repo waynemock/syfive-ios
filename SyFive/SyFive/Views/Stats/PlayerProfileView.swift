@@ -6,6 +6,7 @@ struct PlayerProfileView: View {
     let playerName: String
     let themeType: Theme.ThemeType
 
+
     @Query(filter: #Predicate<MatchModel> { $0.statusRaw == "completed" },
            sort: \MatchModel.startedAt)
     private var completedModels: [MatchModel]
@@ -143,9 +144,9 @@ struct PlayerProfileView: View {
                 badge(title: "Win %", value: "\(Int(s.winRate * 100))%")
             }
             GridRow {
-                badge(title: "Best",   value: "\(Int(truncating: s.bestScore as NSDecimalNumber))")
-                badge(title: "Avg",    value: "\(Int(truncating: s.averageScore as NSDecimalNumber))")
-                badge(title: "Median", value: "\(Int(truncating: s.medianScore as NSDecimalNumber))")
+                badge(title: "Best",   value: "\(s.bestScore.displayInt)")
+                badge(title: "Avg",    value: "\(s.averageScore.displayInt)")
+                badge(title: "Median", value: "\(s.medianScore.displayInt)")
             }
         }
     }
@@ -154,9 +155,9 @@ struct PlayerProfileView: View {
         Grid(horizontalSpacing: 12, verticalSpacing: 0) {
             GridRow {
                 badge(title: "Games",  value: "\(s.matchesPlayed)")
-                badge(title: "Best",   value: "\(Int(truncating: s.bestScore as NSDecimalNumber))")
-                badge(title: "Avg",    value: "\(Int(truncating: s.averageScore as NSDecimalNumber))")
-                badge(title: "Median", value: "\(Int(truncating: s.medianScore as NSDecimalNumber))")
+                badge(title: "Best",   value: "\(s.bestScore.displayInt)")
+                badge(title: "Avg",    value: "\(s.averageScore.displayInt)")
+                badge(title: "Median", value: "\(s.medianScore.displayInt)")
             }
         }
     }
@@ -237,8 +238,8 @@ struct PlayerProfileView: View {
                     .filter { _, v in abs(v.average - v.pace) >= 2 }
                     .sorted { $0.key.rawValue < $1.key.rawValue }
                     .map { cat, note -> String in
-                        let avg  = Int(truncating: note.average as NSDecimalNumber)
-                        let pace = Int(truncating: note.pace as NSDecimalNumber)
+                        let avg  = note.average.displayInt
+                        let pace = note.pace.displayInt
                         let rel  = avg >= pace ? "on pace" : "\(pace - avg) below pace"
                         return "\(cat.displayName) avg \(avg) — \(rel) for bonus"
                     }
@@ -252,11 +253,11 @@ struct PlayerProfileView: View {
     private func consistencyCard(_ cons: ConsistencyProfile) -> some View {
         statsCard(title: "Consistency") {
             VStack(alignment: .leading, spacing: 6) {
-                let minS = Int(truncating: cons.scoreSpread.min as NSDecimalNumber)
-                let maxS = Int(truncating: cons.scoreSpread.max as NSDecimalNumber)
-                let medS = Int(truncating: cons.scoreSpread.median as NSDecimalNumber)
+                let minS = cons.scoreSpread.min.displayInt
+                let maxS = cons.scoreSpread.max.displayInt
+                let medS = cons.scoreSpread.median.displayInt
                 insightRow(label: cons.variability == .steady
-                    ? "Steady scorer (±\(Int(truncating: cons.stdDev as NSDecimalNumber)) pts)"
+                    ? "Steady scorer (±\(cons.stdDev.displayInt) pts)"
                     : "Swingy — big nights and quiet ones")
                 insightRow(label: "Range \(minS)–\(maxS), median \(medS)")
             }
@@ -330,6 +331,15 @@ struct PlayerProfileView: View {
         if d < -2 { return "Front-loaded — builds leads early" }
         return "Scores evenly throughout the game"
     }
+}
+
+// MARK: - Decimal display helper
+
+private extension Decimal {
+    // Int(truncating: fractionalDecimal as NSDecimalNumber) returns 0 for values
+    // produced by division (Foundation bug). Routing through doubleValue is reliable
+    // for the small integer ranges used in game scores.
+    var displayInt: Int { Int((self as NSDecimalNumber).doubleValue) }
 }
 
 private struct InsightLabelStyle: LabelStyle {

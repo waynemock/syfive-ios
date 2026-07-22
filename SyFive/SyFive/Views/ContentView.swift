@@ -6,6 +6,7 @@ struct ContentView: View {
     @State private var model = MatchController()
     @State private var director = FeelDirector()
     @State private var showsResetAlert = false
+    @State private var showsHouseRecords = false
     @State private var showsHistory = false
     @State private var showsPlayers = false
     @State private var showsSettings = false
@@ -36,6 +37,10 @@ struct ContentView: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
     @Query private var settingsModels: [AppSettingsModel]
+    @Query(filter: #Predicate<MatchModel> { $0.statusRaw == "completed" })
+    private var completedMatchesGate: [MatchModel]
+
+    private var hasCompletedMatch: Bool { !completedMatchesGate.isEmpty }
     private let showsDebugLayout = AppConfig.DebugLayout.isEnabled
     private let logger = AppLogger(category: "ContentView")
 
@@ -76,6 +81,13 @@ struct ContentView: View {
                                 Label("Update Available", systemImage: "arrow.down.circle")
                             }
                             Divider()
+                        }
+                        if hasCompletedMatch {
+                            Button {
+                                showsHouseRecords = true
+                            } label: {
+                                Label("House Records", systemImage: "trophy.fill")
+                            }
                         }
                         Button {
                             showsPlayers = true
@@ -255,6 +267,7 @@ struct ContentView: View {
             seedSettingsIfNeeded()
             seedYatzyGameIfNeeded()
             loadMatchIfNeeded()
+            healOrphanedParticipants()
             // Sync initial settings values (onChange won't fire for the first load).
             director.soundEnabled   = appSettings?.soundEnabled   ?? true
             director.hapticsEnabled = appSettings?.hapticsEnabled ?? true
@@ -282,6 +295,7 @@ struct ContentView: View {
             syncCommentaryEngine()
             showsGameNightReconnect = false
             // Close any open sheets so the seating sheet can present immediately.
+            showsHouseRecords = false
             showsHistory = false
             showsPlayers = false
             showsSettings = false
@@ -356,12 +370,17 @@ struct ContentView: View {
             guard isGameOver else { return }
             celebrationCoordinator.triggerGameOver(winnerIndices: model.winnerIndices)
         }
+        .sheet(isPresented: $showsHouseRecords) {
+            HouseRecordsView()
+                .environment(\.theme, theme)
+        }
         .sheet(isPresented: $showsHistory) {
             MatchHistoryView(
                 activeMatchID: model.persistedMatchID,
                 onActiveMatchDeleted: { model.resetGame() }
             )
             .environment(\.theme, theme)
+            .environment(director)
         }
         .sheet(isPresented: $showsPlayers) {
             PlayersView()
@@ -507,26 +526,94 @@ struct ContentView: View {
         ensurePlayerModels(for: lastMatch.participants)
     }
 
+    /// Detects orphaned participant UUIDs at launch and creates an archived PlayerModel for each
+    /// one, so the identity split surfaces in PlayersView for the user to resolve via the Merge UI.
+    /// No automatic name-matching is done — identity decisions are left to the user to prevent
+    /// wrong auto-merges between different people who happen to share a name.
+    private func healOrphanedParticipants() {
+        let allParticipants = (try? modelContext.fetch(FetchDescriptor<ParticipantModel>())) ?? []
+        let allPlayers      = (try? modelContext.fetch(FetchDescriptor<PlayerModel>())) ?? []
+        let playersByID     = Dictionary(uniqueKeysWithValues: allPlayers.map { ($0.id, $0) })
+        let activePlayers   = allPlayers.filter { !$0.isArchived }
+
+        let distinctIDs = Set(allParticipants.compactMap { $0.playerID })
+        logger.debug(self, "heal scan: \(allParticipants.count) participants, \(distinctIDs.count) distinct playerIDs, \(allPlayers.count) PlayerModels (\(activePlayers.count) active, \(allPlayers.count - activePlayers.count) archived)")
+        for id in distinctIDs {
+            if let pm = playersByID[id] {
+                logger.debug(self, "  \(id) → '\(pm.name)' source=\(pm.sourceRaw) archived=\(pm.isArchived)")
+            } else {
+                let snap = allParticipants.first { $0.playerID == id }
+                logger.debug(self, "  \(id) → ORPHAN (displayName='\(snap?.displayName ?? "?")')")
+            }
+        }
+
+        var changed = false
+
+        // For each orphaned UUID, create an archived PlayerModel so the user can see it in the
+        // Archived section of PlayersView and decide whether to merge it into another player.
+        let orphanedIDs = distinctIDs.filter { playersByID[$0] == nil }
+        for orphanID in orphanedIDs {
+            guard let snap = allParticipants.first(where: { $0.playerID == orphanID }) else { continue }
+            let placeholder = PlayerModel()
+            placeholder.id = orphanID
+            placeholder.name = snap.displayName
+            placeholder.initials = snap.displayInitials
+            placeholder.themeID = snap.displayThemeID
+            placeholder.isArchived = true
+            placeholder.source = .gameNight
+            modelContext.insert(placeholder)
+            logger.info(self, "heal: created archived entry for orphan '\(snap.displayName)' \(orphanID) — merge manually in Players")
+            changed = true
+        }
+
+        if changed { try? modelContext.save() }
+    }
+
     /// Ensures a PlayerModel exists locally for every participant with a non-nil playerID.
     /// Safe to call for any match type — local players already have entries (skip),
     /// and anonymous participants (playerID == nil) are skipped automatically.
     /// Used to recover missing Game Night remote player roster entries on app launch.
+    /// When a Game Night UUID has no local PlayerModel but a local roster player with the
+    /// same name+initials exists, all ParticipantModel records are remapped to the canonical
+    /// local UUID instead of creating a duplicate entry.
     private func ensurePlayerModels(for participants: [ParticipantModel]) {
         var changed = false
         for p in participants {
             guard let playerID = p.playerID else { continue }
-            var descriptor = FetchDescriptor<PlayerModel>(
-                predicate: #Predicate { $0.id == playerID }
+
+            // Already have a PlayerModel for this UUID — nothing to do.
+            var byID = FetchDescriptor<PlayerModel>(predicate: #Predicate { $0.id == playerID })
+            byID.fetchLimit = 1
+            if (try? modelContext.fetch(byID))?.first != nil { continue }
+
+            // Before creating a new entry, check if a local roster player with matching
+            // name+initials already exists. Game Night sessions can carry a different UUID
+            // for the same physical person; remapping prevents identity splits in House Records.
+            let pName = p.displayName
+            let pInitials = p.displayInitials
+            let localSource = PlayerSource.local.rawValue
+            var byName = FetchDescriptor<PlayerModel>(
+                predicate: #Predicate { $0.name == pName && $0.initials == pInitials && $0.sourceRaw == localSource }
             )
-            descriptor.fetchLimit = 1
-            if (try? modelContext.fetch(descriptor))?.first != nil { continue }
-            let pm = PlayerModel()
-            pm.id = playerID
-            pm.name = p.displayName
-            pm.initials = p.displayInitials
-            pm.themeID = p.displayThemeID
-            pm.source = .gameNight
-            modelContext.insert(pm)
+            byName.fetchLimit = 1
+            if let canonical = (try? modelContext.fetch(byName))?.first {
+                let allParticipants = (try? modelContext.fetch(FetchDescriptor<ParticipantModel>())) ?? []
+                for participant in allParticipants where participant.playerID == playerID {
+                    participant.playerID = canonical.id
+                }
+                logger.info(self, "ensurePlayerModels: remapped '\(pName)' \(playerID) → \(canonical.id)")
+                changed = true
+                continue
+            }
+
+            // No local player found — create a gameNight-sourced PlayerModel.
+            let newPM = PlayerModel()
+            newPM.id = playerID
+            newPM.name = p.displayName
+            newPM.initials = p.displayInitials
+            newPM.themeID = p.displayThemeID
+            newPM.source = .gameNight
+            modelContext.insert(newPM)
             changed = true
         }
         if changed { try? modelContext.save() }
@@ -547,24 +634,46 @@ struct ContentView: View {
     /// Creates PlayerModel records for any remote participants whose playerID doesn't
     /// exist in local storage yet. Called when a Game Night match goes .inProgress so
     /// every device has a full player roster for stats and future merge UI.
+    /// Applies the same name+initials collision check as ensurePlayerModels() — if a local
+    /// roster player already exists, all participants are remapped immediately rather than
+    /// creating a duplicate gameNight-sourced entry.
     private func upsertGameNightPlayerModels() {
         guard gameNight.isSessionActive else { return }
+        var changed = false
         for i in 0..<model.playerCount {
             guard let playerID = model.playerIDs[i] else { continue }
-            var descriptor = FetchDescriptor<PlayerModel>(
-                predicate: #Predicate { $0.id == playerID }
+
+            var byID = FetchDescriptor<PlayerModel>(predicate: #Predicate { $0.id == playerID })
+            byID.fetchLimit = 1
+            if (try? modelContext.fetch(byID))?.first != nil { continue }
+
+            let pName = model.playerDisplayNames[i]
+            let pInitials = model.playerDisplayInitials[i]
+            let localSource = PlayerSource.local.rawValue
+            var byName = FetchDescriptor<PlayerModel>(
+                predicate: #Predicate { $0.name == pName && $0.initials == pInitials && $0.sourceRaw == localSource }
             )
-            descriptor.fetchLimit = 1
-            if (try? modelContext.fetch(descriptor))?.first != nil { continue }
-            let pm = PlayerModel()
-            pm.id = playerID
-            pm.name = model.playerDisplayNames[i]
-            pm.initials = model.playerDisplayInitials[i]
-            pm.themeID = model.playerThemes[i].rawValue
-            pm.source = PlayerSource.gameNight
-            modelContext.insert(pm)
+            byName.fetchLimit = 1
+            if let canonical = (try? modelContext.fetch(byName))?.first {
+                let allParticipants = (try? modelContext.fetch(FetchDescriptor<ParticipantModel>())) ?? []
+                for participant in allParticipants where participant.playerID == playerID {
+                    participant.playerID = canonical.id
+                }
+                logger.info(self, "upsertGameNightPlayerModels: remapped '\(pName)' \(playerID) → \(canonical.id)")
+                changed = true
+                continue
+            }
+
+            let newPM = PlayerModel()
+            newPM.id = playerID
+            newPM.name = pName
+            newPM.initials = pInitials
+            newPM.themeID = model.playerThemes[i].rawValue
+            newPM.source = PlayerSource.gameNight
+            modelContext.insert(newPM)
+            changed = true
         }
-        try? modelContext.save()
+        if changed { try? modelContext.save() }
     }
 
     private func startGameNightRematch() {

@@ -8,6 +8,7 @@ final class FeelHapticEngine {
     let supportsHaptics: Bool
     private var engine: CHHapticEngine?
     private var players: [String: CHHapticPatternPlayer] = [:]
+    private let logger = AppLogger(category: "FeelHapticEngine")
 
     init() {
         supportsHaptics = CHHapticEngine.capabilitiesForHardware().supportsHaptics
@@ -61,20 +62,21 @@ final class FeelHapticEngine {
         do {
             let eng = try CHHapticEngine()
             eng.resetHandler = { [weak self] in self?.handleReset() }
-            eng.stoppedHandler = { reason in
-                print("[FeelHapticEngine] stopped: \(reason)")
+            eng.stoppedHandler = { [weak self] reason in
+                guard let self else { return }
+                self.logger.debug(self, "stopped: \(reason)")
             }
             try eng.start()
             engine = eng
         } catch {
-            print("[FeelHapticEngine] start failed: \(error)")
+            logger.warning(self, "start failed: \(error)")
         }
     }
 
     private func handleReset() {
         players.removeAll()
         try? engine?.start()
-        print("[FeelHapticEngine] engine reset — players cleared, will rebuild on next prepare()")
+        logger.debug(self, "engine reset — players cleared, will rebuild on next prepare()")
     }
 
     private func buildPlayer(for recipe: HapticRecipe, engine: CHHapticEngine) {

@@ -184,10 +184,7 @@ struct ScorecardView: View {
     }
 
     private func cardMetrics(for cardWidth: CGFloat) -> (horizontalPadding: CGFloat, sectionGap: CGFloat) {
-        // Wider cards get slightly more breathing room.
-        cardWidth > 340
-            ? (horizontalPadding: 14, sectionGap: 12)
-            : (horizontalPadding: 10, sectionGap: 10)
+        PlayerScoreCardView.metrics(for: cardWidth)
     }
 }
 

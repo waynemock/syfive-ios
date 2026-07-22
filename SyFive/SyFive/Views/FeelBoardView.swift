@@ -13,6 +13,8 @@ struct FeelBoardView: View {
     @State private var useEdited: [String: Bool] = [:]
     @State private var expandedEvent: String?
 
+    private let logger = AppLogger(category: "FeelBoardView")
+
     private static let eventOrder = [
         "settle_thunk", "hold_engage", "hold_release",
         "die_nudge", "die_reroll", "score_confirm",
@@ -276,7 +278,7 @@ struct FeelBoardView: View {
         encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes, .prettyPrinted]
         guard let data = try? encoder.encode(recipe),
               let json = String(data: data, encoding: .utf8) else { return }
-        print("[FeelBoard] FREEZE \(id):\n\(json)")
+        logger.debug(self, "FREEZE \(id):\n\(json)")
         UIPasteboard.general.string = json
     }
 }

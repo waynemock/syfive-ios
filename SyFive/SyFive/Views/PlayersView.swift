@@ -6,14 +6,21 @@ struct PlayersView: View {
     @State private var playerEditMode: PlayerEditSheet.Mode? = nil
     @State private var selectedProfile: PlayerModel? = nil
     @State private var pendingArchive: PlayerModel? = nil
+    @State private var pendingLink: PlayerModel? = nil
+    @State private var pendingMerge: PlayerModel? = nil
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.modelContext) private var modelContext
 
     @Query(sort: \PlayerModel.createdAt) private var allPlayers: [PlayerModel]
 
     private var rosterPlayers: [PlayerModel] {
-        allPlayers.filter { !$0.isArchived }.sorted { $0.name < $1.name }
+        allPlayers.filter { !$0.isArchived && $0.source == .local }.sorted { $0.name < $1.name }
+    }
+
+    private var gameNightPlayers: [PlayerModel] {
+        allPlayers.filter { !$0.isArchived && $0.source == .gameNight }.sorted { $0.name < $1.name }
     }
 
     private var archivedPlayers: [PlayerModel] {
@@ -23,6 +30,18 @@ struct PlayersView: View {
     var body: some View {
         NavigationStack {
             List {
+                if !gameNightPlayers.isEmpty {
+                    Section {
+                        ForEach(gameNightPlayers) { player in
+                            gameNightRow(for: player)
+                        }
+                    } header: {
+                        Text("From Game Night")
+                    } footer: {
+                        Text("These players joined via Game Night. Add them to your roster or link them to an existing player.")
+                    }
+                }
+
                 Section("Roster") {
                     ForEach(rosterPlayers) { player in
                         rosterRow(for: player)
@@ -61,6 +80,12 @@ struct PlayersView: View {
                     themeType: Theme.ThemeType(rawValue: player.themeID) ?? .midnight
                 )
             }
+            .sheet(item: $pendingLink) { gameNightPlayer in
+                PlayerLinkSheet(gameNightPlayer: gameNightPlayer)
+            }
+            .sheet(item: $pendingMerge) { retiring in
+                PlayerMergeSheet(retiring: retiring)
+            }
             .alert(
                 pendingArchive.map { "Archive \($0.name)?" } ?? "",
                 isPresented: Binding(
@@ -82,6 +107,57 @@ struct PlayersView: View {
 
     // MARK: - Row views
 
+    private func gameNightRow(for player: PlayerModel) -> some View {
+        let themeType = Theme.ThemeType(rawValue: player.themeID) ?? .midnight
+        let theme = Theme(type: themeType, colorScheme: colorScheme)
+
+        return HStack(spacing: 12) {
+            PlayerInitialsCircle(initials: player.initials, themeType: themeType)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(player.name)
+                    .font(.body)
+                    .foregroundStyle(theme.secondaryAccent)
+                HStack(spacing: 3) {
+                    Image(systemName: "person.3.fill")
+                        .font(.caption2)
+                    Text("Game Night")
+                        .font(.caption2)
+                }
+                .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button {
+                player.source = .local
+                try? modelContext.save()
+            } label: {
+                Text("Add to Roster")
+                    .font(.caption)
+                    .foregroundStyle(.tint)
+            }
+            .buttonStyle(.plain)
+        }
+        .contentShape(Rectangle())
+        .swipeActions(edge: .leading) {
+            Button {
+                pendingLink = player
+            } label: {
+                Label("Link", systemImage: "link")
+            }
+            .tint(.blue)
+        }
+        .swipeActions(edge: .trailing) {
+            Button(role: .destructive) {
+                pendingArchive = player
+            } label: {
+                Label("Archive", systemImage: "archivebox.fill")
+            }
+            .tint(.red)
+        }
+    }
+
     private func rosterRow(for player: PlayerModel) -> some View {
         let themeType = Theme.ThemeType(rawValue: player.themeID) ?? .midnight
         let theme = Theme(type: themeType, colorScheme: colorScheme)
@@ -102,6 +178,10 @@ struct PlayersView: View {
             .buttonStyle(.plain)
 
             Spacer()
+            
+            Image(systemName: "list.bullet.rectangle")
+                .foregroundStyle(theme.primaryAccent)
+                .font(.title2)
         }
         .contentShape(Rectangle())
         .onTapGesture { selectedProfile = player }
@@ -133,7 +213,7 @@ struct PlayersView: View {
             } label: {
                 Image(systemName: "arrow.up.trash")
                     .foregroundStyle(.secondary)
-                    .font(.title)
+                    .font(.title2)
             }
             .buttonStyle(.plain)
         }
@@ -145,6 +225,13 @@ struct PlayersView: View {
                 Label("Unarchive", systemImage: "arrow.up.trash")
             }
             .tint(.green)
+
+            Button {
+                pendingMerge = player
+            } label: {
+                Label("Merge", systemImage: "arrow.triangle.merge")
+            }
+            .tint(.blue)
         }
     }
 }
@@ -177,6 +264,13 @@ struct PlayersView: View {
     p3.themeID = Theme.ThemeType.ember.rawValue
     p3.isArchived = true
     container.mainContext.insert(p3)
+
+    let p4 = PlayerModel()
+    p4.name = "Sherida"
+    p4.initials = "SM"
+    p4.themeID = Theme.ThemeType.forest.rawValue
+    p4.source = .gameNight
+    container.mainContext.insert(p4)
 
     return PlayersView()
         .modelContainer(container)

@@ -253,6 +253,38 @@ Default validation: targeted diagnostics + a full Xcode build. Do not spend conv
 
 ---
 
+## Logging
+
+**Never use `print()`. Always use `AppLogger`.**
+
+`AppLogger` wraps Swift's unified logging system (`os.Logger`). Messages at `.debug` level are suppressed in production — no `#if DEBUG` guards needed. Messages at `.info` and above are visible in Console.app in production.
+
+Usage:
+
+```swift
+// Instance property (views, classes, structs):
+private let logger = AppLogger(category: "MyType")
+
+// Instance methods:
+logger.debug(self, "detail only useful during development")
+logger.info(self, "notable event — visible in production logs")
+logger.warning(self, "unexpected condition: \(error)")
+logger.error(self, "unrecoverable failure: \(error)")
+
+// Static methods — pass the type's metatype as the object:
+private static let logger = AppLogger(category: "MyType")
+logger.debug(MyType.self, "static context message")
+```
+
+Rules:
+
+- Every type that logs must declare its own `AppLogger` with a descriptive `category` matching the type name.
+- `#if DEBUG` guards around logging are banned — they are redundant with `logger.debug` and create inconsistency.
+- `print()` is banned everywhere in app source. Use `logger.debug` for developer-only output.
+- Log errors and warnings at the appropriate level so they surface in production diagnostics without being noisy.
+
+---
+
 ## AppConfig Guards
 
 Debug-only features (dice diagnostic logging, layout overlays, debug HUD) must be gated behind `AppConfig` flags. Before shipping, confirm:

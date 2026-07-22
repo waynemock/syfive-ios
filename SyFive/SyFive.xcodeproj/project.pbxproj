@@ -53,6 +53,7 @@
 				Docs/Requirements/09_COMMENTATOR_DESIGN.md,
 				Docs/Requirements/10_GAMENIGHT_COMMENTARY.md,
 				Docs/Requirements/11_GAMENIGHT_THEATER_FEEL.md,
+				Docs/Requirements/12_HOUSE_RECORDS_DESIGN.md,
 				Info.plist,
 				Utilities/analyze_dice_fairness.py,
 			);
