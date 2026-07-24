@@ -548,11 +548,14 @@ final class GameNightController {
                 let participant = payload.match.participants.first(where: { $0.playerID == myPlayerID }) {
             localParticipantID = participant.id
         }
+        if localParticipantID == nil {
+            role = .spectator
+        }
         sessionMatchID = payload.match.id
         sessionGameID = payload.match.gameID
         persistLocalParticipantID()
         matchController?.loadFromGameNightMatch(payload.match, currentSeatIndex: payload.currentSeatIndex)
-        logger.debug(self, "matchStart: \(payload.match.participants.count) seats, seat \(payload.currentSeatIndex)")
+        logger.debug(self, "matchStart: \(payload.match.participants.count) seats, seat \(payload.currentSeatIndex) role=\(role)")
     }
 
     private func handleScoreChosen(_ envelope: GameNightEnvelope, from senderID: UUID) {

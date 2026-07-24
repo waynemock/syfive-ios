@@ -250,6 +250,7 @@ struct DiceAreaView: View {
 
     private var isUndoTurn: Bool {
         if gameNight.isSessionActive, gameNight.phase == .inProgress {
+            if gameNight.role == .spectator { return false }
             return gameNight.role == .host
                 ? gameNight.pendingHostUndoAvailable
                 : gameNight.pendingGuestUndoAvailable
@@ -267,7 +268,7 @@ struct DiceAreaView: View {
             return ids[model.currentPlayerIndex] == localID
         }
         guard gameNight.isSessionActive, gameNight.phase == .inProgress else { return true }
-        guard let localID = gameNight.localParticipantID else { return true }
+        guard let localID = gameNight.localParticipantID else { return false }
         let ids = model.participantIDs
         guard model.currentPlayerIndex < ids.count else { return true }
         return ids[model.currentPlayerIndex] == localID

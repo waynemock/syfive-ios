@@ -110,6 +110,10 @@ struct TableSettingView: View {
                     Label("Claim a seat", systemImage: "person.badge.plus")
                 }
             }
+        } footer: {
+            if gameNight.localSeatClaimID == nil {
+                Text("Just here to watch? Skip claiming a seat — you'll spectate the game with live dice and scores.")
+            }
         }
     }
 
