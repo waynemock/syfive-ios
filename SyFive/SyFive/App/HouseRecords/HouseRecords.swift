@@ -91,9 +91,9 @@ struct HouseRecords {
         }
 
         let holders = Array(holderSet.values)
-        logIdentityCollisions(holders, title: "Most Yatzys in a Game")
+        logIdentityCollisions(holders, title: "Most Yatzys in a Single Game")
         return Title(
-            id: "most_yatzys_game", name: "Most Yatzys in a Game", category: .event,
+            id: "most_yatzys_game", name: "Most Yatzys in a Single Game", category: .event,
             state: bestCount.map { .claimed(holders: holders, displayValue: "\($0)") } ?? .unclaimed
         )
     }

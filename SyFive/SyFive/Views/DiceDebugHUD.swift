@@ -11,6 +11,7 @@ import UniformTypeIdentifiers
 struct DiceDebugHUD: View {
 
     @Bindable var diceRoller: DiceRoller
+    @State private var showsReport = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -36,6 +37,9 @@ struct DiceDebugHUD: View {
             }
         }
         .padding(.horizontal, 12)
+        .sheet(isPresented: $showsReport) {
+            DiceReportSheet(report: DiceReportGenerator.generate(from: diceRoller.statistics))
+        }
     }
 
     // MARK: - Header
@@ -53,6 +57,10 @@ struct DiceDebugHUD: View {
             Button("Reset", role: .destructive) { stats.reset() }
                 .font(.caption)
                 .buttonStyle(.bordered)
+            Button("Report") { showsReport = true }
+                .font(.caption)
+                .buttonStyle(.bordered)
+                .disabled(stats.totalSamples == 0)
             ShareLink(
                 item: CSVExport(content: stats.csvString()),
                 preview: SharePreview("Dice Fairness.csv")
@@ -218,7 +226,9 @@ struct DiceDebugHUD: View {
 
             batchHoldControls
 
-            if diceRoller.isBatchRunning {
+            if diceRoller.isBatchPaused {
+                pausedStuckView
+            } else if diceRoller.isBatchRunning {
                 VStack(alignment: .leading, spacing: 3) {
                     ProgressView(
                         value: Double(diceRoller.batchProgress),
@@ -229,16 +239,22 @@ struct DiceDebugHUD: View {
                 }
             }
 
-            // Replay last roll
+            // Replay last roll / batch ETA
             HStack {
-                Button {
-                    Task { await diceRoller.replayLast { _ in } }
-                } label: {
-                    Label("Replay Last Roll", systemImage: "arrow.counterclockwise")
-                        .font(.caption)
+                if diceRoller.isBatchRunning, let eta = batchETA {
+                    Text(eta)
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                } else {
+                    Button {
+                        Task { await diceRoller.replayLast { _ in } }
+                    } label: {
+                        Label("Replay Last Roll", systemImage: "arrow.counterclockwise")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(diceRoller.lastRecipe == nil || diceRoller.isRolling || diceRoller.isBatchRunning)
                 }
-                .buttonStyle(.bordered)
-                .disabled(diceRoller.lastRecipe == nil || diceRoller.isRolling || diceRoller.isBatchRunning)
                 Spacer()
                 if let recipe = diceRoller.lastRecipe {
                     Text("seed \(String(recipe.seed, radix: 16, uppercase: false).prefix(8))")
@@ -249,13 +265,45 @@ struct DiceDebugHUD: View {
         }
     }
 
+    private var pausedStuckView: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: "pause.circle.fill")
+                    .foregroundStyle(.orange)
+                let indices = diceRoller.stuckDieIndices.sorted()
+                Text("Paused — die\(indices.count == 1 ? "" : "s") \(indices.map(String.init).joined(separator: ", ")) stuck")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.orange)
+                Spacer()
+                Button("Resume") { diceRoller.resumeBatch() }
+                    .font(.caption).buttonStyle(.bordered)
+                    .tint(.orange)
+            }
+            Text("Snapshot logged to console. Inspect the highlighted die, then tap Resume.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Text("\(diceRoller.batchProgress) / \(diceRoller.batchTotal) completed")
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.secondary)
+        }
+        .padding(8)
+        .background(Color.orange.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
     private var batchHoldControls: some View {
         VStack(alignment: .leading, spacing: 6) {
             Toggle("Auto-hold dice between rolls", isOn: $diceRoller.batchHoldModeEnabled)
                 .font(.caption)
-
             if diceRoller.batchHoldModeEnabled {
                 Text("Each roll adds one new random held die. After 4 are held, the pattern resets, runs one fully free roll, then starts over.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Toggle("Pause when stuck", isOn: $diceRoller.pauseWhenStuck)
+                .font(.caption)
+            if diceRoller.pauseWhenStuck {
+                Text("Batch pauses on each stuck die and logs a full diagnostic snapshot to the console.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -265,6 +313,23 @@ struct DiceDebugHUD: View {
     // MARK: - Helpers
 
     private var stats: DiceStatistics { diceRoller.statistics }
+
+    private var batchETA: String? {
+        guard let start = diceRoller.batchStartDate,
+              diceRoller.batchProgress > 0 else { return nil }
+        let elapsed = Date().timeIntervalSince(start)
+        let rate = Double(diceRoller.batchProgress) / elapsed
+        guard rate > 0 else { return nil }
+        let remaining = Double(diceRoller.batchTotal - diceRoller.batchProgress)
+        let secs = Int(remaining / rate)
+        if secs >= 3600 {
+            return "~\(secs / 3600)h \((secs % 3600) / 60)m \(secs % 60)s remaining"
+        }
+        if secs >= 60 {
+            return "~\(secs / 60)m \(secs % 60)s remaining"
+        }
+        return "~\(secs)s remaining"
+    }
 
     private func barColor(face: Int) -> Color {
         guard stats.totalSamples >= 30 else { return .blue }

@@ -10,6 +10,7 @@ struct ContentView: View {
     @State private var showsHistory = false
     @State private var showsPlayers = false
     @State private var showsSettings = false
+    @State private var showsDiceFairness = false
     @State private var showsAbout = false
     @State private var showsFeelBoard = false
     @State private var showsGameNight = false
@@ -106,6 +107,11 @@ struct ContentView: View {
                             showsSettings = true
                         } label: {
                             Label("Settings", systemImage: "gearshape")
+                        }
+                        Button {
+                            showsDiceFairness = true
+                        } label: {
+                            Label("Dice Fairness", systemImage: "die.face.5")
                         }
                         Divider()
                         Button {
@@ -388,6 +394,16 @@ struct ContentView: View {
         .sheet(isPresented: $showsSettings, onDismiss: { syncCommentaryEngine() }) {
             SettingsView()
                 .environment(\.theme, theme)
+        }
+        .sheet(isPresented: $showsDiceFairness) {
+            NavigationStack {
+                DiceFairnessView()
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Done") { showsDiceFairness = false }
+                        }
+                    }
+            }
         }
         .sheet(isPresented: $showsAbout) {
             AboutView()

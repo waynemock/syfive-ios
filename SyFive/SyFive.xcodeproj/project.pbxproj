@@ -33,6 +33,7 @@
 		B09DE9302F4BBD410018F241 /* Exceptions for "SyFive" folder in "SyFive" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Dice/Docs/DICE_FAIRNESS_REPORT.txt,
 				Dice/Docs/DICE_FAIRNESS_RUN.csv,
 				Dice/Docs/DICE_FAIRNESS_TESTING.md,
 				Dice/Docs/DICE_IMPLEMENTATION_PLAN.md,

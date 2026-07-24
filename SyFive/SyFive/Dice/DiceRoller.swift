@@ -46,6 +46,10 @@ final class DiceRoller {
         var gravityBoostBase: Float = 0.05
         /// Log-curve rate for gravity boost — higher values ramp faster.
         var gravityBoostRate: Float = 5.0
+        /// Minimum topFaceAlignment at floor-stuck timeout to snap the die flat and score it
+        /// silently instead of marking it stuck. Below this threshold the face is too ambiguous
+        /// and the die goes directly to red for a clean reroll.
+        var floorSnapThreshold: Float = 0.82
 
         // Injected at App layer — package code reads from Config, never touches App globals.
         var logDiagnostics: Bool = false
@@ -59,8 +63,9 @@ final class DiceRoller {
             coneHalfAngle: 0.70, spawnJitter: 0.012,
             spawnYMin: 0.05, spawnYMax: 0.09,
             stackedRescueDelay: 0.05, wallStuckSeconds: 0.8,
-            floorStuckSeconds: 3.0,
-            gravityBoostBase: 0.05, gravityBoostRate: 8.0
+            floorStuckSeconds: 4.0,
+            gravityBoostBase: 0.05, gravityBoostRate: 8.0,
+            floorSnapThreshold: 0.82
         )
     }
 
@@ -84,6 +89,11 @@ final class DiceRoller {
 
     var hasStuckDice: Bool { !stuckDieIndices.isEmpty || !nudgeableDieIndices.isEmpty }
 
+    /// When true and a batch roll produces a stuck die, the batch pauses instead of
+    /// auto-rerolling. Call `resumeBatch()` to continue. Ignored outside batch runs.
+    var pauseWhenStuck: Bool = false
+    private(set) var isBatchPaused: Bool = false
+
     var stuckDiceMessage: String? {
         guard hasStuckDice else { return nil }
         if stuckDieIndices.isEmpty {
@@ -106,6 +116,7 @@ final class DiceRoller {
     private(set) var isBatchRunning: Bool = false
     private(set) var batchProgress: Int = 0
     private(set) var batchTotal: Int = 0
+    private(set) var batchStartDate: Date? = nil
     var batchHoldModeEnabled: Bool = false
 
     /// True when replaying a saved recipe (shown as overlay in debug HUD).
@@ -142,6 +153,9 @@ final class DiceRoller {
     private var currentRollFinalZ: [Float] = []
     private var currentRollFinalHeight: [Float] = []
     private var currentRollSpawnPos: [SIMD3<Float>] = []
+    private var currentRollFloorStuckSecs: [Float] = []
+    private var currentRollFinalAngularSpeed: [Float] = []
+    private var currentRollFinalLinearSpeed: [Float] = []
     /// Fixed tipping axis per die — set once when a floor-only stuck episode begins,
     /// reused every frame so the nudge direction stays consistent and can't oscillate.
     private var flattenNudgeAxes: [SIMD3<Float>?] = []
@@ -232,6 +246,9 @@ final class DiceRoller {
             currentRollFinalZ.append(0)
             currentRollFinalHeight.append(0)
             currentRollSpawnPos.append(.zero)
+            currentRollFloorStuckSecs.append(0)
+            currentRollFinalAngularSpeed.append(0)
+            currentRollFinalLinearSpeed.append(0)
             flattenNudgeAxes.append(nil)
             floorStuckTime.append(0)
         }
@@ -307,6 +324,9 @@ final class DiceRoller {
         currentRollFinalZ = Array(repeating: 0, count: diceCount)
         currentRollFinalHeight = Array(repeating: 0, count: diceCount)
         currentRollSpawnPos = Array(repeating: .zero, count: diceCount)
+        currentRollFloorStuckSecs = Array(repeating: 0, count: diceCount)
+        currentRollFinalAngularSpeed = Array(repeating: 0, count: diceCount)
+        currentRollFinalLinearSpeed = Array(repeating: 0, count: diceCount)
         flattenNudgeAxes = Array(repeating: nil, count: diceCount)
         floorStuckTime = Array(repeating: 0, count: diceCount)
         activeRollingIndices = []
@@ -362,6 +382,7 @@ final class DiceRoller {
         batchRemaining = count
         batchTotal = count
         batchProgress = 0
+        batchStartDate = Date()
         isBatchRunning = true
         keepScreenAwake?(true)
         prepareBatchDiceIfNeeded(for: heldPattern)
@@ -370,6 +391,8 @@ final class DiceRoller {
 
     func stopBatch() {
         isBatchRunning = false
+        isBatchPaused = false
+        batchStartDate = nil
         keepScreenAwake?(false)
         batchRemaining = 0
         batchHeldIndices = []
@@ -378,6 +401,13 @@ final class DiceRoller {
             config = saved
             savedBatchConfig = nil
         }
+    }
+
+    /// Unpauses a batch that was suspended by `pauseWhenStuck` and auto-rerolls the stuck die.
+    func resumeBatch() {
+        guard isBatchRunning, isBatchPaused else { return }
+        isBatchPaused = false
+        autoRerollStuckDiceForBatch()
     }
 
     private func triggerNextBatchRoll() {
@@ -607,6 +637,9 @@ final class DiceRoller {
         currentRollFinalZ = Array(repeating: 0, count: diceCount)
         currentRollFinalHeight = Array(repeating: 0, count: diceCount)
         currentRollSpawnPos = Array(repeating: .zero, count: diceCount)
+        currentRollFloorStuckSecs = Array(repeating: 0, count: diceCount)
+        currentRollFinalAngularSpeed = Array(repeating: 0, count: diceCount)
+        currentRollFinalLinearSpeed = Array(repeating: 0, count: diceCount)
         flattenNudgeAxes = Array(repeating: nil, count: diceCount)
         floorStuckTime = Array(repeating: 0, count: diceCount)
         activeRollingIndices = []
@@ -646,6 +679,9 @@ final class DiceRoller {
         currentRollFinalZ = Array(repeating: 0, count: diceCount)
         currentRollFinalHeight = Array(repeating: 0, count: diceCount)
         currentRollSpawnPos = Array(repeating: .zero, count: diceCount)
+        currentRollFloorStuckSecs = Array(repeating: 0, count: diceCount)
+        currentRollFinalAngularSpeed = Array(repeating: 0, count: diceCount)
+        currentRollFinalLinearSpeed = Array(repeating: 0, count: diceCount)
         flattenNudgeAxes = Array(repeating: nil, count: diceCount)
         floorStuckTime = Array(repeating: 0, count: diceCount)
         activeRollingIndices = []
@@ -690,6 +726,9 @@ final class DiceRoller {
         currentRollFinalZ = Array(repeating: 0, count: diceCount)
         currentRollFinalHeight = Array(repeating: 0, count: diceCount)
         currentRollSpawnPos = Array(repeating: .zero, count: diceCount)
+        currentRollFloorStuckSecs = Array(repeating: 0, count: diceCount)
+        currentRollFinalAngularSpeed = Array(repeating: 0, count: diceCount)
+        currentRollFinalLinearSpeed = Array(repeating: 0, count: diceCount)
         flattenNudgeAxes = Array(repeating: nil, count: diceCount)
         floorStuckTime = Array(repeating: 0, count: diceCount)
         activeRollingIndices = []
@@ -828,9 +867,16 @@ final class DiceRoller {
                     logDiagnostics("d\(index) one-shot kick fst=\(rounded(floorStuckTime[index])) align=\(rounded(die.topFaceAlignment))")
                 }
                 if floorStuckTime[index] >= config.floorStuckSeconds {
-                    logDiagnostics("d\(index) floor-stuck timeout fst=\(rounded(floorStuckTime[index])) align=\(rounded(die.topFaceAlignment))")
+                    let align = die.topFaceAlignment
+                    logDiagnostics("d\(index) floor-stuck timeout fst=\(rounded(floorStuckTime[index])) align=\(rounded(align))")
                     currentRollRescueKinds[index].insert("floor")
-                    markDieStuck(index, reason: .floorStuckTimeout)
+                    if align >= config.floorSnapThreshold {
+                        // Face is clearly readable — snap flat and score silently.
+                        snapFlatAndSettle(index, die: die)
+                    } else {
+                        // Face too ambiguous for auto-score; go directly to red for a clean reroll.
+                        markDieStuck(index, reason: .floorStuckTimeout)
+                    }
                 }
             } else {
                 floorStuckTime[index] = 0
@@ -849,7 +895,7 @@ final class DiceRoller {
                 stuckDieIndices = []
                 nudgeableDieIndices = []
                 finishRoll()
-            } else if isBatchRunning {
+            } else if isBatchRunning && !isBatchPaused {
                 autoRerollStuckDiceForBatch()
             }
             return
@@ -871,7 +917,7 @@ final class DiceRoller {
                 finishRoll()
             } else {
                 isRolling = false
-                if isBatchRunning {
+                if isBatchRunning && !isBatchPaused {
                     autoRerollStuckDiceForBatch()
                 }
             }
@@ -1071,6 +1117,9 @@ final class DiceRoller {
                 stuckReasons: currentRollStuckReason,
                 finalAligns: currentRollFinalAlign,
                 unsettledSecs: currentRollUnsettledSecs,
+                floorStuckSecs: currentRollFloorStuckSecs,
+                finalAngularSpeeds: currentRollFinalAngularSpeed,
+                finalLinearSpeeds: currentRollFinalLinearSpeed,
                 finalXs: currentRollFinalX,
                 finalZs: currentRollFinalZ,
                 finalHeights: currentRollFinalHeight,
@@ -1115,18 +1164,104 @@ final class DiceRoller {
         logger.debug(self, message)
     }
 
+    /// Full diagnostic snapshot logged unconditionally when pauseWhenStuck fires.
+    /// Intended for manual analysis — always emits regardless of config.logDiagnostics.
+    private func logStuckDiagnosticSnapshot(index: Int, reason: StuckReason) {
+        guard diceEntities.indices.contains(index) else { return }
+        let die = diceEntities[index]
+        let pos = die.entity.position
+        let wallBlocked = isLikelyBlockedByWall(die)
+        let supportIdx = supportingDieIndex(for: index)
+        let axis = flattenNudgeAxes[index]
+        logger.debug(self, "━━━ STUCK DIE PAUSE — roll \(activeRollNumber) die \(index) ━━━")
+        logger.debug(self, "  reason         : \(reason.rawValue)")
+        logger.debug(self, "  top face       : \(die.topFaceValue)  alignment: \(String(format: "%.4f", die.topFaceAlignment))  snapThreshold: \(String(format: "%.2f", config.floorSnapThreshold))")
+        logger.debug(self, "  position       : x=\(String(format: "%.4f", pos.x)) y=\(String(format: "%.4f", pos.y)) z=\(String(format: "%.4f", pos.z))")
+        logger.debug(self, "  height         : \(String(format: "%.4f", die.centerHeightAboveTrayFloor))  expected: \(String(format: "%.4f", Self.expectedSettledCenterHeight))")
+        logger.debug(self, "  linear speed   : \(String(format: "%.4f", die.linearSpeed))  angular: \(String(format: "%.4f", die.angularSpeed))")
+        logger.debug(self, "  wall blocked   : \(wallBlocked)")
+        logger.debug(self, "  supported by   : \(supportIdx.map { "die \($0)" } ?? "none")")
+        logger.debug(self, "  floorStuckTime : \(String(format: "%.3f", floorStuckTime[index]))s  stillUnsettled: \(String(format: "%.3f", stillUnsettledTime[index]))s")
+        logger.debug(self, "  flattenAxis    : \(axis.map { String(format: "(%.3f, %.3f)", $0.x, $0.z) } ?? "none")")
+        logger.debug(self, "  rescueKinds    : \(currentRollRescueKinds[index].sorted().joined(separator: "|"))")
+        logger.debug(self, "  all dice       : \(diceSnapshotSummary())")
+        logger.debug(self, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    }
+
+    /// Snaps a near-flat floor-stuck die to its current top face orientation and counts it
+    /// as settled — no stuck UI, no reroll. Only called when topFaceAlignment >= floorSnapThreshold.
+    private func snapFlatAndSettle(_ index: Int, die: DiceEntity) {
+        guard activeRollingIndices.contains(index) else { return }
+
+        let preSnapAlignment = die.topFaceAlignment
+        let value = die.topFaceValue
+
+        // Capture stats before snapping — post-snap alignment would read 1.0, hiding the actual state.
+        if currentRollFinalAlign[index] == 0 {
+            currentRollFinalAlign[index] = preSnapAlignment
+            currentRollUnsettledSecs[index] = stillUnsettledTime[index]
+            currentRollFloorStuckSecs[index] = floorStuckTime[index]
+            currentRollFinalAngularSpeed[index] = die.angularSpeed
+            currentRollFinalLinearSpeed[index] = die.linearSpeed
+            currentRollFinalX[index] = die.entity.position.x
+            currentRollFinalZ[index] = die.entity.position.z
+            currentRollFinalHeight[index] = die.centerHeightAboveTrayFloor
+        }
+
+        let settledY = Self.expectedSettledCenterHeight + 0.001
+        die.present(value: value, at: SIMD3<Float>(die.entity.position.x, settledY, die.entity.position.z), isHeld: false)
+
+        activeRollingIndices.remove(index)
+        settleCounters[index] = config.settleFrames
+        stillUnsettledTime[index] = 0
+        flattenNudgeAxes[index] = nil
+        floorStuckTime[index] = 0
+
+        if !settleAnnounced[index] {
+            settleAnnounced[index] = true
+            notify { audioController?.onDieSettled(index: index, value: value) }
+        }
+
+        logDiagnostics("d\(index) snapped flat value=\(value) preSnapAlign=\(rounded(preSnapAlignment))")
+    }
+
     private func markDieStuck(_ index: Int, reason: StuckReason) {
         guard activeRollingIndices.contains(index) else { return }
 
-        // Capture diagnostic snapshot before any state is cleared.
+        // Compute early — only reads dieNudgeAttempted and reason, not the arrays being zeroed below.
+        // If a nudge was already attempted, go straight to red (stuck/reroll).
+        // Wall-blocked dice skip yellow — nudge (downward press + random spin) can't address
+        // a wall constraint; reroll is the right fix.
+        // Floor-stuck-timeout dice skip yellow — by the time the 4s timeout fires the die has
+        // already been through a gravity-boost ramp and a 2s directed angular kick. The nudge
+        // is the same class of intervention and statistically never succeeds (2.2% in testing).
+        // Near-flat floor-stuck dice are handled by snapFlatAndSettle() before reaching here.
+        // Otherwise go to yellow (nudgeable) — currently only stackedTimeout reaches this path.
+        // In theater replay, track state internally but skip visual indicators — tick() will
+        // call finishRoll() anyway and applyAuthoritativeResult will correct the face value.
+        let nudgeAttempted = (diceEntities.indices.contains(index) && dieNudgeAttempted[index])
+                             || reason == .wallBlocked
+                             || reason == .floorStuckTimeout
+
+        // Capture diagnostic stats before any state is cleared.
         if diceEntities.indices.contains(index) {
             let die = diceEntities[index]
             currentRollStuckReason[index] = reason.rawValue
             currentRollFinalAlign[index] = die.topFaceAlignment
             currentRollUnsettledSecs[index] = stillUnsettledTime[index]
+            currentRollFloorStuckSecs[index] = floorStuckTime[index]
+            currentRollFinalAngularSpeed[index] = die.angularSpeed
+            currentRollFinalLinearSpeed[index] = die.linearSpeed
             currentRollFinalX[index] = die.entity.position.x
             currentRollFinalZ[index] = die.entity.position.z
             currentRollFinalHeight[index] = die.centerHeightAboveTrayFloor
+        }
+
+        // Pause snapshot fires here — before zeroing — so floorStuckTime / stillUnsettledTime /
+        // flattenNudgeAxes still reflect the live state at the moment the die got stuck.
+        if nudgeAttempted && isBatchRunning && pauseWhenStuck {
+            isBatchPaused = true
+            logStuckDiagnosticSnapshot(index: index, reason: reason)
         }
 
         activeRollingIndices.remove(index)
@@ -1143,16 +1278,6 @@ final class DiceRoller {
         motion.angularVelocity = .zero
         die.entity.components.set(motion)
 
-        // If a nudge was already attempted, go straight to red (stuck/reroll).
-        // Wall-blocked dice also skip yellow — the nudge (downward press + random spin) is
-        // designed for floor equilibria and doesn't address the wall constraint; reroll is
-        // the right intervention and adds it immediately without a wasted interaction step.
-        // Otherwise go to yellow (nudgeable) first — in gameplay the player taps;
-        // in batch autoRerollStuckDiceForBatch() will auto-nudge, just like a player would.
-        // In theater replay, track state internally but skip visual indicators — tick() will
-        // call finishRoll() anyway and applyAuthoritativeResult will correct the face value.
-        let nudgeAttempted = (diceEntities.indices.contains(index) && dieNudgeAttempted[index])
-                             || reason == .wallBlocked
         if nudgeAttempted {
             stuckDieIndices.insert(index)
             if !isTheaterReplay { die.isStuck = true }

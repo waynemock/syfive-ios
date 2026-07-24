@@ -31,6 +31,9 @@ final class DiceStatistics {
         let stuckReason: String
         let finalAlign: Float
         let unsettledSecs: Float
+        let floorStuckSecs: Float
+        let finalAngularSpeed: Float
+        let finalLinearSpeed: Float
         let finalX: Float
         let finalZ: Float
         let finalHeight: Float
@@ -161,6 +164,9 @@ final class DiceStatistics {
             stuckReasons: Array(repeating: "", count: values.count),
             finalAligns: Array(repeating: 0, count: values.count),
             unsettledSecs: Array(repeating: 0, count: values.count),
+            floorStuckSecs: Array(repeating: 0, count: values.count),
+            finalAngularSpeeds: Array(repeating: 0, count: values.count),
+            finalLinearSpeeds: Array(repeating: 0, count: values.count),
             finalXs: Array(repeating: 0, count: values.count),
             finalZs: Array(repeating: 0, count: values.count),
             finalHeights: Array(repeating: 0, count: values.count),
@@ -180,6 +186,9 @@ final class DiceStatistics {
         stuckReasons: [String],
         finalAligns: [Float],
         unsettledSecs: [Float],
+        floorStuckSecs: [Float],
+        finalAngularSpeeds: [Float],
+        finalLinearSpeeds: [Float],
         finalXs: [Float],
         finalZs: [Float],
         finalHeights: [Float],
@@ -231,6 +240,9 @@ final class DiceStatistics {
                     stuckReason: dieIndex < stuckReasons.count ? stuckReasons[dieIndex] : "",
                     finalAlign: dieIndex < finalAligns.count ? finalAligns[dieIndex] : 0,
                     unsettledSecs: dieIndex < unsettledSecs.count ? unsettledSecs[dieIndex] : 0,
+                    floorStuckSecs: dieIndex < floorStuckSecs.count ? floorStuckSecs[dieIndex] : 0,
+                    finalAngularSpeed: dieIndex < finalAngularSpeeds.count ? finalAngularSpeeds[dieIndex] : 0,
+                    finalLinearSpeed: dieIndex < finalLinearSpeeds.count ? finalLinearSpeeds[dieIndex] : 0,
                     finalX: dieIndex < finalXs.count ? finalXs[dieIndex] : 0,
                     finalZ: dieIndex < finalZs.count ? finalZs[dieIndex] : 0,
                     finalHeight: dieIndex < finalHeights.count ? finalHeights[dieIndex] : 0,
@@ -305,14 +317,15 @@ final class DiceStatistics {
     // MARK: - Export
 
     func csvString() -> String {
-        var lines = ["sample_index,roll_id,die_index,value,held,source,rescued,rescue_kind,escape_recovered,stuck_reroll,stuck_nudge,stuck_reason,final_align,unsettled_secs,final_x,final_z,final_height,spawn_x,spawn_y,spawn_z,roll_duration_secs"]
+        var lines = ["sample_index,roll_id,die_index,value,held,source,rescued,rescue_kind,escape_recovered,stuck_reroll,stuck_nudge,stuck_reason,final_align,unsettled_secs,floor_stuck_secs,final_angular_speed,final_linear_speed,final_x,final_z,final_height,spawn_x,spawn_y,spawn_z,roll_duration_secs"]
         for record in records {
             lines.append(
                 "\(record.sampleIndex),\(record.rollID),\(record.dieIndex),\(record.value)," +
                 "\(record.held),\(record.source.rawValue),\(record.rescued),\(record.rescueKind)," +
                 "\(record.escapeRecovered),\(record.stuckReroll),\(record.stuckNudge),\(record.stuckReason)," +
-                String(format: "%.3f,%.3f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.3f",
+                String(format: "%.3f,%.3f,%.3f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.3f",
                        record.finalAlign, record.unsettledSecs,
+                       record.floorStuckSecs, record.finalAngularSpeed, record.finalLinearSpeed,
                        record.finalX, record.finalZ, record.finalHeight,
                        record.spawnX, record.spawnY, record.spawnZ,
                        record.rollDurationSecs)

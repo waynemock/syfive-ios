@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# DEPRECATED — Do not update. Superseded by DiceReportGenerator.swift, which produces
+# the same analysis in-app from live data. This file will be removed.
 """
 Analyze exported SyFive dice fairness CSV data.
 
@@ -75,6 +77,18 @@ def runs_test_z(values: list[int]) -> float:
     if variance <= 0:
         return 0.0
     return (runs - mean_runs) / math.sqrt(variance)
+
+
+def percentile(sorted_values: list[float], p: float) -> float:
+    if not sorted_values:
+        return 0.0
+    idx = (len(sorted_values) - 1) * p
+    lo = int(idx)
+    hi = lo + 1
+    frac = idx - lo
+    if hi >= len(sorted_values):
+        return sorted_values[lo]
+    return sorted_values[lo] * (1 - frac) + sorted_values[hi] * frac
 
 
 def summarize_values(values: list[int]) -> dict[str, object]:
@@ -185,18 +199,68 @@ def main() -> int:
         print(f"  nudge settled: {nudge_success}  nudge→reroll: {nudge_then_reroll}  ({nudge_success / sum(stuck_nudge) * 100:.1f}% success)")
     print(f"Rescue kinds: {dict(rescue_kinds)}")
     print(f"Stuck reasons: {dict(stuck_reason_counts)}")
+    snapped_rows = [row for row in rows if "floor" in row.get("rescue_kind", "") and not row.get("stuck_reason")]
+    floor_rerolled = stuck_reason_counts.get("floor-stuck-timeout", 0)
+    if snapped_rows or floor_rerolled:
+        total_floor = len(snapped_rows) + floor_rerolled
+        snap_rate = len(snapped_rows) / total_floor * 100 if total_floor else 0
+        print(f"Floor-stuck outcomes — snapped: {len(snapped_rows)}  rerolled: {floor_rerolled}  total: {total_floor}  snap rate: {snap_rate:.1f}%")
+    per_die_stuck: dict[int, int] = defaultdict(int)
+    for row in rows:
+        if row.get("stuck_reason"):
+            per_die_stuck[int(row["die_index"])] += 1
+    if per_die_stuck:
+        total_stuck = sum(per_die_stuck.values())
+        unique_roll_count = len(set(roll_ids))
+        stuck_rate = total_stuck / unique_roll_count * 100 if unique_roll_count else 0
+        die_breakdown = "  ".join(f"d{k}:{v}" for k, v in sorted(per_die_stuck.items()))
+        print(f"Per-die stuck: {die_breakdown}  (total={total_stuck}, {stuck_rate:.2f}% of rolls)")
     if final_aligns:
-        stuck_aligns = [float(row["final_align"]) for row in rows if row.get("stuck_reason")]
-        stuck_unsettled = [float(row["unsettled_secs"]) for row in rows if row.get("stuck_reason")]
+        stuck_rows = [row for row in rows if row.get("stuck_reason")]
+        stuck_aligns = [float(row["final_align"]) for row in stuck_rows]
+        stuck_unsettled = [float(row["unsettled_secs"]) for row in stuck_rows]
+        stuck_fst = [float(row["floor_stuck_secs"]) for row in stuck_rows if row.get("floor_stuck_secs")]
+        stuck_angular = [float(row["final_angular_speed"]) for row in stuck_rows if row.get("final_angular_speed")]
+        stuck_linear = [float(row["final_linear_speed"]) for row in stuck_rows if row.get("final_linear_speed")]
+        has_new_fields = bool(stuck_angular)
+
         print(f"Avg final alignment (all): {sum(final_aligns)/len(final_aligns):.4f}")
+        settled_aligns = sorted(
+            float(row["final_align"]) for row in rows
+            if not row.get("stuck_reason") and float(row.get("final_align") or 0) > 0
+        )
+        if settled_aligns:
+            p1 = percentile(settled_aligns, 0.01)
+            p10 = percentile(settled_aligns, 0.10)
+            p50 = percentile(settled_aligns, 0.50)
+            below_95 = sum(1 for v in settled_aligns if v < 0.95)
+            print(f"Settled alignment — p1: {p1:.4f}  p10: {p10:.4f}  median: {p50:.4f}  below 0.95: {below_95}/{len(settled_aligns)}")
         if stuck_aligns:
-            print(f"Avg final alignment (stuck only): {sum(stuck_aligns)/len(stuck_aligns):.4f}  avg unsettled: {sum(stuck_unsettled)/len(stuck_unsettled):.2f}s")
-            xs = [float(row["final_x"]) for row in rows if row.get("stuck_reason")]
-            zs = [float(row["final_z"]) for row in rows if row.get("stuck_reason")]
-            hs = [float(row["final_height"]) for row in rows if row.get("stuck_reason") and row.get("final_height")]
+            n = len(stuck_aligns)
+            fst_str = f"  avg floor_stuck: {sum(stuck_fst)/len(stuck_fst):.2f}s" if stuck_fst else ""
+            print(f"Avg final alignment (stuck only): {sum(stuck_aligns)/n:.4f}  avg unsettled: {sum(stuck_unsettled)/n:.2f}s{fst_str}")
+            if has_new_fields:
+                spinning = sum(1 for v in stuck_angular if v > 0.01)
+                print(f"Stuck angular speed — avg: {sum(stuck_angular)/n:.4f}  max: {max(stuck_angular):.4f}  still spinning (w>0.01): {spinning}/{n}")
+                print(f"Stuck linear  speed — avg: {sum(stuck_linear)/n:.4f}  max: {max(stuck_linear):.4f}")
+            xs = [float(row["final_x"]) for row in stuck_rows]
+            zs = [float(row["final_z"]) for row in stuck_rows]
+            hs = [float(row["final_height"]) for row in stuck_rows if row.get("final_height")]
             print(f"Stuck positions — x range: [{min(xs):.3f}, {max(xs):.3f}]  z range: [{min(zs):.3f}, {max(zs):.3f}]")
             if hs:
                 print(f"Stuck final heights — min: {min(hs):.4f}  max: {max(hs):.4f}  avg: {sum(hs)/len(hs):.4f}")
+            if has_new_fields and len(stuck_reason_counts) > 1:
+                print("Stuck-reason breakdown:")
+                for reason in sorted(stuck_reason_counts):
+                    rr = [row for row in stuck_rows if row.get("stuck_reason") == reason]
+                    nr = len(rr)
+                    r_align = sum(float(row["final_align"]) for row in rr) / nr
+                    r_fst = [float(row["floor_stuck_secs"]) for row in rr if row.get("floor_stuck_secs")]
+                    r_ang = [float(row["final_angular_speed"]) for row in rr if row.get("final_angular_speed")]
+                    fst_avg = f"{sum(r_fst)/len(r_fst):.2f}s" if r_fst else "n/a"
+                    ang_avg = f"{sum(r_ang)/len(r_ang):.4f}" if r_ang else "n/a"
+                    spinning_r = sum(1 for v in r_ang if v > 0.01) if r_ang else 0
+                    print(f"  {reason} (n={nr}): align={r_align:.3f}  fst={fst_avg}  angular={ang_avg}  spinning={spinning_r}/{nr}")
 
     spawn_ys = [float(row["spawn_y"]) for row in rows if row.get("spawn_y")]
     if spawn_ys:
@@ -204,8 +268,12 @@ def main() -> int:
 
     durations = [float(row["roll_duration_secs"]) for row in rows if row.get("roll_duration_secs")]
     if durations:
-        unique_durations = list({row["roll_id"]: float(row["roll_duration_secs"]) for row in rows if row.get("roll_duration_secs")}.values())
-        print(f"Roll durations — min: {min(unique_durations):.2f}s  max: {max(unique_durations):.2f}s  avg: {sum(unique_durations)/len(unique_durations):.2f}s")
+        unique_durations = sorted({row["roll_id"]: float(row["roll_duration_secs"]) for row in rows if row.get("roll_duration_secs")}.values())
+        avg_dur = sum(unique_durations) / len(unique_durations)
+        p50_dur = percentile(unique_durations, 0.50)
+        p95_dur = percentile(unique_durations, 0.95)
+        p99_dur = percentile(unique_durations, 0.99)
+        print(f"Roll durations — min: {min(unique_durations):.2f}s  p50: {p50_dur:.2f}s  p95: {p95_dur:.2f}s  p99: {p99_dur:.2f}s  max: {max(unique_durations):.2f}s  avg: {avg_dur:.2f}s")
 
     print(f"Yatzys rolled: {len(yatzys)}")
     print(f"Yatzy faces: {dict({face: yatzy_counts[face] for face in range(1, 7) if yatzy_counts[face]})}")
