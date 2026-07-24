@@ -92,7 +92,7 @@ final class MatchController {
     var canEditPlayers: Bool { !hasStarted }
 
     var isGameOver: Bool {
-        (0..<playerCount).allSatisfy { isComplete(scorecard: yatzyScorecard(for: $0)) }
+        playerCount > 0 && (0..<playerCount).allSatisfy { isComplete(scorecard: yatzyScorecard(for: $0)) }
     }
 
     var winnerIndices: [Int] {
@@ -423,6 +423,7 @@ final class MatchController {
         clearUndoState()
         rollsRemaining -= 1
         isRolling = true
+        onRollStarted?()
     }
 
     /// Call when physics dice have settled. Updates diceValues for non-held positions.
@@ -659,6 +660,10 @@ final class MatchController {
     /// GameNightController wires this: host → broadcastMatchState; guest → proposeUndo.
     var onUndone: (() -> Void)?
 
+    /// Fires when `beginRoll()` succeeds.
+    /// GameNightController wires this on the host to close the undo window.
+    var onRollStarted: (() -> Void)?
+
     // MARK: - Game Night state loading
 
     /// Replaces all match state from a Game Night wire snapshot. Used by:
@@ -698,6 +703,18 @@ final class MatchController {
         matchStartedAt = match.startedAt
         clearUndoState()
     }
+
+    /// Like `loadFromGameNightMatch` but restores the undo snapshot afterward.
+    /// Used on guest devices to keep the undo button alive through the host's echo.
+    func loadFromGameNightMatchPreservingUndo(_ match: Match, currentSeatIndex: Int) {
+        let saved = lastScoreSnapshot
+        loadFromGameNightMatch(match, currentSeatIndex: currentSeatIndex)
+        lastScoreSnapshot = saved
+    }
+
+    /// Clears the undo snapshot from outside MatchController.
+    /// Called when another player begins rolling, closing the undo window on all devices.
+    func clearUndoSnapshot() { clearUndoState() }
 
     // MARK: - Game Night host scoring
 

@@ -54,6 +54,7 @@ struct PreGameGridView: View {
             }
             .padding(12)
             .foregroundStyle(theme.primaryAccent)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .background(

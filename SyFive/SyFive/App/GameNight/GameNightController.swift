@@ -93,6 +93,13 @@ final class GameNightController {
     var pendingAuthoritativeResult: [Int]? = nil
     /// Fired on the undone player's device after undo — DiceAreaView restores 3D dice.
     var onUndoWithDice: (([Int]) -> Void)?
+    /// True on the guest device between scoring and the start of the next player's roll.
+    /// Keeps the undo button visible after the host's echo matchState clears the local snapshot.
+    private(set) var pendingGuestUndoAvailable: Bool = false
+    /// True on the host device after any score is applied and until the next roll begins.
+    /// Drives the undo button via gameNight observation (model.canUndoLastScore alone
+    /// doesn't reliably trigger a re-render on the host after a remote score is applied).
+    private(set) var pendingHostUndoAvailable: Bool = false
 
     // MARK: - Completion hook (Phase 6)
 
@@ -284,6 +291,8 @@ final class GameNightController {
         pendingAuthoritativeResult = nil
         onUndoWithDice = nil
         onMatchComplete = nil
+        pendingGuestUndoAvailable = false
+        pendingHostUndoAvailable = false
         isGuestAwaitingReconnect = false
         detachMatchController()
     }
@@ -297,6 +306,7 @@ final class GameNightController {
         matchController.onScoreApplied = { [weak self, weak matchController] category, dice in
             guard let self, let mc = matchController, self.phase == .inProgress else { return }
             if self.role == .host {
+                self.pendingHostUndoAvailable = true
                 Task {
                     await self.broadcastMatchState()
                     if mc.isGameOver {
@@ -304,24 +314,31 @@ final class GameNightController {
                     }
                 }
             } else {
+                self.pendingGuestUndoAvailable = true
                 self.proposeScore(category: category, diceValues: dice)
             }
         }
         matchController.onUndone = { [weak self, weak matchController] in
             guard let self, self.phase == .inProgress else { return }
             if self.role == .host {
+                self.pendingHostUndoAvailable = false
                 let dv = matchController?.diceValues ?? []
                 Task { await self.broadcastMatchUndo(diceValues: dv) }
             } else {
                 self.proposeUndo()
             }
         }
+        matchController.onRollStarted = { [weak self] in
+            self?.pendingHostUndoAvailable = false
+        }
     }
 
     private func detachMatchController() {
         matchController?.onScoreApplied = nil
         matchController?.onUndone = nil
+        matchController?.onRollStarted = nil
         matchController = nil
+        pendingHostUndoAvailable = false
         sessionMatchID = nil
         sessionGameID = nil
     }
@@ -375,10 +392,14 @@ final class GameNightController {
             participantID: participantID, category: category, diceValues: diceValues))
     }
 
-    /// Guest: send an undo request to the host.
+    /// Guest: send an undo request to the host for the last scorer's entry.
     func proposeUndo() {
         guard role != .host, phase == .inProgress,
-              let participantID = localParticipantID else { return }
+              let mc = matchController,
+              let undoIndex = mc.undoPlayerIndex,
+              undoIndex < mc.participantIDs.count else { return }
+        pendingGuestUndoAvailable = false
+        let participantID = mc.participantIDs[undoIndex]
         send(.undoRequest, payload: UndoRequestPayload(participantID: participantID))
     }
 
@@ -569,12 +590,21 @@ final class GameNightController {
             if sessionMatchID == nil { sessionMatchID = payload.match.id }
             if sessionGameID == nil { sessionGameID = payload.match.gameID }
         }
-        mc.loadFromGameNightMatch(payload.match, currentSeatIndex: payload.currentSeatIndex)
+        if payload.diceValues != nil {
+            // Undo broadcast — clear the pending flag and reload normally.
+            pendingGuestUndoAvailable = false
+            mc.loadFromGameNightMatch(payload.match, currentSeatIndex: payload.currentSeatIndex)
+        } else if pendingGuestUndoAvailable {
+            // Echo of our own score — preserve the undo snapshot so the button stays visible.
+            mc.loadFromGameNightMatchPreservingUndo(payload.match, currentSeatIndex: payload.currentSeatIndex)
+        } else {
+            mc.loadFromGameNightMatch(payload.match, currentSeatIndex: payload.currentSeatIndex)
+        }
         if let dv = payload.diceValues, let rr = payload.rollsRemaining {
             mc.restoreDiceStateAfterUndo(values: dv, rollsRemaining: rr)
             onUndoWithDice?(dv)
         }
-        logger.debug(self, "matchState: seat \(payload.currentSeatIndex) undo=\(payload.diceValues != nil)")
+        logger.debug(self, "matchState: seat \(payload.currentSeatIndex) undo=\(payload.diceValues != nil) pendingUndo=\(pendingGuestUndoAvailable)")
     }
 
     private func handleRollBegan(_ envelope: GameNightEnvelope) {
@@ -582,6 +612,9 @@ final class GameNightController {
               payload.participantID != localParticipantID,
               phase == .inProgress else { return }
         logger.debug(self, "handleRollBegan: roll=\(payload.rollIndex) held=\(payload.heldMask) seed=\(payload.recipe.seed) hookWired=\(onRollBegan != nil)")
+        pendingGuestUndoAvailable = false
+        pendingHostUndoAvailable = false
+        matchController?.clearUndoSnapshot()
         pendingAuthoritativeResult = nil
         onRollBegan?(payload.recipe, payload.heldMask)
     }

@@ -138,7 +138,7 @@ struct DiceAreaView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(!canRoll)
 
-                if model.canUndoLastScore && isUndoTurn {
+                if isUndoTurn {
                     Button {
                         suppressNextPlayerChangeDiceClear = true
                         if let restoration = model.undoLastScore() {
@@ -249,12 +249,12 @@ struct DiceAreaView: View {
     // MARK: - Helpers
 
     private var isUndoTurn: Bool {
-        guard let undoIndex = model.undoPlayerIndex else { return false }
-        guard gameNight.isSessionActive, gameNight.phase == .inProgress else { return true }
-        guard let localID = gameNight.localParticipantID else { return true }
-        let ids = model.participantIDs
-        guard undoIndex < ids.count else { return true }
-        return ids[undoIndex] == localID
+        if gameNight.isSessionActive, gameNight.phase == .inProgress {
+            return gameNight.role == .host
+                ? gameNight.pendingHostUndoAvailable
+                : gameNight.pendingGuestUndoAvailable
+        }
+        return model.undoPlayerIndex != nil
     }
 
     private var isLocalTurn: Bool {
@@ -275,7 +275,7 @@ struct DiceAreaView: View {
 
     private var canRoll: Bool {
         guard !gameNight.isGuestAwaitingReconnect else { return false }
-        return isLocalTurn && model.rollsRemaining > 0 && !model.isGameOver && !model.isRolling
+        return model.playerCount > 0 && isLocalTurn && model.rollsRemaining > 0 && !model.isGameOver && !model.isRolling
     }
 
     private var shouldPrimeInitialTurn: Bool {

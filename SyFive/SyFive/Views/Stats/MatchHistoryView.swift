@@ -10,6 +10,7 @@ struct MatchHistoryView: View {
     /// When a deletion targets this match, `onActiveMatchDeleted` is called.
     var activeMatchID: UUID? = nil
     var onActiveMatchDeleted: (() -> Void)? = nil
+    var onResume: ((MatchModel) -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -38,7 +39,13 @@ struct MatchHistoryView: View {
                     }
                 } else {
                     ForEach(inProgressMatches) { matchModel in
-                        UnfinishedMatchRow(match: matchModel.toDomain())
+                        NavigationLink {
+                            UnfinishedMatchDetailView(matchModel: matchModel) { m in
+                                onResume?(m)
+                            }
+                        } label: {
+                            UnfinishedMatchRow(match: matchModel.toDomain())
+                        }
                     }
                     .onDelete { indexSet in
                         guard let i = indexSet.first else { return }
