@@ -1,85 +1,71 @@
-//
-//  UserDefaultsExtension.swift
-//  SyFLUX
-//
-//  Created by Wayne Mock on 1/25/19.
-//  Copyright © 2020 Syzygy Softwerks LLC. All rights reserved.
-//
-
 import Foundation
 import UIKit
 
 extension UserDefaults {
 
-	private struct Keys {
-		static let acknowledgedUpdateVersion = "AcknowledgedUpdateVersion"
-		static let deviceID = "DeviceID"
-        static let commentaryVoiceID = "commentaryVoiceID"
-	}
+    // All UserDefaults key strings in one place. Use Key.* in @AppStorage declarations
+    // so key strings are never duplicated across files.
+    enum Key {
+        static let acknowledgedUpdateVersion    = "syfive.update.acknowledgedVersion"
+        static let deviceID                     = "syfive.deviceID"
+        static let theaterAudioEnabled          = "syfive.dice.theaterAudio"
+        static let commentaryVoiceID            = "syfive.commentary.voiceID"
+
+        // Game Night — keyed per-session or per-match UUID.
+        static func gnIsHost(sessionID: UUID) -> String      { "syfive.gn.host.\(sessionID.uuidString)" }
+        static func gnParticipantID(matchID: UUID) -> String { "syfive.gn.participantID.\(matchID.uuidString)" }
+        static func gnWasHost(matchID: UUID) -> String       { "syfive.gn.wasHost.\(matchID.uuidString)" }
+    }
+
+    // MARK: - App
+
+    var acknowledgedUpdateVersion: String? {
+        get { string(forKey: Key.acknowledgedUpdateVersion) }
+        set { set(newValue, forKey: Key.acknowledgedUpdateVersion) }
+    }
+
+    var deviceID: String {
+        if let stored = string(forKey: Key.deviceID) { return stored }
+        let newID = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+        set(newID, forKey: Key.deviceID)
+        return newID
+    }
 
     // MARK: - Commentary
 
     var commentaryVoiceID: String? {
-        get { string(forKey: Keys.commentaryVoiceID) }
-        set { set(newValue, forKey: Keys.commentaryVoiceID) }
+        get { string(forKey: Key.commentaryVoiceID) }
+        set { set(newValue, forKey: Key.commentaryVoiceID) }
     }
 
     // MARK: - Game Night
 
     func gnIsHost(for sessionID: UUID) -> Bool {
-        bool(forKey: "gn.host.\(sessionID.uuidString)")
+        bool(forKey: Key.gnIsHost(sessionID: sessionID))
     }
 
     func setGnIsHost(for sessionID: UUID) {
-        set(true, forKey: "gn.host.\(sessionID.uuidString)")
+        set(true, forKey: Key.gnIsHost(sessionID: sessionID))
     }
 
     func removeGnIsHost(for sessionID: UUID) {
-        removeObject(forKey: "gn.host.\(sessionID.uuidString)")
+        removeObject(forKey: Key.gnIsHost(sessionID: sessionID))
     }
 
     func gnParticipantID(for matchID: UUID) -> UUID? {
-        guard let str = string(forKey: "gn.participantID.\(matchID.uuidString)") else { return nil }
+        guard let str = string(forKey: Key.gnParticipantID(matchID: matchID)) else { return nil }
         return UUID(uuidString: str)
     }
 
     func setGnParticipantID(_ pid: UUID, for matchID: UUID) {
-        set(pid.uuidString, forKey: "gn.participantID.\(matchID.uuidString)")
+        set(pid.uuidString, forKey: Key.gnParticipantID(matchID: matchID))
     }
 
     func gnWasHost(for matchID: UUID) -> Bool {
-        bool(forKey: "gn.wasHost.\(matchID.uuidString)")
+        bool(forKey: Key.gnWasHost(matchID: matchID))
     }
 
     func setGnWasHost(for matchID: UUID) {
-        set(true, forKey: "gn.wasHost.\(matchID.uuidString)")
+        set(true, forKey: Key.gnWasHost(matchID: matchID))
     }
-
-	/// The app version that the user has acknowledged for updates.
-	///
-	/// When an update is available, we show a badge until the user opens the menu.
-	/// After opening the menu, we store the current version so the badge doesn't show again
-	/// for this version, but the menu item remains visible.
-	public var acknowledgedUpdateVersion: String? {
-		get {
-			return string(forKey: Keys.acknowledgedUpdateVersion)
-		}
-		set {
-			set(newValue, forKey: Keys.acknowledgedUpdateVersion)
-		}
-	}
-	
-	/// Unique device identifier for device-specific settings.
-	///
-	/// Uses identifierForVendor when available, falls back to a random UUID.
-	/// Persisted in UserDefaults to remain stable across app launches.
-	/// Read-only to prevent accidental overwrites.
-	public var deviceID: String {
-		if let stored = string(forKey: Keys.deviceID) {
-			return stored
-		}
-		let newID = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
-		set(newID, forKey: Keys.deviceID)
-		return newID
-	}
 }

@@ -21,7 +21,11 @@ struct SyFiveApp: App {
             ParticipantModel.self,
             AppSettingsModel.self,
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let modelConfiguration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: false,
+            cloudKitDatabase: .private("iCloud.com.syzygysoftwerksllc.SyFive")
+        )
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])

@@ -95,7 +95,6 @@ final class FeelDirector {
 
     func allDiceSettled(values: [Int]) {
         audio.killBed(fadeDurationMs: 80)
-        if hapticsEnabled { haptics.play(id: "settle_all") }
     }
 
     // MARK: - App events (§7.2)

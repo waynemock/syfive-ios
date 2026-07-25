@@ -180,6 +180,9 @@ struct ContentView: View {
         .onAppear {
             seedSettingsIfNeeded()
             seedYatzyGameIfNeeded()
+            #if DEBUG
+            runCloudKitSchemaExercise()
+            #endif
             loadMatchIfNeeded()
             healOrphanedParticipants()
             // Sync initial settings values (onChange won't fire for the first load).

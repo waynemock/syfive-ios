@@ -6,9 +6,9 @@
 
 ## Summary
 
-The core game loop, dice system, scorecard UX, persistence, and the full stats layer are all complete. The stats work spans both `03_STATS_DESIGN.md` (all 6 stages) and `05_PLAYER_INSIGHTS DESIGN.md` (consistency, proficiency, style signature, risk profile, clutch, and the plain-language player read). App surfaces include pre-game H2H cards, player profiles, and a match history browser with progression charts. What remains is audio, haptics, a settings screen, and pre-submission cleanup.
+The core game loop, dice system, scorecard UX, persistence, stats, feel system (audio + haptics), visual celebrations, commentary, settings screen, Game Night (SharePlay), and House Records are all complete. The app is functionally at 1.0 quality. What remains is calibration of a few open feel/celebration design decisions on real devices, game-over scorecard moment (count-up + glow), two Game Night edge-case policies, and pre-submission cleanup.
 
-**Overall progress: ~92% to 1.0 Definition of Done**
+**Overall progress: ~98% to 1.0 Definition of Done**
 
 ---
 
@@ -57,7 +57,7 @@ The requirements recommended **Physics-Lite (Option A)** for 1.0 with full physi
 | Roll button with rolls-remaining count | ✅ Done | |
 | Roll button disabled at 0 remaining | ✅ Done | |
 | iPhone portrait layout | ✅ Done | |
-| iPad layout | ✅ Done | Probe-driven card width, adapts to Dynamic Type |
+| iPad layout | ✅ Done | Probe-driven card width, adapts to Dynamic Type; landscape uses AnyLayout to preserve RealityView identity |
 | One-tap new game | ✅ Done | + button in nav bar, reset alert if in-progress |
 | Suggested best move (default OFF) | ✅ Done | `suggestedScores()` computed in `GameModel`, surfaced in `PlayerScoreCardView` |
 | Card border (theme accent, 2pt) | ✅ Done | `strokeBorder` on card background |
@@ -139,7 +139,7 @@ All six stages from `03_STATS_DESIGN.md` and the full Player Insights layer from
 | Style signature (section lean, bonus approach, Yatzy turn, opening) | `Yatzy/StyleSignature.swift` | ✅ Done |
 | Risk profile (scratch rate, early/late zeros, Yatzy zeroed) | `Yatzy/RiskProfile.swift` | ✅ Done |
 | Clutch profile (back-half vs front-half, comebacks, surrendered leads) | `Yatzy/ClutchProfile.swift` | ✅ Done |
-| Plain-language read ("An upper-section specialist who...") | `Yatzy/PlayerInsights.swift` | ✅ Done — first-pass thresholds; calibrate on real data |
+| Plain-language read ("An upper-section specialist who...") | `Yatzy/PlayerInsights.swift` | ✅ Done — thresholds calibrated on real household data |
 
 **Open from `05` §6 (author decisions, not closed by implementation):**
 - Style signature placement (centerpiece vs. one section among equals)
@@ -152,43 +152,175 @@ All six stages from `03_STATS_DESIGN.md` and the full Player Insights layer from
 
 ---
 
-## Audio — NOT STARTED ❌
+## Feel — Audio & Haptics — COMPLETE ✅
 
-The `DiceAudioController` protocol is fully designed with the right hook points, but there is no concrete implementation. All protocol methods have no-op defaults — the game runs silently.
+The full feel system (`07_AUDIO_HAPTICS_DESIGN.md`) is implemented. All sounds are procedurally synthesized at runtime via `SoundRenderer` and cached to disk (`SoundCache`). No audio asset files required.
 
-| Requirement | Status | Notes |
-|---|---|---|
-| Roll rattle sound | ❌ Not started | Protocol hook: `onDieLaunched(index:)` exists |
-| Settle thunk sound | ❌ Not started | Protocol hook: `onDieSettled(index:value:)` exists |
-| Hold toggle click | ❌ Not started | No hook yet; needs addition |
-| Score confirm chime | ❌ Not started | No hook yet; needs addition |
-| Sound on/off user control | ❌ Not started | Blocked by settings screen |
+### Architecture
 
-The architecture is ready — implementing audio means writing a concrete `DiceAudioControlling` class using `AVAudioEngine` or `AVAudioPlayer` and assigning it to `DiceRoller.audioController`. The collision hooks (`onDieHitFloor`, `onDieHitWall`) are reserved for a future RealityKit collision event phase.
+- **`FeelDirector`** — single `@Observable` entry point for all feel events; rides SwiftUI environment injection (D-053).
+- **`FeelAudioEngine`** — `AVAudioEngine` graph; looping rattle bed + one-shot event sounds via `AVAudioPlayerNode`.
+- **`FeelHapticEngine`** — `CHHapticEngine` players, pre-built at warm-up to avoid first-event latency.
+- **`SoundRenderer`** — synthesizes `AVAudioPCMBuffer` from `SoundRecipe` / `RattleRecipe` descriptors.
+- **`SoundCache`** — content-addressed on-disk cache; stale entries swept at warm-up.
+- **`DiceFeelAdapter`** — bridges `DiceRoller` physics callbacks → `FeelDirector` events.
+
+### Event coverage
+
+| Event | Sound | Haptic | Status |
+|---|---|---|---|
+| Roll rattle bed (per die count) | ✅ Done | — | Looping, volume-scaled by unheld count; 4 seeds round-robin |
+| Per-die settle thunk | ✅ Done | ✅ Done | Variant per die index (5 pitched voices); beds duck on settle |
+| All dice settled | — | ✅ Done | Bed killed at 80 ms fade |
+| Hold engage | ✅ Done | ✅ Done | |
+| Hold release | ✅ Done | ✅ Done | |
+| Score confirmed | ✅ Done | ✅ Done | |
+| Yatzy moment | ✅ Done | ✅ Done | |
+| Game ended | ✅ Done | ✅ Done | |
+| Undo | ✅ Done | ✅ Done | |
+| Die nudged (yellow recovery) | ✅ Done | ✅ Done | |
+| Die rerolled (red recovery) | ✅ Done | ✅ Done | Includes brief faint bed for relaunched die |
+
+### Feel calibration — RESOLVED ✅
+
+Open choices from `07 §11` resolved via on-device feel-board testing. See `00_DECISION_LEDGER.md` for the locked outcomes.
 
 ---
 
-## Haptics — NOT STARTED ❌
+## Celebrations — COMPLETE ✅
+
+Full SwiftUI particle overlay system (`08_CELEBRATIONS_DESIGN.md`). App-layer only; no RealityKit dependency.
 
 | Requirement | Status | Notes |
 |---|---|---|
-| Light tap on hold toggle | ❌ Not started | `UIImpactFeedbackGenerator` needed |
-| Soft impact on settle | ❌ Not started | |
-| Optional confirm on scoring | ❌ Not started | |
-| Haptics on/off user control | ❌ Not started | Blocked by settings screen |
+| Yatzy: rising accent motes | ✅ Done | 15–25 motes from die positions; 2:1 primary/secondary ratio |
+| Yatzy: title card ("YATZY / +50") | ✅ Done | Fade in after 200 ms; auto-dismissed at ~1.8 s |
+| Game-over: slow-fall particles | ✅ Done | 55 motes from top; staggered 0.3–2.0 s delays; 4 s total |
+| Game-over: theme-gradient wash | ✅ Done | Winner accent gradient; fades in at 0.3 s |
+| Tie support | ✅ Done | Interleaved winner accents in both motes and wash |
+| Reduce Motion: particles skipped | ✅ Done | `@Environment(\.accessibilityReduceMotion)` guard on both Canvas paths |
+| Hit-testing disabled | ✅ Done | All taps pass through to game content |
+| Rapid Yatzy: no accumulation | ✅ Done | `yatzyEvent` replaced not stacked; `.id(event.id)` forces fresh view |
+| Game-over: winner scorecard pulse effect | ✅ Done | Rainbow/accent pulse ring around winning card |
+| Game-over: grand-total count-up | ✅ Done | Winning score animates up on game end |
+
+### Open celebrations decisions
+
+From `08` — implementation is done; these are device/feel calibrations:
+- **O-3** — Game-over confetti: is the slow-fall the right ceiling, or is wash + glow + pulse the calm answer?
+- **O-4** — Tie behavior: current impl interleaves winner accents — confirm this feels right, or fall back to neutral
+- **O-5** — Count-up under Reduce Motion: keep the count-up animation, or snap total to final?
+- **O-6** — Game-over audio companion: does the existing `gameEnded()` feel event pair well, or is a separate cue needed?
 
 ---
 
-## Settings Screen — NOT STARTED ❌
+## Commentary — COMPLETE ✅
 
-There is no settings screen. Several features are blocked waiting for it.
+Full `AVSpeechSynthesizer`-based commentary system (`09_COMMENTATOR_DESIGN.md`). Off by default; no engine instantiated when off (D-075).
+
+### Architecture
+
+- **`CommentaryEngine`** — `AVSpeechSynthesizer` delegate; tier-based interrupts; no-immediate-repeat deck shuffle; token fill (`{player}`, `{winner}`, `{leader}`, etc.).
+- **`CommentaryPersonality`** — pure data: `lines` dict keyed by `CommentaryEventKind`, prosody row, blurb, preview line.
+- **`CommentaryLevel`** — `.celebrations` / `.highlights` / `.playByPlay`; gates via `passesLevelGate(tier:)`.
+- **`CommentaryEvent`** — value type; carries context tokens for the current game moment.
+- **`ContentView+Commentary`** — syncs engine on settings changes; gates engine to host-only during Game Night (D-085).
+
+### Packs shipped
+
+| Pack | ID | Character |
+|---|---|---|
+| Steady | `steady` | Warm, measured, knowledgeable |
+| Snarky | `snarky` | Dry wit; targets dice never players (D-082) |
+| Sports | `sports` | High-energy play-by-play |
+| Zen | `zen` | Calm, philosophical |
+
+### Settings
+
+Commentary toggle + "Voice, Personality & Level" deep-link in `SettingsView`. `VoicePickerView` lists available `AVSpeechSynthesisVoice` entries by language; preview line plays via `engine.preview()`. Voice ID stored device-locally in `UserDefaults` (D-081).
+
+---
+
+## Settings Screen — COMPLETE ✅
+
+`SettingsView` is a full-featured settings sheet. All previously blocked toggles are now exposed.
+
+| Setting | Status |
+|---|---|
+| Color scheme (System / Light / Dark) | ✅ Done |
+| Sound on/off | ✅ Done |
+| Haptics on/off | ✅ Done |
+| Suggested Move on/off | ✅ Done |
+| Commentary on/off + personality / voice / level deep-link | ✅ Done |
+| Game Night theater audio on/off (device-local) | ✅ Done |
+
+---
+
+## Game Night (SharePlay) — SUBSTANTIALLY COMPLETE ✅
+
+Full SharePlay implementation (`06_MULTIDEVICE_DESIGN.md`). GroupActivities imports confined to `App/GameNight/` (D-061).
+
+### Architecture
+
+- **`GameNightController`** (`@Observable`, 875 lines) — session orchestrator: SharePlay session, messenger, role assignment, inbound message routing.
+- **`MatchPresenting`** protocol — `MatchController` and `TableReplica` both adopt it; views bind either without knowing which (D-060).
+- **`TableReplica`** — guest-side read-only replica; applies host `matchState` snapshots; runs spectator dice recipes.
+- **`GameNightActivity`** — `GroupActivity` definition.
+- **`GameNightEnvelope`** / **`GameNightPayloads`** — versioned message protocol (D-056).
+
+### Views
+
+`GameNightSharingSheet`, `SeatClaimSheet`, `TableSettingView` (table-row commentary override), `GameNightHelpSheet`.
+
+### Feature coverage
+
+| Feature | Status | Notes |
+|---|---|---|
+| Host-authoritative state sync | ✅ Done | D-055 |
+| Role assignment (host / guest / spectator) | ✅ Done | |
+| Seat claiming + lock at match start | ✅ Done | `SeatClaimSheet` |
+| `DiceRollRecipe` broadcast + spectator replay | ✅ Done | D-059 |
+| Completion broadcast (guest upsert) | ✅ Done | D-057, D-063 |
+| Spectator auto-resolve (silent) | ✅ Done | D-066 |
+| Commentary: host-only, session-scoped override | ✅ Done | D-084, D-091 |
+| Dropped-session resume / reconnect | ✅ Done | D-067 |
+| GroupStateObserver (eligibility badge) | ✅ Done | |
+| Theater audio setting in `SettingsView` | ✅ Done | D-094 |
+
+### Open Game Night decisions
+
+- **`06 §13.2` — Guest drop mid-turn**: wait-only (recommended) vs. host "play on" skip control. Not yet implemented.
+- **`06 §13.3` — Game Night undo policy**: ✅ Shipped. `UndoRequestPayload` → host applies → broadcasts with dice state; `clearUndoSnapshot()` closes window at `rollBegan`. (D-120)
+
+---
+
+## House Records — COMPLETE ✅
+
+Full `HouseRecords` system (`12_HOUSE_RECORDS_DESIGN.md`). Compute-on-read from persisted matches; zero schema changes.
 
 | Requirement | Status | Notes |
 |---|---|---|
-| Settings screen (premium + short) | ❌ Not started | |
-| Sound on/off | ❌ Not started | |
-| Haptics on/off | ❌ Not started | |
-| Suggested move on/off | ⚠️ Logic done | No UI toggle to expose the control |
+| Eight title cards | ✅ Done | Best Game, Most Yatzys in Game, Best Upper Section, Best Average, Most Wins, Most Games Played, Most Yatzys, Most Upper Bonuses |
+| Two sections (All Games / Head-to-Head) | ✅ Done | Section headers with subtitle in `HouseRecordsView` |
+| Claimed / Unclaimed / Unclaimed-gated states | ✅ Done | `UnclaimedContent(gated:)` renders both |
+| Tie: all holders listed | ✅ Done | Per-name dates; collapsed when same-match |
+| Average-type gate (N ≥ 10 matches) | ✅ Done | D-104 |
+| Rank-derived titles require count > 1 | ✅ Done | D-105 |
+| Archived players eligible | ✅ Done | D-099; uses Participant display snapshot |
+| Screen hidden until first completed match | ✅ Done | D-108 |
+| Holder themed (primaryAccent from displayThemeID) | ✅ Done | |
+
+---
+
+## Player Management — COMPLETE ✅
+
+| Feature | Status |
+|---|---|
+| Player roster (create, edit, archive) | ✅ Done |
+| Per-player theme selection | ✅ Done |
+| Player profiles with stats + charts | ✅ Done |
+| Player merging (combine duplicate entries) | ✅ Done | `PlayerMergeSheet` |
+| Guest players (Game Night display snapshots) | ✅ Done | |
 
 ---
 
@@ -197,8 +329,8 @@ There is no settings screen. Several features are blocked waiting for it.
 | Platform | Status | Notes |
 |---|---|---|
 | iOS (primary) | ✅ Done | Fully functional |
-| iPadOS | ✅ Done | Responsive layout works well |
-| macOS | ❌ Excluded | `SUPPORTS_MACCATALYST = NO` in build settings. Can be revisited post-1.0. |
+| iPadOS | ✅ Done | Responsive layout; landscape tested |
+| macOS | ❌ Excluded | `SUPPORTS_MACCATALYST = NO`. Can be revisited post-1.0. |
 | watchOS / tvOS / visionOS | 🔜 Future | Not 1.0 per requirements |
 
 ---
@@ -214,6 +346,8 @@ There is no settings screen. Several features are blocked waiting for it.
 | Python analysis script | ✅ |
 | Roll recipe capture + replay | ✅ |
 | Physics tuning sliders (debug-flag gated) | ✅ |
+| Feel board (audition sounds + haptics in-app) | ✅ |
+| Dice Fairness deep-dive view | ✅ |
 
 ---
 
@@ -235,7 +369,8 @@ From `REQUIREMENTS.md`:
 
 Ordered by dependency and user impact:
 
-1. **Settings screen** — Sound on/off, haptics on/off, suggested move toggle. Can be minimal (one sheet off the toolbar).
-2. **Haptics** — 2–3 `UIFeedbackGenerator` callsites (hold toggle, settle, score confirm). Quick win; no blocker.
-3. **Audio** — Write a concrete `DiceAudioControlling` implementation using `AVAudioEngine` or `AVAudioPlayer` and assign it to `DiceRoller.audioController`. Hook points are already in place.
-4. **Pre-submission** — Flip `AppConfig.DebugDice.showHarness = false`, `logRollDiagnostics = false`, `DebugLayout.isEnabled = false`. Final QA pass, App Store assets.
+1. **Guest drop mid-turn** (`06 §13.2`) — wait-only vs. host "play on" skip control. Only remaining Game Night policy decision.
+
+2. **Celebration calibration** — Four open design questions from `08` (O-3 through O-6): confetti ceiling, count-up under Reduce Motion, tie behavior confirmation, game-over audio companion.
+
+3. **Pre-submission** — Flip `AppConfig.DebugDice.showHarness = false`, `logRollDiagnostics = false`, `DebugLayout.isEnabled = false`. App Store assets (screenshots, description, metadata). Final QA pass across all device sizes.

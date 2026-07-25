@@ -49,6 +49,9 @@ final class GameNightController {
     /// True on a guest device after loading a game night match at relaunch, until the
     /// host's session arrives. Blocks rolling so the guest can't act as the wrong player.
     private(set) var isGuestAwaitingReconnect = false
+    /// True when the host has chosen to roll and score on behalf of a dropped player (D-121).
+    /// Cleared automatically when the proxied turn is scored.
+    private(set) var isProxyMode = false
 
     /// Session-scoped commentary override. Host writes; guests receive via tableState.
     /// Never persisted — the session ends and solo settings reassert immediately.
@@ -306,6 +309,7 @@ final class GameNightController {
         matchController.onScoreApplied = { [weak self, weak matchController] category, dice in
             guard let self, let mc = matchController, self.phase == .inProgress else { return }
             if self.role == .host {
+                self.isProxyMode = false
                 self.pendingHostUndoAvailable = true
                 Task {
                     await self.broadcastMatchState()
@@ -339,6 +343,7 @@ final class GameNightController {
         matchController?.onRollStarted = nil
         matchController = nil
         pendingHostUndoAvailable = false
+        isProxyMode = false
         sessionMatchID = nil
         sessionGameID = nil
     }
@@ -403,11 +408,34 @@ final class GameNightController {
         send(.undoRequest, payload: UndoRequestPayload(participantID: participantID))
     }
 
+    // MARK: - Proxy mode (D-121)
+
+    /// Lets the host roll and score on behalf of a dropped player for the current turn.
+    func enableProxyMode() {
+        guard role == .host else { return }
+        isProxyMode = true
+    }
+
+    func disableProxyMode() {
+        isProxyMode = false
+    }
+
+    /// In proxy mode the host's outbound roll messages carry the current player's
+    /// participantID so guests see the roll attributed to the right seat.
+    private var outboundParticipantID: UUID? {
+        if isProxyMode,
+           let mc = matchController,
+           mc.currentPlayerIndex < mc.participantIDs.count {
+            return mc.participantIDs[mc.currentPlayerIndex]
+        }
+        return localParticipantID
+    }
+
     // MARK: - Outbound messages (Phase 5 — roll theater)
 
     func sendRollBegan(recipe: DiceRollRecipe, rollIndex: Int, heldMask: [Bool]) {
         guard isSessionActive, phase == .inProgress,
-              let participantID = localParticipantID else { return }
+              let participantID = outboundParticipantID else { return }
         logger.debug(self, "sendRollBegan: roll=\(rollIndex) held=\(heldMask) seed=\(recipe.seed)")
         send(.rollBegan, payload: RollBeganPayload(
             participantID: participantID, rollIndex: rollIndex,
@@ -416,7 +444,7 @@ final class GameNightController {
 
     func sendRollResult(faceValues: [Int]) {
         guard isSessionActive, phase == .inProgress,
-              let participantID = localParticipantID else { return }
+              let participantID = outboundParticipantID else { return }
         logger.debug(self, "sendRollResult: values=\(faceValues)")
         send(.rollResult, payload: RollResultPayload(
             participantID: participantID, faceValues: faceValues))
@@ -424,7 +452,7 @@ final class GameNightController {
 
     func sendHoldToggled(dieIndex: Int, isHeld: Bool) {
         guard isSessionActive, phase == .inProgress,
-              let participantID = localParticipantID else { return }
+              let participantID = outboundParticipantID else { return }
         logger.debug(self, "sendHoldToggled: die=\(dieIndex) held=\(isHeld)")
         send(.holdToggled, payload: HoldToggledPayload(
             participantID: participantID, dieIndex: dieIndex, isHeld: isHeld))

@@ -9,7 +9,9 @@
 	<key>com.apple.developer.group-session</key>
 	<true/>
 	<key>com.apple.developer.icloud-container-identifiers</key>
-	<array/>
+	<array>
+		<string>iCloud.com.syzygysoftwerksllc.SyFive</string>
+	</array>
 	<key>com.apple.developer.icloud-services</key>
 	<array>
 		<string>CloudKit</string>

@@ -25,6 +25,7 @@ struct MatchHistoryView: View {
 
     @State private var segment: HistorySegment = .finished
     @State private var matchToDelete: MatchModel? = nil
+    @State private var showsDeleteAllAlert = false
 
     var body: some View {
         NavigationStack {
@@ -69,7 +70,16 @@ struct MatchHistoryView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
+                    HStack(spacing: 16) {
+                        if segment == .unfinished && !inProgressMatches.isEmpty {
+                            Button(role: .destructive) {
+                                showsDeleteAllAlert = true
+                            } label: {
+                                Text("Delete All")
+                            }
+                        }
+                        Button("Done") { dismiss() }
+                    }
                 }
             }
             .onChange(of: inProgressMatches.isEmpty) { _, isEmpty in
@@ -105,6 +115,19 @@ struct MatchHistoryView: View {
                     matchToDelete = nil
                 }
                 Button("Cancel", role: .cancel) { matchToDelete = nil }
+            } message: {
+                Text("This cannot be undone.")
+            }
+            .alert(
+                "Delete all \(inProgressMatches.count) unfinished games?",
+                isPresented: $showsDeleteAllAlert
+            ) {
+                Button("Delete All", role: .destructive) {
+                    let deletingActive = inProgressMatches.contains { $0.id == activeMatchID }
+                    for m in inProgressMatches { modelContext.delete(m) }
+                    if deletingActive { onActiveMatchDeleted?() }
+                }
+                Button("Cancel", role: .cancel) {}
             } message: {
                 Text("This cannot be undone.")
             }

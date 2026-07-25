@@ -13,8 +13,15 @@ import SwiftData
     var completedAt: Date? = nil
     var isGameNight: Bool = false
 
+    // CloudKit requires relationships to be optional; stored as optional and exposed via
+    // a computed accessor so all existing call sites continue to receive [ParticipantModel].
     @Relationship(deleteRule: .nullify, inverse: \ParticipantModel.match)
-    var participants: [ParticipantModel] = []
+    var participantsStorage: [ParticipantModel]? = nil
+
+    var participants: [ParticipantModel] {
+        get { participantsStorage ?? [] }
+        set { participantsStorage = newValue }
+    }
 
     var status: MatchStatus {
         get { MatchStatus(rawValue: statusRaw) ?? .inProgress }

@@ -25,31 +25,16 @@ enum AppColorScheme: String, CaseIterable, Codable {
 }
 
 @Model final class AppSettingsModel {
-    var colorSchemeRaw: String
-    var soundEnabled: Bool
-    var hapticsEnabled: Bool
-    var suggestedMoveEnabled: Bool
-    var commentaryEnabled: Bool
-    var commentaryLevelRaw: String
-    var commentaryPersonalityID: String
+    // CloudKit requires declaration-level defaults on all stored properties.
+    var colorSchemeRaw: String = AppColorScheme.dark.rawValue
+    var soundEnabled: Bool = true
+    var hapticsEnabled: Bool = true
+    var suggestedMoveEnabled: Bool = true
+    var commentaryEnabled: Bool = false
+    var commentaryLevelRaw: String = CommentaryLevel.celebrations.rawValue
+    var commentaryPersonalityID: String = CommentaryPersonality.steady.id
 
-    init(
-        colorSchemeRaw: String = AppColorScheme.dark.rawValue,
-        soundEnabled: Bool = true,
-        hapticsEnabled: Bool = true,
-        suggestedMoveEnabled: Bool = true,
-        commentaryEnabled: Bool = false,
-        commentaryLevelRaw: String = CommentaryLevel.celebrations.rawValue,
-        commentaryPersonalityID: String = CommentaryPersonality.steady.id
-    ) {
-        self.colorSchemeRaw = colorSchemeRaw
-        self.soundEnabled = soundEnabled
-        self.hapticsEnabled = hapticsEnabled
-        self.suggestedMoveEnabled = suggestedMoveEnabled
-        self.commentaryEnabled = commentaryEnabled
-        self.commentaryLevelRaw = commentaryLevelRaw
-        self.commentaryPersonalityID = commentaryPersonalityID
-    }
+    init() {}
 
     var colorScheme: AppColorScheme {
         get { AppColorScheme(rawValue: colorSchemeRaw) ?? .dark }

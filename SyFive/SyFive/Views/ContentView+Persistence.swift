@@ -172,6 +172,14 @@ extension ContentView {
     }
 
     func seedSettingsIfNeeded() {
+        // Dedup: CloudKit sync can deliver a second settings row — keep the first, delete extras.
+        if settingsModels.count > 1 {
+            for extra in settingsModels.dropFirst() {
+                modelContext.delete(extra)
+            }
+            try? modelContext.save()
+            return
+        }
         guard settingsModels.isEmpty else { return }
         modelContext.insert(AppSettingsModel())
     }
@@ -179,11 +187,27 @@ extension ContentView {
     func seedYatzyGameIfNeeded() {
         let yatzyID = ScoringSystemID.yatzy.rawValue
         let descriptor = FetchDescriptor<GameModel>(
-            predicate: #Predicate { $0.scoringSystemID == yatzyID }
+            predicate: #Predicate { $0.scoringSystemID == yatzyID },
+            sortBy: [SortDescriptor(\GameModel.createdAt)]
         )
         let existing = (try? modelContext.fetch(descriptor)) ?? []
+
+        // Dedup: CloudKit sync can deliver a second row — keep the fixed-UUID one, delete the rest.
+        if existing.count > 1 {
+            let keeper = existing.first(where: { $0.id == Game.builtInYatzyID }) ?? existing.first!
+            for row in existing where row !== keeper {
+                modelContext.delete(row)
+            }
+            try? modelContext.save()
+            return
+        }
+
+        // One row already exists — nothing to seed.
         guard existing.isEmpty else { return }
+
+        // Seed with the well-known UUID so every device produces the same CloudKit record.
         let game = GameModel()
+        game.id = Game.builtInYatzyID
         game.name = "Yatzy"
         game.scoringSystemID = ScoringSystemID.yatzy.rawValue
         game.scoringSystemVersion = 1
@@ -193,4 +217,34 @@ extension ContentView {
         game.sortOrder = 0
         modelContext.insert(game)
     }
+
+    #if DEBUG
+    /// Inserts and immediately deletes one dummy row for every registered model type so CloudKit
+    /// JIT-creates all record types and fields in the Development environment.
+    /// Only runs when `AppConfig.DebugCloudKit.runSchemaExercise == true`.
+    func runCloudKitSchemaExercise() {
+        guard AppConfig.DebugCloudKit.runSchemaExercise else { return }
+        let player = PlayerModel()
+        let team = TeamModel()
+        let game = GameModel()
+        let match = MatchModel()
+        let participant = ParticipantModel()
+        let settings = AppSettingsModel()
+        modelContext.insert(player)
+        modelContext.insert(team)
+        modelContext.insert(game)
+        modelContext.insert(match)
+        modelContext.insert(participant)
+        modelContext.insert(settings)
+        try? modelContext.save()
+        modelContext.delete(participant)
+        modelContext.delete(match)
+        modelContext.delete(player)
+        modelContext.delete(team)
+        modelContext.delete(game)
+        modelContext.delete(settings)
+        try? modelContext.save()
+        AppLogger(category: "CloudKit").info(self, "Schema exercise complete — check CloudKit Console > Development for all record types")
+    }
+    #endif
 }

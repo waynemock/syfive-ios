@@ -6,6 +6,10 @@ extension ContentView {
     func geometryContent(proxy: GeometryProxy) -> some View {
         let isPortrait = proxy.size.height >= proxy.size.width
         let contentWidth = max(0, proxy.size.width - 48)
+        // In landscape each pane takes half the content width (50/50 HStack split).
+        // Cap DiceAreaView's height to match its width + room for roll controls so
+        // the tray stays roughly square rather than stretching to full screen height.
+        let landscapeDiceMaxHeight: CGFloat = (contentWidth - 20) / 2 + 80
         let scorecardAvailableWidth = isPortrait
             ? proxy.size.width
             : max(0, (contentWidth - 20) / 2 + 48)
@@ -14,11 +18,11 @@ extension ContentView {
         // embedded RealityView) from being destroyed on rotation.
         let layout = isPortrait
             ? AnyLayout(VStackLayout(spacing: 12))
-            : AnyLayout(HStackLayout(spacing: 20))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 20))
         layout {
             DiceAreaView(model: model)
                 .background(debugColor(Color.red.opacity(0.25)))
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .frame(maxWidth: .infinity, maxHeight: isPortrait ? .infinity : landscapeDiceMaxHeight, alignment: .top)
             ScorecardView(model: model, availableWidth: scorecardAvailableWidth)
                 .padding(.horizontal, -24)
                 .background(debugColor(Color.green.opacity(0.25)))
@@ -32,7 +36,8 @@ extension ContentView {
         }
         .onChange(of: proxy.size) { _, newSize in
             let newContentWidth = max(0, newSize.width - 48)
-            let newScorecardWidth = isPortrait
+            let newIsPortrait = newSize.height >= newSize.width
+            let newScorecardWidth = newIsPortrait
                 ? newSize.width
                 : max(0, (newContentWidth - 20) / 2 + 48)
             logger.debug(self, "geometry size onChange: \(newSize.width)x\(newSize.height)")

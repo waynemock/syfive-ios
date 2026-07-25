@@ -18,7 +18,13 @@ struct HouseRecordsView: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 14) {
-                    ForEach(titles) { title in
+                    SectionHeader(title: "All Games", subtitle: "Solo and multiplayer")
+                    ForEach(titles.filter { $0.category == .event }) { title in
+                        TitleCard(title: title)
+                    }
+                    SectionHeader(title: "Head-to-Head", subtitle: "Multiplayer only")
+                        .padding(.top, 8)
+                    ForEach(titles.filter { $0.category == .standing }) { title in
                         TitleCard(title: title)
                     }
                 }
@@ -33,6 +39,25 @@ struct HouseRecordsView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Section header
+
+private struct SectionHeader: View {
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+            Text(subtitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

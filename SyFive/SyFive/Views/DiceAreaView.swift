@@ -13,7 +13,7 @@ struct DiceAreaView: View {
     @Environment(CelebrationCoordinator.self) private var celebrationCoordinator
     @Environment(GameNightController.self) private var gameNight
     @Environment(\.colorScheme) private var colorScheme
-    @AppStorage("theaterAudioEnabled") private var theaterAudioEnabled: Bool = false
+    @AppStorage(UserDefaults.Key.theaterAudioEnabled) private var theaterAudioEnabled: Bool = false
     private let rollControlHeight: CGFloat = 24
 
     var body: some View {
@@ -175,7 +175,29 @@ struct DiceAreaView: View {
                         .font(.footnote)
                         .foregroundColor(.clear)
                 }
+
+                proxyModeControls
             }
+        }
+    }
+
+    @ViewBuilder
+    private var proxyModeControls: some View {
+        let names = model.playerDisplayNames
+        let idx = model.currentPlayerIndex
+        let name = names.indices.contains(idx) ? names[idx] : "player"
+
+        if gameNight.isProxyMode && gameNight.role == .host {
+            Text("Playing for \(name)")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        } else if gameNight.role == .host && gameNight.isSessionActive
+                    && gameNight.phase == .inProgress && !isLocalTurn && !model.isGameOver {
+            Button("Play for \(name)") {
+                gameNight.enableProxyMode()
+            }
+            .font(.footnote)
+            .buttonStyle(.borderless)
         }
     }
 
@@ -268,6 +290,8 @@ struct DiceAreaView: View {
             return ids[model.currentPlayerIndex] == localID
         }
         guard gameNight.isSessionActive, gameNight.phase == .inProgress else { return true }
+        // Host in proxy mode rolls and scores on behalf of a dropped player (D-121).
+        if gameNight.isProxyMode && gameNight.role == .host { return true }
         guard let localID = gameNight.localParticipantID else { return false }
         let ids = model.participantIDs
         guard model.currentPlayerIndex < ids.count else { return true }

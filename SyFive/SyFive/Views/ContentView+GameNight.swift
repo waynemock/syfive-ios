@@ -270,6 +270,7 @@ extension ContentView {
 // Extracted to break an otherwise-too-long modifier chain that exceeds Swift's type-checker limit.
 struct GameNightAlertModifier: ViewModifier {
     @Environment(GameNightController.self) private var gameNight
+    @Environment(\.modelContext) private var modelContext
     @Binding var showsSessionEndedAlert: Bool
     @Binding var showsGameNightGuestReconnect: Bool
     @Binding var pendingGuestReconnectMatchID: UUID?
@@ -285,9 +286,38 @@ struct GameNightAlertModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .alert("Game Night ended", isPresented: $showsSessionEndedAlert) {
-                Button("OK") { gameNight.clearSessionEndedFlag() }
+                if let ids = fetchHostReconnectIDs() {
+                    Button("Reconnect") {
+                        gameNight.clearSessionEndedFlag()
+                        pendingResumeMatchID = ids.matchID
+                        pendingResumeGameID = ids.gameID
+                        gameNight.prepareAsHost()
+                        GameNightSharing.present(
+                            onRequiresConversation: {
+                                gameNight.cancelHostPreparation()
+                                pendingResumeMatchID = nil
+                                pendingResumeGameID = nil
+                            },
+                            onDismissed: {
+                                if gameNight.isSessionActive && gameNight.phase == .settingTable {
+                                    Task { @MainActor in
+                                        try? await Task.sleep(nanoseconds: 500_000_000)
+                                        guard gameNight.isSessionActive && gameNight.phase == .settingTable else { return }
+                                        showsGameNight = true
+                                    }
+                                }
+                            },
+                            onCancelled: {
+                                gameNight.cancelHostPreparation()
+                                pendingResumeMatchID = nil
+                                pendingResumeGameID = nil
+                            }
+                        )
+                    }
+                }
+                Button("Dismiss", role: .cancel) { gameNight.clearSessionEndedFlag() }
             } message: {
-                Text("Your progress has been saved. Start a new Game Night session to continue.")
+                Text("Your progress has been saved.")
             }
             .alert("Reconnect to Game Night?", isPresented: $showsGameNightGuestReconnect) {
                 Button("Rejoin") {
@@ -364,5 +394,25 @@ struct GameNightAlertModifier: ViewModifier {
             .onChange(of: gameNight.sessionEndedDuringPlay) { _, ended in
                 if ended { showsSessionEndedAlert = true }
             }
+    }
+
+    /// Returns match + game IDs when the local device was the host and has a game in progress,
+    /// enabling the "Reconnect" button in the session-ended alert.
+    private func fetchHostReconnectIDs() -> (matchID: UUID, gameID: UUID)? {
+        var matchDesc = FetchDescriptor<MatchModel>(
+            predicate: #Predicate { $0.statusRaw == "inProgress" },
+            sortBy: [SortDescriptor(\MatchModel.startedAt, order: .reverse)]
+        )
+        matchDesc.fetchLimit = 1
+        guard let match = (try? modelContext.fetch(matchDesc))?.first,
+              match.isGameNight,
+              UserDefaults.standard.gnWasHost(for: match.id) else { return nil }
+
+        let yatzyID = ScoringSystemID.yatzy.rawValue
+        let gameDesc = FetchDescriptor<GameModel>(
+            predicate: #Predicate { $0.scoringSystemID == yatzyID }
+        )
+        guard let gameID = (try? modelContext.fetch(gameDesc))?.first?.id else { return nil }
+        return (match.id, gameID)
     }
 }

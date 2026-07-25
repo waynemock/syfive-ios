@@ -168,10 +168,10 @@ extension FeelCatalog {
                 ]
             ),
 
-            // §5.6 — canonical: soft tick aligned with D5 arrival
+            // §5.6 — 200 ms continuous swell aligned with D5 arrival (D-119)
             "yatzy_moment": HapticRecipe(
                 id: "yatzy_moment",
-                events: [.init(timeMs: 180, kind: .transient, intensity: 0.50, sharpness: 0.25)]
+                events: [.init(timeMs: 180, kind: .continuous, intensity: 0.55, sharpness: 0.15, durationMs: 200)]
             ),
 
             // §5.7
