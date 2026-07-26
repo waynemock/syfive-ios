@@ -10,6 +10,7 @@ struct PlayerMergeSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.theme) private var theme
 
     @Query(sort: \PlayerModel.createdAt) private var allPlayers: [PlayerModel]
 
@@ -54,6 +55,7 @@ struct PlayerMergeSheet: View {
                     }
                 } header: {
                     Text("Move History To")
+                        .foregroundStyle(theme.primaryAccent)
                 } footer: {
                     Text("All of \(retiring.name)'s match history will be combined with the selected player's history. \(retiring.name) will be permanently removed.")
                 }

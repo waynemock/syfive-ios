@@ -11,6 +11,7 @@ struct PlayerLinkSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.theme) private var theme
 
     @Query(sort: \PlayerModel.createdAt) private var allPlayers: [PlayerModel]
 
@@ -54,6 +55,7 @@ struct PlayerLinkSheet: View {
                     }
                 } header: {
                     Text("Select Roster Player to Merge")
+                        .foregroundStyle(theme.primaryAccent)
                 } footer: {
                     Text("All of the selected player's match history will be combined with \(gameNightPlayer.name)'s history. The roster entry will be removed.")
                 }

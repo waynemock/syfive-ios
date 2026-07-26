@@ -3,6 +3,7 @@ import Charts
 
 struct DiceFairnessView: View {
     private let ideal = 100.0 / 6.0
+    @Environment(\.theme) private var theme
 
     var body: some View {
         List {
@@ -42,7 +43,7 @@ struct DiceFairnessView: View {
     // MARK: - Distribution
 
     private var distributionSection: some View {
-        Section("Face Distribution") {
+        Section {
             Chart {
                 ForEach(1...6, id: \.self) { face in
                     BarMark(
@@ -72,6 +73,9 @@ struct DiceFairnessView: View {
             Text("Dashed line shows the ideal 16.7% for a perfectly fair die. Observed range: \(String(format: "%.1f", CertifiedFairnessTest.minFrequencyPct))%–\(String(format: "%.1f", CertifiedFairnessTest.maxFrequencyPct))%.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        } header: {
+            Text("Face Distribution")
+                .foregroundStyle(theme.primaryAccent)
         }
     }
 
@@ -83,6 +87,7 @@ struct DiceFairnessView: View {
                 DiceFairnessDeepDiveView()
             } label: {
                 Label("Statistical Deep Dive", systemImage: "function")
+                    .foregroundStyle(theme.primaryAccent)
             }
         }
     }
@@ -90,7 +95,7 @@ struct DiceFairnessView: View {
     // MARK: - About
 
     private var aboutSection: some View {
-        Section("How We Test") {
+        Section {
             Text("SyFive uses Apple's RealityKit physics engine to simulate real dice tumbling inside a tray. Each die is launched with random forces, settles under gravity, and its face is recorded only when it's fully at rest — the same way a physical die lands on a table.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -110,6 +115,9 @@ struct DiceFairnessView: View {
             }
             .font(.caption)
             .foregroundStyle(.tertiary)
+        } header: {
+            Text("How We Test")
+                .foregroundStyle(theme.primaryAccent)
         }
     }
 

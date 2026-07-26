@@ -37,10 +37,13 @@ struct VoicePickerView: View {
         NavigationStack {
             List {
                 ForEach(groupedVoices, id: \.language) { group in
-                    Section(languageDisplayName(group.language)) {
+                    Section {
                         ForEach(group.voices, id: \.identifier) { voice in
                             voiceRow(voice)
                         }
+                    } header: {
+                        Text(languageDisplayName(group.language))
+                            .foregroundStyle(theme.primaryAccent)
                     }
                 }
             }

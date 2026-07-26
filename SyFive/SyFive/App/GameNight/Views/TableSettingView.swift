@@ -8,6 +8,7 @@ struct TableSettingView: View {
     @Bindable var gameNight: GameNightController
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.theme) private var theme
     @State private var showsSeatClaim = false
     @State private var showsGameNightHelp = false
     @State private var showsEndSessionConfirmation = false
@@ -75,7 +76,7 @@ struct TableSettingView: View {
     // MARK: - Sections
 
     private var seatsSection: some View {
-        Section("Table") {
+        Section {
             if gameNight.seats.isEmpty {
                 Text("Claim a seat to join the table")
                     .foregroundStyle(.secondary)
@@ -98,6 +99,9 @@ struct TableSettingView: View {
                 gameNight.moveSeat(fromOffsets: indices, toOffset: destination)
             }
             .moveDisabled(gameNight.role != .host || gameNight.phase != .settingTable)
+        } header: {
+            Text("Table")
+                .foregroundStyle(theme.primaryAccent)
         }
     }
 
@@ -155,6 +159,7 @@ struct TableSettingView: View {
             }
         } header: {
             Text("Commentary")
+                .foregroundStyle(theme.primaryAccent)
         } footer: {
             if gameNight.role == .host {
                 Text("On a FaceTime call? Keep the call on your iPad or Mac and play on your iPhone — everyone sees everyone.")

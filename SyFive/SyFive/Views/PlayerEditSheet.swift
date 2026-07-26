@@ -21,6 +21,7 @@ struct PlayerEditSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.sizeCategory) private var sizeCategory
+    @Environment(\.theme) private var theme
 
     @ScaledMetric private var swatchSize: CGFloat = 36
 
@@ -85,8 +86,11 @@ struct PlayerEditSheet: View {
                     }
                 }
 
-                Section("Color") {
+                Section {
                     themePicker
+                } header: {
+                    Text("Color")
+                        .foregroundStyle(theme.primaryAccent)
                 }
             }
             .navigationTitle(isNew ? "New Player" : "Edit Player")
@@ -108,12 +112,12 @@ struct PlayerEditSheet: View {
         let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: columnCount)
         return LazyVGrid(columns: columns, spacing: 8) {
             ForEach(Theme.ThemeType.allCases, id: \.self) { type in
-                let theme = Theme(type: type, colorScheme: colorScheme)
+                let swatchTheme = Theme(type: type, colorScheme: colorScheme)
                 let isSelected = themeType == type
                 ZStack {
                     HStack(spacing: 0) {
-                        Rectangle().fill(theme.primaryAccent)
-                        Rectangle().fill(theme.secondaryAccent)
+                        Rectangle().fill(swatchTheme.primaryAccent)
+                        Rectangle().fill(swatchTheme.secondaryAccent)
                     }
                     .clipShape(Circle())
 

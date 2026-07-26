@@ -6,6 +6,7 @@ struct PlayerPickerSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.editMode) private var editMode
+    @Environment(\.theme) private var theme
     @Query(sort: \PlayerModel.createdAt) private var allPlayers: [PlayerModel]
 
     @State private var playerEditMode: PlayerEditSheet.Mode? = nil
@@ -29,7 +30,7 @@ struct PlayerPickerSheet: View {
             List {
                 // In-game players in turn order — reorderable, removable.
                 if model.playerCount > 0 {
-                    Section("Playing") {
+                    Section {
                         ForEach(Array(model.slotIDs.enumerated()), id: \.element) { index, slotID in
                             inGameRow(at: index, slotID: slotID)
                         }
@@ -39,11 +40,14 @@ struct PlayerPickerSheet: View {
                             let destination = source < to ? to - 1 : to
                             model.movePlayer(from: source, to: destination)
                         }
+                    } header: {
+                        Text("Playing")
+                            .foregroundStyle(theme.primaryAccent)
                     }
                 }
 
                 // Roster players not yet in the game.
-                Section("Roster") {
+                Section {
                     if model.playerCount == 0 && availablePlayers.isEmpty {
                         emptyRosterPrompt
                     }
@@ -58,13 +62,19 @@ struct PlayerPickerSheet: View {
                         Label("New Player", systemImage: "plus.circle.fill")
                             .foregroundStyle(.tint)
                     }
+                } header: {
+                    Text("Roster")
+                        .foregroundStyle(theme.primaryAccent)
                 }
 
                 if !archivedPlayers.isEmpty {
-                    Section("Archived") {
+                    Section {
                         ForEach(archivedPlayers) { playerModel in
                             archivedRow(for: playerModel)
                         }
+                    } header: {
+                        Text("Archived")
+                            .foregroundStyle(theme.primaryAccent)
                     }
                 }
             }
@@ -77,6 +87,7 @@ struct PlayerPickerSheet: View {
             }
             .sheet(item: $playerEditMode) { mode in
                 PlayerEditSheet(mode: mode, matchModel: model)
+                    .environment(\.theme, theme)
             }
             .alert(
                 pendingArchive.map { "Archive \($0.name)?" } ?? "",
@@ -97,7 +108,7 @@ struct PlayerPickerSheet: View {
     // MARK: - Row views
 
     private func inGameRow(at index: Int, slotID: UUID) -> some View {
-        let theme = Theme(
+        let rowTheme = Theme(
             type: model.themeType(for: index),
             colorScheme: colorScheme
         )
@@ -110,7 +121,7 @@ struct PlayerPickerSheet: View {
 
             Text(name)
                 .font(.body)
-                .foregroundStyle(theme.secondaryAccent)
+                .foregroundStyle(rowTheme.secondaryAccent)
 
             if !isEditing {
                 if model.playerIDs.indices.contains(index),
@@ -120,7 +131,7 @@ struct PlayerPickerSheet: View {
                         playerEditMode = .edit(pm, matchSlot: index)
                     } label: {
                         Image(systemName: "pencil")
-                            .foregroundStyle(theme.secondaryAccent)
+                            .foregroundStyle(rowTheme.secondaryAccent)
                     }
                     .buttonStyle(.plain)
                 }
@@ -153,7 +164,7 @@ struct PlayerPickerSheet: View {
     }
 
     private func rosterRow(for playerModel: PlayerModel) -> some View {
-        let theme = Theme(
+        let rowTheme = Theme(
             type: Theme.ThemeType(rawValue: playerModel.themeID) ?? .midnight,
             colorScheme: colorScheme
         )
@@ -163,13 +174,13 @@ struct PlayerPickerSheet: View {
 
             Text(playerModel.name)
                 .font(.body)
-                .foregroundStyle(theme.secondaryAccent)
+                .foregroundStyle(rowTheme.secondaryAccent)
 
             Button {
                 playerEditMode = .edit(playerModel, matchSlot: nil)
             } label: {
                 Image(systemName: "pencil")
-                    .foregroundStyle(theme.secondaryAccent)
+                    .foregroundStyle(rowTheme.secondaryAccent)
             }
             .buttonStyle(.plain)
 
@@ -196,7 +207,7 @@ struct PlayerPickerSheet: View {
     }
 
     private func archivedRow(for playerModel: PlayerModel) -> some View {
-        let theme = Theme(
+        let rowTheme = Theme(
             type: Theme.ThemeType(rawValue: playerModel.themeID) ?? .midnight,
             colorScheme: colorScheme
         )
@@ -206,7 +217,7 @@ struct PlayerPickerSheet: View {
 
             Text(playerModel.name)
                 .font(.body)
-                .foregroundStyle(theme.secondaryAccent.opacity(0.4))
+                .foregroundStyle(rowTheme.secondaryAccent.opacity(0.4))
 
             Spacer()
 

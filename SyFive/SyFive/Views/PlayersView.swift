@@ -12,6 +12,7 @@ struct PlayersView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.theme) private var theme
 
     @Query(sort: \PlayerModel.createdAt) private var allPlayers: [PlayerModel]
 
@@ -37,12 +38,13 @@ struct PlayersView: View {
                         }
                     } header: {
                         Text("From Game Night")
+                            .foregroundStyle(theme.primaryAccent)
                     } footer: {
                         Text("These players joined via Game Night. Add them to your roster or link them to an existing player.")
                     }
                 }
 
-                Section("Roster") {
+                Section {
                     ForEach(rosterPlayers) { player in
                         rosterRow(for: player)
                     }
@@ -53,13 +55,19 @@ struct PlayersView: View {
                         Label("New Player", systemImage: "plus.circle.fill")
                             .foregroundStyle(.tint)
                     }
+                } header: {
+                    Text("Roster")
+                        .foregroundStyle(theme.primaryAccent)
                 }
 
                 if !archivedPlayers.isEmpty {
-                    Section("Archived") {
+                    Section {
                         ForEach(archivedPlayers) { player in
                             archivedRow(for: player)
                         }
+                    } header: {
+                        Text("Archived")
+                            .foregroundStyle(theme.primaryAccent)
                     }
                 }
             }
@@ -72,6 +80,7 @@ struct PlayersView: View {
             }
             .sheet(item: $playerEditMode) { mode in
                 PlayerEditSheet(mode: mode, matchModel: matchController)
+                    .environment(\.theme, theme)
             }
             .sheet(item: $selectedProfile) { player in
                 PlayerProfileView(
@@ -82,9 +91,11 @@ struct PlayersView: View {
             }
             .sheet(item: $pendingLink) { gameNightPlayer in
                 PlayerLinkSheet(gameNightPlayer: gameNightPlayer)
+                    .environment(\.theme, theme)
             }
             .sheet(item: $pendingMerge) { retiring in
                 PlayerMergeSheet(retiring: retiring)
+                    .environment(\.theme, theme)
             }
             .alert(
                 pendingArchive.map { "Archive \($0.name)?" } ?? "",

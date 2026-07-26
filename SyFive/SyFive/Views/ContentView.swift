@@ -19,6 +19,7 @@ struct ContentView: View {
     @State var showsGameNightLocalConflictAlert = false
     @State var showsInviteInstructions = false
     @State var showsCancelGameNightAlert = false
+    @State var showsGameNightPendingSheet = false
     @State var showsGameNightHelp = false
     /// Set when the reconnect alert's "Restart as Host" is tapped, so isSessionActive handler
     /// can skip the seating sheet and jump straight to the in-progress match.
@@ -305,6 +306,7 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showsPlayers) {
             PlayersView()
+                .environment(\.theme, theme)
         }
         .sheet(isPresented: $showsSettings, onDismiss: { syncCommentaryEngine() }) {
             SettingsView()
@@ -319,6 +321,7 @@ struct ContentView: View {
                         }
                     }
             }
+            .environment(\.theme, theme)
         }
         .sheet(isPresented: $showsAbout) {
             AboutView()
@@ -327,12 +330,21 @@ struct ContentView: View {
         .sheet(isPresented: $showsFeelBoard) {
             FeelBoardView()
                 .environment(director)
+                .environment(\.theme, theme)
         }
         .sheet(isPresented: $showsGameNight) {
             TableSettingView(gameNight: gameNight)
+                .environment(\.theme, theme)
         }
         .sheet(isPresented: $showsInviteInstructions) {
             GameNightInviteInstructions()
+                .environment(\.theme, theme)
+        }
+        .sheet(isPresented: $showsGameNightPendingSheet) {
+            GameNightPendingSheet {
+                gameNight.cancelHostPreparation()
+            }
+            .environment(\.theme, theme)
         }
         .sheet(isPresented: $showsGameNightHelp) {
             GameNightHelpSheet(

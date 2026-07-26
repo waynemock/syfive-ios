@@ -10,13 +10,14 @@ extension ContentView {
     @ViewBuilder
     var leadingNavButton: some View {
         if gameNight.isSessionPending {
-            // Invite sent — let the host cancel from the nav bar (with confirmation).
+            // Invite sent. With Messages SharePlay the host's session only arrives when
+            // they tap the system SharePlay banner — explain that rather than just cancelling.
             Button {
-                showsCancelGameNightAlert = true
+                showsGameNightPendingSheet = true
             } label: {
                 Image(systemName: "person.3.fill")
             }
-            .accessibilityLabel("Cancel Game Night Invite")
+            .accessibilityLabel("Game Night Invite Sent")
             .tint(Color.green)
         } else if gameNight.isSessionActive {
             if gameNight.phase == .settingTable {

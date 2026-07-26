@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct DiceFairnessDeepDiveView: View {
+    @Environment(\.theme) private var theme
 
     var body: some View {
         List {
@@ -16,7 +17,7 @@ struct DiceFairnessDeepDiveView: View {
     // MARK: - Chi-Square
 
     private var chiSquareSection: some View {
-        Section("Chi-Square Goodness-of-Fit") {
+        Section {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 12) {
                     statPill(label: "χ²", value: String(format: "%.4f", CertifiedFairnessTest.chiSquare))
@@ -39,13 +40,16 @@ struct DiceFairnessDeepDiveView: View {
                     .foregroundStyle(.secondary)
             }
             .padding(.vertical, 4)
+        } header: {
+            Text("Chi-Square Goodness-of-Fit")
+                .foregroundStyle(theme.primaryAccent)
         }
     }
 
     // MARK: - Independence
 
     private var independenceSection: some View {
-        Section("Roll Independence Tests") {
+        Section {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
@@ -86,13 +90,16 @@ struct DiceFairnessDeepDiveView: View {
                 }
             }
             .padding(.vertical, 4)
+        } header: {
+            Text("Roll Independence Tests")
+                .foregroundStyle(theme.primaryAccent)
         }
     }
 
     // MARK: - Per-Face Table
 
     private var faceTableSection: some View {
-        Section("Per-Face Results") {
+        Section {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text("Face").frame(width: 40, alignment: .leading)
@@ -131,13 +138,16 @@ struct DiceFairnessDeepDiveView: View {
                     .padding(.top, 4)
             }
             .padding(.vertical, 4)
+        } header: {
+            Text("Per-Face Results")
+                .foregroundStyle(theme.primaryAccent)
         }
     }
 
     // MARK: - Methodology
 
     private var methodologySection: some View {
-        Section("Methodology Notes") {
+        Section {
             VStack(alignment: .leading, spacing: 10) {
                 Text("All three tests were applied to the same ordered roll sequence of \(formattedSamples) individual die results. The chi-square p-value is computed using the Wilson-Hilferty normal approximation to the chi-square CDF, which is accurate to within 0.1% for df ≥ 5.")
                     .font(.subheadline)
@@ -152,6 +162,9 @@ struct DiceFairnessDeepDiveView: View {
                     .foregroundStyle(.tertiary)
             }
             .padding(.vertical, 4)
+        } header: {
+            Text("Methodology Notes")
+                .foregroundStyle(theme.primaryAccent)
         }
     }
 

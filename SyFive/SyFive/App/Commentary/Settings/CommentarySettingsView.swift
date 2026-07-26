@@ -45,7 +45,7 @@ struct CommentarySettingsView: View {
     }
 
     private var levelSection: some View {
-        Section("Level") {
+        Section {
             Picker("Level", selection: $settings.commentaryLevelRaw) {
                 ForEach(CommentaryLevel.allCases, id: \.rawValue) { level in
                     Text(level.displayName).tag(level.rawValue)
@@ -54,11 +54,14 @@ struct CommentarySettingsView: View {
             .pickerStyle(.segmented)
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+        } header: {
+            Text("Level")
+                .foregroundStyle(theme.primaryAccent)
         }
     }
 
     private var personalitySection: some View {
-        Section("Personality") {
+        Section {
             ForEach(CommentaryPersonality.all, id: \.id) { pack in
                 Button {
                     settings.commentaryPersonalityID = pack.id
@@ -79,12 +82,16 @@ struct CommentarySettingsView: View {
                         }
                     }
                 }
+                .buttonStyle(.plain)
             }
+        } header: {
+            Text("Personality")
+                .foregroundStyle(theme.primaryAccent)
         }
     }
 
     private var voiceSection: some View {
-        Section("Voice") {
+        Section {
             Button {
                 showsVoicePicker = true
             } label: {
@@ -97,12 +104,18 @@ struct CommentarySettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .buttonStyle(.plain)
 
             Button {
                 showsAddVoices = true
             } label: {
-                Label("Add more voices\u{2026}", systemImage: "arrow.down.circle")
+                Label("Add more voices", systemImage: "arrow.down.circle")
+                    .foregroundStyle(theme.primaryAccent)
             }
+            .buttonStyle(.plain)
+        } header: {
+            Text("Voice")
+                .foregroundStyle(theme.primaryAccent)
         }
     }
 

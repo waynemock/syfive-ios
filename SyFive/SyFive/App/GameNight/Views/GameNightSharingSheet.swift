@@ -58,12 +58,107 @@ enum GameNightSharing {
     }
 }
 
+/// Shown when the host taps the pending nav bar button after sending a Messages invite.
+/// With Messages SharePlay (unlike FaceTime), the sender's GroupSession only arrives when
+/// they explicitly open the SharePlay banner iOS shows when a recipient joins. This sheet
+/// explains that step so the host isn't left tapping a dead cancel alert.
+struct GameNightPendingSheet: View {
+    var onCancelInvite: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.theme) private var theme
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Text("Your invite has been sent. When players tap the link in Messages, their Game Night seating screen will open automatically.")
+                        .listRowBackground(Color.clear)
+                } header: {
+                    Text("Waiting for players")
+                        .foregroundStyle(theme.primaryAccent)
+                }
+                Section {
+                    Text("When a player joins, a SharePlay banner appears. Tap it, then tap **Open** to enter the session.")
+                        .listRowBackground(Color.clear)
+                    SharePlayLocationRow()
+                } header: {
+                    Text("How to join on your device")
+                        .foregroundStyle(theme.primaryAccent)
+                }
+                Section {
+                    Button("Cancel Invite", role: .destructive) {
+                        dismiss()
+                        onCancelInvite()
+                    }
+                }
+            }
+            .navigationTitle("Invite Sent")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+/// Device-adaptive SharePlay button badge + location description.
+/// Mirrors the badge style used in GameNightHelpSheet.
+private struct SharePlayLocationRow: View {
+    private var isIPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+
+    var body: some View {
+        HStack(spacing: 16) {
+            badge
+            VStack(alignment: .leading, spacing: 3) {
+                Text(isIPad ? "Navigation bar" : "Top of your screen")
+                    .font(.subheadline).fontWeight(.semibold)
+                Text(isIPad
+                     ? "Tap the white SharePlay icon on the green capsule in the navigation bar."
+                     : "Tap the green SharePlay icon at the very top of your screen.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .listRowBackground(Color.clear)
+    }
+
+    @ViewBuilder
+    private var badge: some View {
+        if isIPad {
+            ZStack {
+                Capsule()
+                    .fill(.green)
+                    .frame(width: 60, height: 34)
+                Image(systemName: "shareplay")
+                    .foregroundStyle(.white)
+                    .font(.system(size: 16, weight: .semibold))
+            }
+        } else {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.black)
+                    .frame(width: 48, height: 48)
+                Image(systemName: "shareplay")
+                    .foregroundStyle(.green)
+                    .font(.system(size: 22, weight: .semibold))
+            }
+        }
+    }
+}
+
+#Preview("Pending — Messages invite sent") {
+    GameNightPendingSheet(onCancelInvite: {})
+        .environment(\.theme, Theme(type: .midnight, colorScheme: .dark))
+}
+
 /// Shown when GroupActivitySharingController auto-dismisses (dev-build sandbox restriction).
 /// In production this sheet should only appear when there is genuinely no FaceTime call
 /// or iMessage thread available to share into.
 struct GameNightInviteInstructions: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @Environment(\.theme) private var theme
 
     var body: some View {
         NavigationStack {
@@ -71,8 +166,10 @@ struct GameNightInviteInstructions: View {
                 Section {
                     Text("SharePlay requires a FaceTime call or Messages conversation. Start one with your players, then tap **Invite Players** again — no ongoing call needed, just an existing conversation.")
                         .listRowBackground(Color.clear)
+                    SharePlayLocationRow()
                 } header: {
                     Text("A conversation is required")
+                        .foregroundStyle(theme.primaryAccent)
                 }
                 Section {
                     Button {
@@ -98,4 +195,9 @@ struct GameNightInviteInstructions: View {
             }
         }
     }
+}
+
+#Preview("Invite instructions — no conversation") {
+    GameNightInviteInstructions()
+        .environment(\.theme, Theme(type: .midnight, colorScheme: .dark))
 }

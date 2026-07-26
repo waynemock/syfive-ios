@@ -45,12 +45,15 @@ struct HouseRecordsView: View {
 // MARK: - Section header
 
 private struct SectionHeader: View {
+    @Environment(\.theme) private var theme
+    
     let title: String
     let subtitle: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
+                .foregroundStyle(theme.primaryAccent)
                 .font(.subheadline)
                 .fontWeight(.semibold)
             Text(subtitle)

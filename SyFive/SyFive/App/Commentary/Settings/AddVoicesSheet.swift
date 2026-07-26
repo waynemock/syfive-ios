@@ -3,6 +3,7 @@ import UIKit
 
 struct AddVoicesSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.theme) private var theme
 
     private let steps: [(icon: String, text: String)] = [
         ("gearshape",       "Open the Settings app on your device."),
@@ -36,6 +37,7 @@ struct AddVoicesSheet: View {
                         }
                     } header: {
                         Text("How to add voices")
+                            .foregroundStyle(theme.primaryAccent)
                     } footer: {
                         Text("Opening Settings will land on this app's page. Follow the steps above from there. After returning, the Voice list will reflect any newly downloaded voices.")
                             .font(.footnote)

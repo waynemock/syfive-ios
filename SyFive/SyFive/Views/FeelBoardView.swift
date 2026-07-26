@@ -7,6 +7,7 @@ import SwiftUI
 struct FeelBoardView: View {
     @Environment(FeelDirector.self) private var director
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.theme) private var theme
 
     @State private var workingSounds: [String: SoundRecipe]
     @State private var workingHaptics: [String: HapticRecipe]
@@ -53,7 +54,7 @@ struct FeelBoardView: View {
     // MARK: - Master toggles
 
     private var masterSection: some View {
-        Section("Master") {
+        Section {
             HStack {
                 Label("Sound",   systemImage: "speaker.wave.2")
                 Spacer()
@@ -75,6 +76,9 @@ struct FeelBoardView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+        } header: {
+            Text("Master")
+                .foregroundStyle(theme.primaryAccent)
         }
     }
 
