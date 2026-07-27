@@ -313,9 +313,16 @@ final class MatchController {
         let matchModel: MatchModel
         if let mid = persistedMatchID {
             let descriptor = FetchDescriptor<MatchModel>(predicate: #Predicate { $0.id == mid })
-            matchModel = (try? context.fetch(descriptor))?.first ?? {
-                let m = MatchModel(); context.insert(m); return m
-            }()
+            if let existing = (try? context.fetch(descriptor))?.first {
+                matchModel = existing
+            } else {
+                // Session UUID didn't match any SwiftData row (Game Night first save).
+                // Create a new row and record its auto-generated UUID for future saves.
+                let m = MatchModel()
+                context.insert(m)
+                persistedMatchID = m.id
+                matchModel = m
+            }
         } else {
             matchModel = MatchModel()
             context.insert(matchModel)
@@ -698,8 +705,12 @@ final class MatchController {
         held = Array(repeating: false, count: diceCount)
         rollsRemaining = rollsPerTurn
         isRolling = false
-        // Bind to the session match UUID so save() writes under the same key on every device.
-        persistedMatchID = match.id
+        // Bind to the session match UUID on first load. If persistedMatchID is already set
+        // it points to the actual SwiftData row UUID (established on first save) — don't
+        // overwrite it or save() will miss the fetch and create a new row every turn.
+        if persistedMatchID == nil {
+            persistedMatchID = match.id
+        }
         matchStartedAt = match.startedAt
         clearUndoState()
     }
