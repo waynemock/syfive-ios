@@ -21,6 +21,6 @@ extension CommentaryPersonality {
     static let all: [CommentaryPersonality] = [.sports, .zen, .steady, .snarky]
 
     static func find(id: String) -> CommentaryPersonality {
-        all.first { $0.id == id } ?? .steady
+        all.first { $0.id == id } ?? .zen
     }
 }

@@ -32,7 +32,7 @@ enum AppColorScheme: String, CaseIterable, Codable {
     var suggestedMoveEnabled: Bool = true
     var commentaryEnabled: Bool = false
     var commentaryLevelRaw: String = CommentaryLevel.celebrations.rawValue
-    var commentaryPersonalityID: String = CommentaryPersonality.steady.id
+    var commentaryPersonalityID: String = CommentaryPersonality.zen.id
 
     init() {}
 

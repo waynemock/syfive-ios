@@ -1,3 +1,4 @@
+import AVFoundation
 import Combine
 import Foundation
 import GroupActivities
@@ -56,7 +57,7 @@ final class GameNightController {
     /// Session-scoped commentary override. Host writes; guests receive via tableState.
     /// Never persisted — the session ends and solo settings reassert immediately.
     var commentaryEnabled: Bool = false
-    var commentaryPackID: String = CommentaryPersonality.steady.id
+    var commentaryPackID: String = CommentaryPersonality.zen.id
     var commentaryLevelRaw: String = CommentaryLevel.celebrations.rawValue
 
     // MARK: - Private session state
@@ -113,6 +114,19 @@ final class GameNightController {
 
     private let logger = AppLogger(category: "GameNightController")
 
+    // MARK: - Audio interruption recovery
+
+    /// True while an AVAudioSession interruption (e.g. incoming call) is active.
+    /// Prevents the session-ended alert from firing immediately when SharePlay
+    /// drops due to the call, giving the session time to come back.
+    private var isAudioInterrupted = false
+    /// Set in `listenForMessages` when the session drops during an active interruption.
+    /// Cleared when the session returns (`configureSession`) or the recovery window expires.
+    private var sessionDroppedDuringInterruption = false
+    /// Delayed task that escalates `sessionDroppedDuringInterruption` → `sessionEndedDuringPlay`
+    /// if the session has not returned within the recovery window.
+    private var interruptionRecoveryTask: Task<Void, Never>?
+
     // MARK: - App-launch entry point
 
     /// Called by SyFiveApp via `.task` on the root ContentView. Running the for-await
@@ -121,6 +135,7 @@ final class GameNightController {
     /// Task {} in onAppear is not associated with any scene and silently drops those deliveries.
     func listenForSessions() async {
         logger.info(self, "listenForSessions: scene-level task started, awaiting sessions")
+        startObservingAudioInterruptions()
         // Mirror GroupStateObserver eligibility into our @Observable property so
         // views can drive UI without importing GroupActivities themselves.
         Task { @MainActor [weak self] in
@@ -191,6 +206,11 @@ final class GameNightController {
         }
 
         logger.info(self, "configureSession: takingHostRole=\(takingHostRole), calling tearDownSession")
+        // If the session is arriving after an audio interruption, cancel the deferred alert.
+        if isAudioInterrupted || sessionDroppedDuringInterruption {
+            cancelInterruptionRecovery()
+            logger.info(self, "configureSession: session recovered after audio interruption")
+        }
         // Tear down any prior session cleanly.
         tearDownSession()
         sessionEndedDuringPlay = false
@@ -224,6 +244,7 @@ final class GameNightController {
 
     /// Ends the session for ALL participants. Host-only path — guests should call `leaveSession()`.
     func endSession() {
+        cancelInterruptionRecovery()
         tearDownSession()
     }
 
@@ -250,6 +271,7 @@ final class GameNightController {
     /// Host-only: broadcast `matchAbandoned` to guests, then tear down locally.
     func abandonSession() {
         guard role == .host, isSessionActive else { return }
+        cancelInterruptionRecovery()
         send(.matchAbandoned, payload: MatchAbandonedPayload())
         tearDownSession()
     }
@@ -257,6 +279,63 @@ final class GameNightController {
     /// Clear the session-ended flag after the UI has acknowledged it.
     func clearSessionEndedFlag() {
         sessionEndedDuringPlay = false
+    }
+
+    // MARK: - Audio interruption recovery (private)
+
+    private func startObservingAudioInterruptions() {
+        Task { @MainActor [weak self] in
+            let notifications = NotificationCenter.default.notifications(
+                named: AVAudioSession.interruptionNotification,
+                object: AVAudioSession.sharedInstance()
+            )
+            for await notification in notifications {
+                self?.handleAudioInterruption(notification)
+            }
+        }
+    }
+
+    private func handleAudioInterruption(_ notification: Notification) {
+        guard let raw = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
+
+        switch type {
+        case .began:
+            // Only track interruptions when a session is active or in-progress.
+            guard isSessionActive || phase == .inProgress else { return }
+            interruptionRecoveryTask?.cancel()
+            interruptionRecoveryTask = nil
+            isAudioInterrupted = true
+            logger.info(self, "audioInterruption: began — holding session-ended alert")
+
+        case .ended:
+            guard isAudioInterrupted else { return }
+            logger.info(self, "audioInterruption: ended — waiting up to 6 s for session recovery")
+            // Give SharePlay 6 seconds to redeliver the session through listenForSessions().
+            // If configureSession() fires during that window it cancels this task.
+            interruptionRecoveryTask = Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(6))
+                guard let self, !Task.isCancelled else { return }
+                self.isAudioInterrupted = false
+                if self.sessionDroppedDuringInterruption {
+                    self.sessionDroppedDuringInterruption = false
+                    self.sessionEndedDuringPlay = true
+                    self.logger.info(self, "audioInterruption: session did not recover — surfacing reconnect alert")
+                }
+            }
+
+        @unknown default:
+            break
+        }
+    }
+
+    /// Called from `configureSession` and from user-initiated teardowns to abort any
+    /// pending deferred-alert timer and reset all interruption state.
+    private func cancelInterruptionRecovery() {
+        interruptionRecoveryTask?.cancel()
+        interruptionRecoveryTask = nil
+        isAudioInterrupted = false
+        sessionDroppedDuringInterruption = false
     }
 
     /// Called when a guest device loads a game night match at relaunch. Restores
@@ -297,6 +376,11 @@ final class GameNightController {
         pendingGuestUndoAvailable = false
         pendingHostUndoAvailable = false
         isGuestAwaitingReconnect = false
+        isAudioInterrupted = false
+        sessionDroppedDuringInterruption = false
+        // interruptionRecoveryTask is intentionally NOT cancelled here.
+        // It is managed by cancelInterruptionRecovery(), which is called from
+        // configureSession() (session came back) and user-initiated teardowns.
         detachMatchController()
     }
 
@@ -478,11 +562,20 @@ final class GameNightController {
             handle(envelope, from: context.source.id)
         }
         // Loop exits when the session is invalidated. If we didn't cancel this task
-        // (i.e. the session dropped rather than the user leaving), show the reconnect alert.
+        // (i.e. the session dropped rather than the user leaving), show the reconnect alert —
+        // unless the drop was caused by an audio interruption (e.g. an incoming call), in which
+        // case we defer for up to 6 seconds to let SharePlay redeliver the session first.
         guard !Task.isCancelled, isSessionActive else { return }
         let wasInProgress = phase == .inProgress
+        let droppedDuringInterruption = isAudioInterrupted && wasInProgress
         tearDownSession()
-        if wasInProgress { sessionEndedDuringPlay = true }
+        if droppedDuringInterruption {
+            // Re-set after tearDown (which clears it) so the recovery task can check it.
+            sessionDroppedDuringInterruption = true
+            logger.info(self, "listenForMessages: session dropped during audio interruption — deferring reconnect alert")
+        } else if wasInProgress {
+            sessionEndedDuringPlay = true
+        }
     }
 
     // MARK: - Message routing
