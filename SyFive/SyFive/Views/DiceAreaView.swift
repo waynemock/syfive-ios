@@ -87,6 +87,9 @@ struct DiceAreaView: View {
                     )
             }
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                DiceTrayOverlayView(model: model)
+            }
     }
 
     private var rollControls: some View {

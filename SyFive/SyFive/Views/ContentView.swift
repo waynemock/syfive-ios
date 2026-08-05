@@ -167,6 +167,12 @@ struct ContentView: View {
         .overlay {
             CelebrationView(model: model)
                 .ignoresSafeArea()
+                .onChange(of: model.rollsRemaining) { oldValue, newValue in
+                    if newValue < oldValue {
+                        logger.debug(self, "rollsRemaining \(oldValue)→\(newValue): clearing score announcement")
+                        celebrationCoordinator.clearScoreAnnouncement()
+                    }
+                }
         }
         .preferredColorScheme(appSettings?.colorScheme.preferredColorScheme ?? .dark)
         .tint(theme.primaryAccent)
@@ -192,6 +198,11 @@ struct ContentView: View {
             // Warm up haptic engine before first roll to avoid first-event latency (§6.2).
             director.warmUpHaptics()
             syncCommentaryEngine()
+            // Wire score announcement banner for local PvP and GN host paths.
+            let coordinator = celebrationCoordinator
+            model.onScoreAnnounced = { playerIndex, category, value in
+                coordinator.triggerScoreAnnouncement(playerIndex: playerIndex, category: category, value: value)
+            }
         }
         // Restore commentary when session ends (isSessionActive false→true is handled below).
         // Also dismiss the Game Night sheet so guests aren't left stranded if the host ends the session.
@@ -221,6 +232,11 @@ struct ContentView: View {
             showsFeelBoard = false
             showsInviteInstructions = false
             gameNight.attach(matchController: model)
+            // Wire score announcement banner for GN guest path (opponent scores via matchState diff).
+            let announcementCoordinator = celebrationCoordinator
+            gameNight.onOpponentScored = { playerIndex, category, value in
+                announcementCoordinator.triggerScoreAnnouncement(playerIndex: playerIndex, category: category, value: value)
+            }
             let ctx = modelContext
             gameNight.onMatchComplete = { completedMatch in
                 // Guests write exactly once — upsert by session UUID.

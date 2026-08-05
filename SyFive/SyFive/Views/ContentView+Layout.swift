@@ -51,9 +51,6 @@ extension ContentView {
             return names.isEmpty ? "SyFive" : "\(names) Wins"
         }
         if model.hasStarted {
-            if let names = model.leadingPlayerLabel, !names.isEmpty {
-                return "\(names) • Turn \(model.currentRound)/\(model.totalRounds)"
-            }
             return "Turn \(model.currentRound)/\(model.totalRounds)"
         }
         return "SyFive"

@@ -29,46 +29,47 @@ struct MatchHistoryView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                if segment == .finished {
-                    ForEach(completedMatches) { matchModel in
-                        NavigationLink {
-                            MatchDetailView(matchModel: matchModel)
-                        } label: {
-                            MatchHistoryRow(match: matchModel.toDomain())
-                        }
+            VStack(spacing: 8) {
+                if !inProgressMatches.isEmpty {
+                    Picker("", selection: $segment) {
+                        Text("Finished").tag(HistorySegment.finished)
+                        Text("Unfinished (\(inProgressMatches.count))").tag(HistorySegment.unfinished)
                     }
-                } else {
-                    ForEach(inProgressMatches) { matchModel in
-                        NavigationLink {
-                            UnfinishedMatchDetailView(matchModel: matchModel) { m in
-                                onResume?(m)
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                }
+                List {
+                    if segment == .finished {
+                        ForEach(completedMatches) { matchModel in
+                            NavigationLink {
+                                MatchDetailView(matchModel: matchModel)
+                            } label: {
+                                MatchHistoryRow(match: matchModel.toDomain())
                             }
-                        } label: {
-                            UnfinishedMatchRow(match: matchModel.toDomain())
                         }
-                    }
-                    .onDelete { indexSet in
-                        guard let i = indexSet.first else { return }
-                        matchToDelete = inProgressMatches[i]
+                    } else {
+                        ForEach(inProgressMatches) { matchModel in
+                            NavigationLink {
+                                UnfinishedMatchDetailView(matchModel: matchModel) { m in
+                                    onResume?(m)
+                                }
+                            } label: {
+                                UnfinishedMatchRow(match: matchModel.toDomain())
+                            }
+                        }
+                        .onDelete { indexSet in
+                            guard let i = indexSet.first else { return }
+                            matchToDelete = inProgressMatches[i]
+                        }
                     }
                 }
+                .animation(.default, value: segment)
+                .contentMargins(.top, 0, for: .scrollContent)
             }
-            .animation(.default, value: segment)
+            .navigationTitle("History")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .principal) {
-                    if inProgressMatches.isEmpty {
-                        Text("History").font(.headline)
-                    } else {
-                        Picker("", selection: $segment) {
-                            Text("Finished").tag(HistorySegment.finished)
-                            Text("Unfinished (\(inProgressMatches.count))").tag(HistorySegment.unfinished)
-                        }
-                        .pickerStyle(.segmented)
-                        .frame(width: 240)
-                    }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 16) {
                         if segment == .unfinished && !inProgressMatches.isEmpty {

@@ -13,11 +13,37 @@ private struct Mote {
     let lifetime: Double  // seconds until fully faded
 }
 
-// MARK: - Main overlay
+// MARK: - Full-screen overlay (game-over only)
 
-/// Full-screen SwiftUI particle overlay for Yatzy and game-over moments.
-/// Hit-testing is disabled — all taps pass through to the content below.
+/// Full-screen SwiftUI overlay applied to the NavigationStack.
+/// Only hosts game-over effects that legitimately fill the screen.
+/// Yatzy and score announcements live in DiceTrayOverlayView.
 struct CelebrationView: View {
+    @Environment(CelebrationCoordinator.self) private var coordinator
+    let model: MatchController
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        if coordinator.isGameOverActive {
+            GameOverOverlayView(
+                winnerThemes: coordinator.winnerIndices.map {
+                    Theme(type: model.themeType(for: $0), colorScheme: colorScheme)
+                },
+                reduceMotion: reduceMotion,
+                onDone: { coordinator.clearGameOver() }
+            )
+            .allowsHitTesting(false)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+}
+
+// MARK: - Dice-tray overlay (Yatzy + score announcement)
+
+/// Applied as an overlay directly on the dice tray view so centering is
+/// relative to the tray bounds, not the full screen.
+struct DiceTrayOverlayView: View {
     @Environment(CelebrationCoordinator.self) private var coordinator
     let model: MatchController
     @Environment(\.colorScheme) private var colorScheme
@@ -26,23 +52,42 @@ struct CelebrationView: View {
     var body: some View {
         ZStack {
             if let event = coordinator.yatzyEvent {
+                let playerIndex = event.playerIndex
                 YatzyOverlayView(
-                    theme: Theme(type: model.themeType(for: event.playerIndex), colorScheme: colorScheme),
+                    theme: Theme(type: model.themeType(for: playerIndex), colorScheme: colorScheme),
+                    playerName: model.playerDisplayNames.indices.contains(playerIndex)
+                        ? model.playerDisplayNames[playerIndex] : "",
+                    playerInitials: model.playerInitials(for: playerIndex),
+                    playerCount: model.playerDisplayNames.count,
                     reduceMotion: reduceMotion,
                     onDone: { coordinator.clearYatzy() }
                 )
-                // Fresh view identity per event — no accumulation across rapid Yatzys (§2.4).
                 .id(event.id)
             }
 
-            if coordinator.isGameOverActive {
-                GameOverOverlayView(
-                    winnerThemes: coordinator.winnerIndices.map {
-                        Theme(type: model.themeType(for: $0), colorScheme: colorScheme)
-                    },
-                    reduceMotion: reduceMotion,
-                    onDone: { coordinator.clearGameOver() }
+            if let announcement = coordinator.scoreAnnouncement {
+                let playerIndex = announcement.playerIndex
+                let leaderIdx = model.leaderIndices.first ?? 0
+                let isTied = model.leaderIndices.count > 1
+                let leaderNames = model.leaderIndices
+                    .compactMap { model.playerDisplayNames.indices.contains($0) ? model.playerDisplayNames[$0] : nil }
+                    .joined(separator: " & ")
+                ScoreAnnouncementBannerView(
+                    announcementID: announcement.id,
+                    playerName: model.playerDisplayNames.indices.contains(playerIndex)
+                        ? model.playerDisplayNames[playerIndex] : "",
+                    playerInitials: model.playerInitials(for: playerIndex),
+                    playerTheme: Theme(type: model.themeType(for: playerIndex), colorScheme: colorScheme),
+                    categoryName: announcement.category.displayName,
+                    value: announcement.value,
+                    leaderName: leaderNames,
+                    leaderInitials: model.playerInitials(for: leaderIdx),
+                    leaderTheme: Theme(type: model.themeType(for: leaderIdx), colorScheme: colorScheme),
+                    leaderScore: model.leaderScore ?? 0,
+                    leaderLabel: isTied ? "Tied" : "Leading",
+                    onDone: { coordinator.clearScoreAnnouncementIfCurrent(id: announcement.id) }
                 )
+                .id(announcement.id)
             }
         }
         .allowsHitTesting(false)
@@ -54,6 +99,9 @@ struct CelebrationView: View {
 
 private struct YatzyOverlayView: View {
     let theme: Theme
+    let playerName: String
+    let playerInitials: String
+    let playerCount: Int
     let reduceMotion: Bool
     let onDone: () -> Void
 
@@ -77,6 +125,15 @@ private struct YatzyOverlayView: View {
             }
 
             VStack(spacing: 4) {
+                if playerCount > 1 {
+                    HStack(spacing: 6) {
+                        PlayerInitialsCircle(initials: playerInitials, themeType: theme.type)
+                        Text(playerName)
+                            .font(.subheadline.weight(.semibold))
+                            .fontDesign(.rounded)
+                            .foregroundStyle(theme.secondaryAccent)
+                    }
+                }
                 Text("YATZY")
                     .font(.system(size: yatzyFontSize, weight: .black, design: .rounded))
                     .foregroundStyle(theme.primaryAccent)
@@ -95,12 +152,12 @@ private struct YatzyOverlayView: View {
             startDate = Date()
             motes = makeYatzyMotes(theme: theme)
             withAnimation(.easeIn(duration: 0.35).delay(0.2)) { titleOpacity = 1.0 }
-            Task {
-                try? await Task.sleep(for: .seconds(1.3))
-                withAnimation(.easeOut(duration: 0.4)) { titleOpacity = 0.0 }
-                try? await Task.sleep(for: .seconds(0.5))
-                onDone()
-            }
+        }
+        .task {
+            do { try await Task.sleep(for: .seconds(10)) } catch { return }
+            withAnimation(.easeOut(duration: 0.4)) { titleOpacity = 0.0 }
+            do { try await Task.sleep(for: .seconds(0.5)) } catch { return }
+            onDone()
         }
     }
 
@@ -209,14 +266,119 @@ private struct GameOverOverlayView: View {
     }
 }
 
+// MARK: - Score announcement banner
+
+private struct ScoreAnnouncementBannerView: View {
+    let announcementID: UUID
+    let playerName: String
+    let playerInitials: String
+    let playerTheme: Theme
+    let categoryName: String
+    let value: Int
+    let leaderName: String
+    let leaderInitials: String
+    let leaderTheme: Theme
+    let leaderScore: Int
+    let leaderLabel: String
+    let onDone: () -> Void
+
+    private let logger = AppLogger(category: "ScoreAnnouncement")
+    @State private var opacity: Double = 0
+
+    private var id8: String { announcementID.uuidString.prefix(8).description }
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm:ss.SSS"
+        return f
+    }()
+    private var ts: String { Self.timeFormatter.string(from: Date()) }
+
+    var body: some View {
+        VStack(spacing: 16) {
+            scoreCard
+            leaderCard
+        }
+        .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        .opacity(opacity)
+        .onAppear {
+            logger.debug(self, "[\(id8)] appeared player=\(playerName) category=\(categoryName) t=\(ts)")
+            withAnimation(.easeIn(duration: 0.25)) { opacity = 1.0 }
+        }
+        .task {
+            do {
+                try await Task.sleep(for: .seconds(30.0))
+            } catch {
+                logger.debug(self, "[\(id8)] task cancelled — view removed externally t=\(ts)")
+                return
+            }
+            logger.debug(self, "[\(id8)] 30s elapsed — starting fadeout t=\(ts)")
+            withAnimation(.easeOut(duration: 0.35)) { opacity = 0.0 }
+            do {
+                try await Task.sleep(for: .seconds(0.4))
+            } catch {
+                logger.debug(self, "[\(id8)] task cancelled during fadeout t=\(ts)")
+                return
+            }
+            logger.debug(self, "[\(id8)] calling onDone t=\(ts)")
+            onDone()
+        }
+    }
+
+    private var scoreCard: some View {
+        HStack(spacing: 10) {
+            PlayerInitialsCircle(initials: playerInitials, themeType: playerTheme.type)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(playerName) scored")
+                    .font(.subheadline.weight(.semibold))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(playerTheme.secondaryAccent)
+                Text("\(categoryName)  ·  \(value) pts")
+                    .font(.caption)
+                    .fontDesign(.rounded)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "dice.fill")
+                .foregroundStyle(playerTheme.primaryAccent)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: playerTheme.primaryAccent.opacity(0.25), radius: 10, x: 0, y: 4)
+    }
+
+    private var leaderCard: some View {
+        HStack(spacing: 10) {
+            PlayerInitialsCircle(initials: leaderInitials, themeType: leaderTheme.type)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(leaderName)
+                    .font(.subheadline.weight(.semibold))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(leaderTheme.secondaryAccent)
+                Text("\(leaderLabel)  ·  \(leaderScore) pts")
+                    .font(.caption)
+                    .fontDesign(.rounded)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "trophy.fill")
+                .foregroundStyle(leaderTheme.primaryAccent)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: leaderTheme.primaryAccent.opacity(0.25), radius: 10, x: 0, y: 4)
+    }
+}
+
 // MARK: - Particle factories
 
-// Approximate normalized positions of 5 dice in the tray.
-// The tray occupies the top ~42% of the full-screen overlay in portrait.
+// Approximate normalized positions of 5 dice within the tray view (0-1 relative to tray bounds).
 private let dieOrigins: [(x: Double, y: Double)] = [
-    (0.28, 0.14), (0.72, 0.11),
-    (0.50, 0.24),
-    (0.22, 0.36), (0.78, 0.33),
+    (0.28, 0.25), (0.72, 0.20),
+    (0.50, 0.45),
+    (0.22, 0.70), (0.78, 0.65),
 ]
 
 private func makeYatzyMotes(theme: Theme) -> [Mote] {
@@ -261,9 +423,17 @@ private func makeFallParticles(winnerThemes: [Theme]) -> [Mote] {
 #Preview("Yatzy — Midnight") {
     let coordinator = CelebrationCoordinator()
     let model = MatchController()
+    let p1 = Player(id: UUID(), name: "Wayne", initials: "WM",
+                    themeID: Theme.ThemeType.midnight.rawValue,
+                    createdAt: Date(), isArchived: false, source: .local)
+    let p2 = Player(id: UUID(), name: "Sherida", initials: "SM",
+                    themeID: Theme.ThemeType.forest.rawValue,
+                    createdAt: Date(), isArchived: false, source: .local)
+    model.addPlayer(from: p1)
+    model.addPlayer(from: p2)
     return ZStack {
         Color(red: 0.05, green: 0.05, blue: 0.08).ignoresSafeArea()
-        CelebrationView(model: model)
+        DiceTrayOverlayView(model: model)
     }
     .environment(coordinator)
     .onAppear { coordinator.triggerYatzy(playerIndex: 0) }
@@ -289,4 +459,25 @@ private func makeFallParticles(winnerThemes: [Theme]) -> [Mote] {
     }
     .environment(coordinator)
     .onAppear { coordinator.triggerGameOver(winnerIndices: [0, 1]) }
+}
+
+#Preview("Score Announcement") {
+    let coordinator = CelebrationCoordinator()
+    let model = MatchController()
+    let mockPlayer = Player(id: UUID(), name: "Wayne", initials: "WM",
+                            themeID: Theme.ThemeType.midnight.rawValue,
+                            createdAt: Date(), isArchived: false, source: .local)
+    let leaderPlayer = Player(id: UUID(), name: "Sherida", initials: "SM",
+                              themeID: Theme.ThemeType.forest.rawValue,
+                              createdAt: Date(), isArchived: false, source: .local)
+    model.addPlayer(from: mockPlayer)
+    model.addPlayer(from: leaderPlayer)
+    return ZStack {
+        Color(red: 0.05, green: 0.05, blue: 0.08).ignoresSafeArea()
+        DiceTrayOverlayView(model: model)
+    }
+    .environment(coordinator)
+    .onAppear {
+        coordinator.triggerScoreAnnouncement(playerIndex: 0, category: .fullHouse, value: 25)
+    }
 }

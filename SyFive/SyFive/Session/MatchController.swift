@@ -43,6 +43,9 @@ final class MatchController {
     private(set) var participantIDs: [UUID]
     // Set when first persisted; nil before first save or after reset.
     private(set) var persistedMatchID: UUID?
+    /// True when the current match was started as or promoted to a Game Night match.
+    /// Mirrors MatchModel.isGameNight so callers don't need a SwiftData fetch.
+    var isGameNight: Bool = false
     private var matchStartedAt: Date?
     private var matchCompletedAt: Date?
     private(set) var currentPlayerIndex: Int
@@ -272,6 +275,7 @@ final class MatchController {
         // Fresh participant IDs so the new game doesn't collide with the previous one.
         participantIDs = (0..<playerCount).map { _ in UUID() }
         persistedMatchID = nil
+        isGameNight = false
         matchStartedAt = nil
         matchCompletedAt = nil
         clearUndoState()
@@ -358,6 +362,7 @@ final class MatchController {
         slotIDs = []
 
         persistedMatchID = matchModel.id
+        isGameNight = matchModel.isGameNight
         matchStartedAt = matchModel.startedAt
         matchCompletedAt = matchModel.completedAt
 
@@ -408,6 +413,7 @@ final class MatchController {
         }
         try? context.save()
         persistedMatchID = nil
+        isGameNight = false
         matchStartedAt = nil
         matchCompletedAt = nil
     }
@@ -481,6 +487,9 @@ final class MatchController {
                                 gameJustEnded: gameJustEnded)
         }
         onScoreApplied?(category, capturedDice)
+        if playerCount > 1 && category != .yahtzee && !gameJustEnded {
+            onScoreAnnounced?(scoringPlayerIndex, category, scoreVal)
+        }
     }
 
     @discardableResult
@@ -670,6 +679,11 @@ final class MatchController {
     /// Fires when `beginRoll()` succeeds.
     /// GameNightController wires this on the host to close the undo window.
     var onRollStarted: (() -> Void)?
+
+    /// Fires from `score()` when a non-Yatzy score is applied in a multi-player game,
+    /// before `beginNextTurn()` — carrying the scorer's index at time of scoring.
+    /// ContentView wires this to the score announcement banner.
+    var onScoreAnnounced: ((Int, YatzyCategory, Int) -> Void)?
 
     // MARK: - Game Night state loading
 

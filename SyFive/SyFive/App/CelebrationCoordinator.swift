@@ -6,15 +6,25 @@ import Observation
 // and ContentView (game-over); consumed by CelebrationView.
 @MainActor @Observable
 final class CelebrationCoordinator {
+    private let logger = AppLogger(category: "ScoreAnnouncement")
     struct YatzyEvent: Identifiable {
         let id = UUID()
         let playerIndex: Int
+    }
+
+    struct ScoreAnnouncement: Identifiable {
+        let id = UUID()
+        let playerIndex: Int
+        let category: YatzyCategory
+        let value: Int
     }
 
     // Replaced (not stacked) on rapid-fire Yatzy succession — §2.4.
     var yatzyEvent: YatzyEvent? = nil
     var isGameOverActive = false
     var winnerIndices: [Int] = []
+    // Replaced on successive scores — only the latest score banner shows.
+    var scoreAnnouncement: ScoreAnnouncement? = nil
 
     func triggerYatzy(playerIndex: Int) {
         yatzyEvent = YatzyEvent(playerIndex: playerIndex)
@@ -26,10 +36,37 @@ final class CelebrationCoordinator {
         isGameOverActive = true
     }
 
+    func triggerScoreAnnouncement(playerIndex: Int, category: YatzyCategory, value: Int) {
+        yatzyEvent = nil
+        let announcement = ScoreAnnouncement(playerIndex: playerIndex, category: category, value: value)
+        logger.debug(self, "trigger id=\(announcement.id.uuidString.prefix(8)) playerIndex=\(playerIndex) category=\(category.displayName) value=\(value) replacingExisting=\(scoreAnnouncement != nil)")
+        scoreAnnouncement = announcement
+    }
+
     func clearYatzy() { yatzyEvent = nil }
 
     func clearGameOver() {
         isGameOverActive = false
         winnerIndices = []
+    }
+
+    func clearScoreAnnouncement() {
+        guard scoreAnnouncement != nil else { return }
+        logger.debug(self, "clearScoreAnnouncement")
+        scoreAnnouncement = nil
+    }
+
+    func clearScoreAnnouncementIfCurrent(id: UUID) {
+        let id8 = id.uuidString.prefix(8)
+        guard let current = scoreAnnouncement else {
+            logger.debug(self, "clearScoreAnnouncement[\(id8)] skipped — already nil")
+            return
+        }
+        guard current.id == id else {
+            logger.debug(self, "clearScoreAnnouncement[\(id8)] skipped — stale (current=\(current.id.uuidString.prefix(8)))")
+            return
+        }
+        logger.debug(self, "clearScoreAnnouncement[\(id8)]")
+        scoreAnnouncement = nil
     }
 }

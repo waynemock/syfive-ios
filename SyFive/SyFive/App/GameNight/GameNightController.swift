@@ -110,6 +110,12 @@ final class GameNightController {
     /// Fired on guests when matchComplete arrives. ContentView wires this to the upsert write.
     var onMatchComplete: ((Match) -> Void)?
 
+    // MARK: - Score announcement hook
+
+    /// Fired on guest devices when an opponent's score is detected in an incoming matchState.
+    /// ContentView wires this to the score announcement banner coordinator.
+    var onOpponentScored: ((Int, YatzyCategory, Int) -> Void)?
+
     private let groupStateObserver = GroupStateObserver()
 
     private let logger = AppLogger(category: "GameNightController")
@@ -237,6 +243,7 @@ final class GameNightController {
         }
         isGuestAwaitingReconnect = false
         sessionActivationCount += 1
+        GameNightLogBuffer.shared.startSession()
         logger.info(self, "configureSession: *** COMPLETE *** role=\(String(describing: role)) activationCount=\(sessionActivationCount)")
     }
 
@@ -349,6 +356,8 @@ final class GameNightController {
     }
 
     private func tearDownSession() {
+        GameNightLogBuffer.shared.flushToDisk()
+        logger.info(self, "tearDownSession: role=\(String(describing: role)) phase=\(phase.rawValue) isSessionActive=\(isSessionActive) matchID=\(sessionMatchID?.uuidString ?? "nil")")
         pendingHostSessionActivation = false
         isSessionPending = false
         messageListenTask?.cancel()
@@ -373,6 +382,7 @@ final class GameNightController {
         pendingAuthoritativeResult = nil
         onUndoWithDice = nil
         onMatchComplete = nil
+        onOpponentScored = nil
         pendingGuestUndoAvailable = false
         pendingHostUndoAvailable = false
         isGuestAwaitingReconnect = false
@@ -389,6 +399,7 @@ final class GameNightController {
     /// Wire the shared MatchController for the duration of the session.
     /// Call from ContentView when isSessionActive becomes true.
     func attach(matchController: MatchController) {
+        logger.info(self, "attach: wiring matchController playerCount=\(matchController.playerCount) role=\(String(describing: role))")
         self.matchController = matchController
         matchController.onScoreApplied = { [weak self, weak matchController] category, dice in
             guard let self, let mc = matchController, self.phase == .inProgress else { return }
@@ -422,6 +433,7 @@ final class GameNightController {
     }
 
     private func detachMatchController() {
+        logger.info(self, "detachMatchController: clearing hooks matchID=\(sessionMatchID?.uuidString ?? "nil")")
         matchController?.onScoreApplied = nil
         matchController?.onUndone = nil
         matchController?.onRollStarted = nil
@@ -440,6 +452,7 @@ final class GameNightController {
               let matchID = sessionMatchID,
               let gameID = sessionGameID else { return }
         let match = mc.buildMatchSnapshot(matchID: matchID, gameID: gameID)
+        logger.debug(self, "broadcastMatchState: seat=\(mc.currentPlayerIndex) matchID=\(matchID) scores=\(match.participants.map { $0.scoreEntries.count })")
         send(.matchState, payload: MatchStatePayload(match: match, currentSeatIndex: mc.currentPlayerIndex))
     }
 
@@ -468,6 +481,7 @@ final class GameNightController {
               let matchID = sessionMatchID,
               let gameID = sessionGameID else { return }
         let match = mc.buildMatchSnapshot(matchID: matchID, gameID: gameID)
+        logger.info(self, "broadcastMatchComplete: matchID=\(matchID) winners=\(match.participants.filter { $0.rank == 1 }.map(\.displayName).joined(separator: ","))")
         phase = .completed
         send(.matchComplete, payload: MatchCompletePayload(match: match))
         Task { await broadcastTableState() }
@@ -477,6 +491,7 @@ final class GameNightController {
     func proposeScore(category: YatzyCategory, diceValues: [Int]) {
         guard role != .host, phase == .inProgress,
               let participantID = localParticipantID else { return }
+        logger.info(self, "proposeScore: category=\(category.rawValue) dice=\(diceValues) participantID=\(participantID)")
         send(.scoreChosen, payload: ScoreChosenPayload(
             participantID: participantID, category: category, diceValues: diceValues))
     }
@@ -489,6 +504,7 @@ final class GameNightController {
               undoIndex < mc.participantIDs.count else { return }
         pendingGuestUndoAvailable = false
         let participantID = mc.participantIDs[undoIndex]
+        logger.info(self, "proposeUndo: participantID=\(participantID) seat=\(undoIndex)")
         send(.undoRequest, payload: UndoRequestPayload(participantID: participantID))
     }
 
@@ -497,6 +513,9 @@ final class GameNightController {
     /// Lets the host roll and score on behalf of a dropped player for the current turn.
     func enableProxyMode() {
         guard role == .host else { return }
+        let proxySeat = matchController?.currentPlayerIndex ?? -1
+        let proxyName = matchController.flatMap { $0.playerDisplayNames.indices.contains(proxySeat) ? $0.playerDisplayNames[proxySeat] : nil } ?? "?"
+        logger.info(self, "enableProxyMode: proxying seat=\(proxySeat) name=\(proxyName)")
         isProxyMode = true
     }
 
@@ -568,12 +587,14 @@ final class GameNightController {
         guard !Task.isCancelled, isSessionActive else { return }
         let wasInProgress = phase == .inProgress
         let droppedDuringInterruption = isAudioInterrupted && wasInProgress
+        logger.info(self, "listenForMessages: session dropped — wasInProgress=\(wasInProgress) droppedDuringInterruption=\(droppedDuringInterruption) matchID=\(sessionMatchID?.uuidString ?? "nil") role=\(String(describing: role))")
         tearDownSession()
         if droppedDuringInterruption {
             // Re-set after tearDown (which clears it) so the recovery task can check it.
             sessionDroppedDuringInterruption = true
             logger.info(self, "listenForMessages: session dropped during audio interruption — deferring reconnect alert")
         } else if wasInProgress {
+            logger.info(self, "listenForMessages: unexpected drop during play — surfacing reconnect alert")
             sessionEndedDuringPlay = true
         }
     }
@@ -608,6 +629,7 @@ final class GameNightController {
             versionMismatchedIDs.insert(senderID)
             return
         }
+        logger.info(self, "handleHello: v\(payload.protocolVersion) appV=\(payload.appVersion) from=\(senderID) — sending catch-up phase=\(phase.rawValue)")
         // Compatible joiner — push current table state for catch-up.
         // If a match is already running, also push the full match snapshot so
         // reconnecting guests (or late joiners) see current scores immediately.
@@ -646,6 +668,7 @@ final class GameNightController {
             return
         }
         guard let payload = try? envelope.decode(SeatClaimPayload.self) else { return }
+        logger.info(self, "handleSeatClaim: '\(payload.displayName)' accepted totalSeats=\(seats.count + 1)")
         addSeat(from: payload)
         Task { await self.broadcastTableState() }
     }
@@ -669,14 +692,20 @@ final class GameNightController {
                 let participant = payload.match.participants.first(where: { $0.playerID == myPlayerID }) {
             localParticipantID = participant.id
         }
-        if localParticipantID == nil {
+        let resolutionPath: String
+        if localParticipantID != nil && localSeatClaimID != nil {
+            resolutionPath = "claimID"
+        } else if localParticipantID != nil {
+            resolutionPath = "fallback"
+        } else {
+            resolutionPath = "spectator"
             role = .spectator
         }
         sessionMatchID = payload.match.id
         sessionGameID = payload.match.gameID
         persistLocalParticipantID()
         matchController?.loadFromGameNightMatch(payload.match, currentSeatIndex: payload.currentSeatIndex)
-        logger.debug(self, "matchStart: \(payload.match.participants.count) seats, seat \(payload.currentSeatIndex) role=\(role)")
+        logger.info(self, "handleMatchStart: matchID=\(payload.match.id) participants=\(payload.match.participants.count) seat=\(payload.currentSeatIndex) localPID=\(localParticipantID?.uuidString ?? "nil") path=\(resolutionPath)")
     }
 
     private func handleScoreChosen(_ envelope: GameNightEnvelope, from senderID: UUID) {
@@ -684,6 +713,7 @@ final class GameNightController {
               phase == .inProgress,
               let mc = matchController,
               let payload = try? envelope.decode(ScoreChosenPayload.self) else { return }
+        logger.info(self, "handleScoreChosen: participantID=\(payload.participantID) category=\(payload.category.rawValue) dice=\(payload.diceValues)")
         mc.applyRemoteScore(
             category: payload.category,
             remoteValues: payload.diceValues,
@@ -698,7 +728,11 @@ final class GameNightController {
               let mc = matchController,
               let payload = try? envelope.decode(UndoRequestPayload.self) else { return }
         guard let index = mc.participantIDs.firstIndex(of: payload.participantID),
-              mc.undoPlayerIndex == index else { return }
+              mc.undoPlayerIndex == index else {
+            logger.warning(self, "handleUndoRequest: rejected — participantID=\(payload.participantID) undoIndex=\(mc.undoPlayerIndex?.description ?? "nil")")
+            return
+        }
+        logger.info(self, "handleUndoRequest: accepted participantID=\(payload.participantID) seat=\(index)")
         mc.undoLastScore()
         // onUndone hook broadcasts matchState automatically.
     }
@@ -709,6 +743,7 @@ final class GameNightController {
               let payload = try? envelope.decode(MatchStatePayload.self) else { return }
         // On reconnect the session resumes via matchState (not matchStart), so
         // localParticipantID was never set. Restore it so send* methods work.
+        let isReconnect = localParticipantID == nil
         if localParticipantID == nil {
             localParticipantID = UserDefaults.standard.gnParticipantID(for: payload.match.id)
             if sessionMatchID == nil { sessionMatchID = payload.match.id }
@@ -722,13 +757,31 @@ final class GameNightController {
             // Echo of our own score — preserve the undo snapshot so the button stays visible.
             mc.loadFromGameNightMatchPreservingUndo(payload.match, currentSeatIndex: payload.currentSeatIndex)
         } else {
+            // Opponent's score — diff before/after to announce it.
+            let scoresBefore = mc.playerScores
             mc.loadFromGameNightMatch(payload.match, currentSeatIndex: payload.currentSeatIndex)
+            detectAndAnnounceOpponentScore(scoresBefore: scoresBefore, mc: mc)
         }
         if let dv = payload.diceValues, let rr = payload.rollsRemaining {
             mc.restoreDiceStateAfterUndo(values: dv, rollsRemaining: rr)
             onUndoWithDice?(dv)
         }
-        logger.debug(self, "matchState: seat \(payload.currentSeatIndex) undo=\(payload.diceValues != nil) pendingUndo=\(pendingGuestUndoAvailable)")
+        logger.debug(self, "handleMatchState: matchID=\(payload.match.id) seat=\(payload.currentSeatIndex) scores=\(payload.match.participants.map { $0.scoreEntries.count }) undo=\(payload.diceValues != nil) pendingUndo=\(pendingGuestUndoAvailable) reconnect=\(isReconnect)")
+    }
+
+    /// Scans for the one new nil→non-nil score entry introduced by the latest matchState.
+    /// Skips Yatzy (has its own popup) and the final score of the game (game-over overlay takes over).
+    private func detectAndAnnounceOpponentScore(scoresBefore: [[YatzyCategory: Int]], mc: MatchController) {
+        guard let announce = onOpponentScored, !mc.isGameOver else { return }
+        let scoresAfter = mc.playerScores
+        for (playerIndex, after) in scoresAfter.enumerated() {
+            guard playerIndex < scoresBefore.count else { continue }
+            let before = scoresBefore[playerIndex]
+            for (cat, val) in after where before[cat] == nil && cat != .yahtzee {
+                announce(playerIndex, cat, val)
+                return
+            }
+        }
     }
 
     private func handleRollBegan(_ envelope: GameNightEnvelope) {
@@ -771,6 +824,7 @@ final class GameNightController {
     private func handleMatchAbandoned() {
         guard phase == .inProgress || phase == .settingTable else { return }
         let wasInProgress = phase == .inProgress
+        logger.info(self, "handleMatchAbandoned: wasInProgress=\(wasInProgress) matchID=\(sessionMatchID?.uuidString ?? "nil")")
         tearDownSession()
         if wasInProgress { sessionEndedDuringPlay = true }
     }
@@ -778,6 +832,7 @@ final class GameNightController {
     private func handleSeatRelease(_ envelope: GameNightEnvelope) {
         guard role == .host, phase == .settingTable else { return }
         guard let payload = try? envelope.decode(SeatReleasePayload.self) else { return }
+        logger.info(self, "handleSeatRelease: claimID=\(payload.seatClaimID) remainingSeats=\(seats.count - 1)")
         removeSeat(seatClaimID: payload.seatClaimID)
     }
 
@@ -787,6 +842,7 @@ final class GameNightController {
         guard let messenger else { return }
         do {
             let envelope = try GameNightEnvelope(kind: kind, payload: payload)
+            logger.verbose(self, "send: \(kind.rawValue)")
             Task {
                 try? await messenger.send(envelope)
             }
@@ -807,6 +863,7 @@ final class GameNightController {
     /// Claim one seat for the local player. Host processes locally and rebroadcasts
     /// tableState; guest sends a `seatClaim` message to the host.
     func claimSeat(displayName: String, displayInitials: String, themeID: String, playerID: UUID?, isLocal: Bool = false) {
+        logger.info(self, "claimSeat: '\(displayName)' role=\(String(describing: role)) playerID=\(playerID?.uuidString ?? "nil")")
         let claimID = UUID()
         localSeatClaimID = claimID
         let payload = SeatClaimPayload(
@@ -841,6 +898,9 @@ final class GameNightController {
     /// Host-only: remove a seat by its stable claim identity.
     func removeSeat(seatClaimID: UUID) {
         guard role == .host, phase == .settingTable else { return }
+        if let seat = seats.first(where: { $0.seatClaimID == seatClaimID }) {
+            logger.info(self, "removeSeat: '\(seat.displayName)' remainingSeats=\(seats.count - 1)")
+        }
         if localSeatClaimID == seatClaimID { localSeatClaimID = nil }
         seats.removeAll { $0.seatClaimID == seatClaimID }
         for i in seats.indices { seats[i].seat = i }
@@ -883,6 +943,7 @@ final class GameNightController {
         }
         persistLocalParticipantID()
         UserDefaults.standard.setGnWasHost(for: match.id)
+        logger.info(self, "broadcastMatchStart: matchID=\(match.id) seats=\(seats.count) path=\(currentSeatIndex > 0 ? "resume" : "new") players=\(match.participants.map(\.displayName).joined(separator: ","))")
         matchController?.loadFromGameNightMatch(match, currentSeatIndex: currentSeatIndex)
         send(.matchStart, payload: MatchStartPayload(match: match, seatMappings: mappings, currentSeatIndex: currentSeatIndex))
         Task { await self.broadcastTableState() }
@@ -905,6 +966,7 @@ final class GameNightController {
         }
         persistLocalParticipantID()
         UserDefaults.standard.setGnWasHost(for: match.id)
+        logger.info(self, "broadcastRematch: newMatchID=\(match.id) seats=\(seats.count) players=\(match.participants.map(\.displayName).joined(separator: ","))")
         matchController?.loadFromGameNightMatch(match, currentSeatIndex: 0)
         send(.matchStart, payload: MatchStartPayload(match: match, seatMappings: mappings, currentSeatIndex: 0))
         Task { await broadcastTableState() }
@@ -916,6 +978,7 @@ final class GameNightController {
     /// session so roll messages can be sent correctly.
     func resumeAsHost(matchID: UUID, gameID: UUID) {
         guard role == .host, isSessionActive, phase == .settingTable else { return }
+        logger.info(self, "resumeAsHost: matchID=\(matchID) playerCount=\(matchController?.playerCount ?? 0)")
         sessionMatchID = matchID
         sessionGameID = gameID
         localParticipantID = UserDefaults.standard.gnParticipantID(for: matchID)
@@ -959,6 +1022,7 @@ final class GameNightController {
             isLocal: payload.isLocal
         )
         seats.append(snapshot)
+        logger.debug(self, "addSeat: '\(payload.displayName)' totalSeats=\(seats.count)")
     }
 
     private func buildInitialMatch(gameID: UUID) -> (Match, [SeatMapping]) {

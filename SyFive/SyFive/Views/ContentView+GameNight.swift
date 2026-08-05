@@ -203,7 +203,7 @@ extension ContentView {
     }
 
     func presentGameNightSheetOrAlert() {
-        if model.hasStarted && !model.isGameOver {
+        if model.hasStarted && !model.isGameOver && !model.isGameNight {
             showsGameNightLocalConflictAlert = true
         } else {
             showsGameNight = true

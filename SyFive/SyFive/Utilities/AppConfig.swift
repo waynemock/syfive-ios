@@ -25,4 +25,10 @@ struct AppConfig {
         /// Flip to true, run once on device, verify in CloudKit Console, then flip back.
         static let runSchemaExercise = false
     }
+
+    struct DebugGameNight {
+        /// Capture Game Night logs per session and surface a "Game Night Logs" button
+        /// at the bottom of each GN match detail sheet. Flip to false before shipping.
+        static let showLogs = true
+    }
 }

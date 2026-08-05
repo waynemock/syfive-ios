@@ -39,6 +39,29 @@ struct PlayerProfileView: View {
         !soloMatches.isEmpty && (pvpMatches.isEmpty || profileMode == .solo)
     }
 
+    private var opponentRecords: [OpponentRecord] {
+        var latestInfo: [UUID: (name: String, initials: String, themeType: Theme.ThemeType, date: Date)] = [:]
+        for match in pvpMatches {
+            for p in match.participants {
+                guard let oid = p.playerID, oid != playerID else { continue }
+                let pThemeType = Theme.ThemeType(rawValue: p.displayThemeID) ?? .midnight
+                if let existing = latestInfo[oid], existing.date >= match.startedAt { continue }
+                latestInfo[oid] = (p.displayName, p.displayInitials, pThemeType, match.startedAt)
+            }
+        }
+        return latestInfo.map { oid, info in
+            OpponentRecord(
+                opponentID: oid,
+                opponentName: info.name,
+                opponentInitials: info.initials,
+                opponentThemeType: info.themeType,
+                h2h: headToHead(playerA: playerID, playerB: oid, matches: pvpMatches)
+            )
+        }
+        .filter { $0.h2h.sharedMatches > 0 }
+        .sorted { ($0.h2h.lastMeeting ?? .distantPast) > ($1.h2h.lastMeeting ?? .distantPast) }
+    }
+
     private var insights: PlayerInsights? { playerInsights(playerID: playerID, matches: activeMatches) }
     private var summary: PlayerSummary?   { playerSummary(playerID: playerID, matches: activeMatches) }
 
@@ -131,6 +154,11 @@ struct PlayerProfileView: View {
             statsCard(title: "Placements") {
                 PlacementDistributionChart(distribution: dist).frame(height: 140)
             }
+        }
+
+        // Per-opponent head-to-head breakdown.
+        if !showingSoloStats {
+            opponentsSection
         }
     }
 
@@ -265,6 +293,24 @@ struct PlayerProfileView: View {
     }
 
     // MARK: - Helpers
+
+    @ViewBuilder
+    private var opponentsSection: some View {
+        if !opponentRecords.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Opponents")
+                    .font(.headline)
+                    .padding(.horizontal, 2)
+                ForEach(opponentRecords) { record in
+                    OpponentSummaryRow(
+                        profilePlayerName: playerName,
+                        profileThemeType: themeType,
+                        record: record
+                    )
+                }
+            }
+        }
+    }
 
     @ViewBuilder
     private func statsCard<C: View>(title: String, @ViewBuilder content: () -> C) -> some View {

@@ -13,6 +13,7 @@ struct MatchDetailView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var scoreController = MatchController()
     @State private var scorecardContainerWidth: CGFloat = 0
+    @State private var showsGNLogs = false
 
     // Scorecard layout — matches ScorecardView constants
     private let scoreColumnWidth: CGFloat = 64
@@ -56,12 +57,26 @@ struct MatchDetailView: View {
                     progressionCard(prog)
                 }
                 scorecardsCard
+                if AppConfig.DebugGameNight.showLogs && matchModel.isGameNight
+                    && GameNightLogBuffer.shared.hasLog(for: matchModel.id) {
+                    Button {
+                        showsGNLogs = true
+                    } label: {
+                        Label("Game Night Logs", systemImage: "doc.text.magnifyingglass")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.secondary)
+                }
             }
             .padding(16)
         }
         .navigationTitle(match.startedAt.formatted(date: .abbreviated, time: .omitted))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { scoreController.load(from: matchModel) }
+        .sheet(isPresented: $showsGNLogs) {
+            GameNightLogSheet(matchID: matchModel.id)
+        }
     }
 
 

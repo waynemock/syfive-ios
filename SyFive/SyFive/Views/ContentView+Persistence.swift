@@ -156,6 +156,7 @@ extension ContentView {
         guard let matchModel = (try? modelContext.fetch(descriptor))?.first else { return }
         guard !matchModel.isGameNight else { return }
         matchModel.isGameNight = true
+        model.isGameNight = true
         try? modelContext.save()
     }
 
@@ -169,6 +170,9 @@ extension ContentView {
         guard let gameID = (try? modelContext.fetch(gameDescriptor))?.first?.id else { return }
         model.save(to: modelContext, gameID: gameID)
         try? modelContext.save()
+        if model.isGameNight, let matchID = model.persistedMatchID {
+            GameNightLogBuffer.shared.associateMatch(matchID: matchID)
+        }
     }
 
     func seedSettingsIfNeeded() {
