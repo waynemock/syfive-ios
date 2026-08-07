@@ -37,7 +37,6 @@ final class CelebrationCoordinator {
     }
 
     func triggerScoreAnnouncement(playerIndex: Int, category: YatzyCategory, value: Int) {
-        yatzyEvent = nil
         let announcement = ScoreAnnouncement(playerIndex: playerIndex, category: category, value: value)
         logger.debug(self, "trigger id=\(announcement.id.uuidString.prefix(8)) playerIndex=\(playerIndex) category=\(category.displayName) value=\(value) replacingExisting=\(scoreAnnouncement != nil)")
         scoreAnnouncement = announcement
@@ -54,6 +53,11 @@ final class CelebrationCoordinator {
         guard scoreAnnouncement != nil else { return }
         logger.debug(self, "clearScoreAnnouncement")
         scoreAnnouncement = nil
+    }
+
+    func clearAll() {
+        clearYatzy()
+        clearScoreAnnouncement()
     }
 
     func clearScoreAnnouncementIfCurrent(id: UUID) {

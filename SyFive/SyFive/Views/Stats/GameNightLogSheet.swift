@@ -5,6 +5,12 @@ struct GameNightLogSheet: View {
 
     @Environment(\.dismiss) private var dismiss
 
+    private var logFileURL: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("gnlogs")
+            .appendingPathComponent("\(matchID.uuidString).log")
+    }
+
     private var content: String {
         GameNightLogBuffer.shared.logContent(for: matchID)
     }
@@ -26,11 +32,13 @@ struct GameNightLogSheet: View {
                     Button("Done") { dismiss() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        UIPasteboard.general.string = content
-                    } label: {
-                        Label("Copy", systemImage: "doc.on.doc")
-                    }
+                    ShareLink(
+                        item: logFileURL,
+                        preview: SharePreview(
+                            "\(matchID.uuidString.prefix(8)).log",
+                            image: Image(systemName: "doc.text")
+                        )
+                    )
                 }
             }
         }

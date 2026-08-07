@@ -141,10 +141,12 @@ struct ContentView: View {
                         // Detach from the current record in memory — it stays in History
                         // as an Unfinished game resumable from the next app launch.
                         model.resetGame()
+                        celebrationCoordinator.clearAll()
                     }
                     Button("Delete & Start New", role: .destructive) {
                         model.abandonMatch(in: modelContext)
                         model.resetGame()
+                        celebrationCoordinator.clearAll()
                     }
                 }
             } message: {
@@ -169,8 +171,8 @@ struct ContentView: View {
                 .ignoresSafeArea()
                 .onChange(of: model.rollsRemaining) { oldValue, newValue in
                     if newValue < oldValue {
-                        logger.debug(self, "rollsRemaining \(oldValue)→\(newValue): clearing score announcement")
-                        celebrationCoordinator.clearScoreAnnouncement()
+                        logger.debug(self, "rollsRemaining \(oldValue)→\(newValue): clearing celebration cards")
+                        celebrationCoordinator.clearAll()
                     }
                 }
         }

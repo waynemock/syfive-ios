@@ -247,6 +247,7 @@ struct DiceAreaView: View {
         // hide the non-held dice. They reappear in pip-pattern when the result arrives.
         gn.onRollBegan = { _, heldMask in
             dr.prepareForSpectatorRoll(held: heldMask)
+            cc.clearAll()
         }
         // Show settled values: held dice in the far-wall row, non-held in the pip
         // pattern matching the count. Uses currentHeld — kept accurate by onHoldToggled.
@@ -301,9 +302,13 @@ struct DiceAreaView: View {
         return ids[model.currentPlayerIndex] == localID
     }
 
+    private var allDiceHeld: Bool {
+        model.canScore && !model.held.isEmpty && model.held.allSatisfy { $0 }
+    }
+
     private var canRoll: Bool {
         guard !gameNight.isGuestAwaitingReconnect else { return false }
-        return model.playerCount > 0 && isLocalTurn && model.rollsRemaining > 0 && !model.isGameOver && !model.isRolling
+        return model.playerCount > 0 && isLocalTurn && model.rollsRemaining > 0 && !model.isGameOver && !model.isRolling && !allDiceHeld
     }
 
     private var shouldPrimeInitialTurn: Bool {
@@ -333,6 +338,7 @@ struct DiceAreaView: View {
                 : "Start game with \(model.playerCount) players"
         }
         if model.isRolling { return "Rolling…" }
+        if allDiceHeld { return "Release a die to roll" }
         if model.rollsRemaining == 3 { return "Start Turn" }
         return model.rollsRemaining > 0 ? "Roll (\(model.rollsRemaining) left)" : "No rolls remaining"
     }

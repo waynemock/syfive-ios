@@ -66,7 +66,7 @@ struct MatchDetailView: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
-                    .tint(.secondary)
+                    .tint(.primary)
                 }
             }
             .padding(16)

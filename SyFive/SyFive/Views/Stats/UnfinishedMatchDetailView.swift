@@ -10,6 +10,8 @@ struct UnfinishedMatchDetailView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var scoreController = MatchController()
     @State private var scorecardContainerWidth: CGFloat = 0
+    @State private var showsGNLogs = false
+    private let logger = AppLogger(category: "UnfinishedMatchDetail")
 
     private let scoreColumnWidth: CGFloat = 64
     private let scoreRowHeight: CGFloat = 32
@@ -55,6 +57,17 @@ struct UnfinishedMatchDetailView: View {
                     progressionCard(prog)
                 }
                 scorecardsCard
+                if AppConfig.DebugGameNight.showLogs && matchModel.isGameNight
+                    && GameNightLogBuffer.shared.hasLog(for: matchModel.id) {
+                    Button {
+                        showsGNLogs = true
+                    } label: {
+                        Label("Game Night Logs", systemImage: "doc.text.magnifyingglass")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.primary)
+                }
             }
             .padding(16)
         }
@@ -66,7 +79,21 @@ struct UnfinishedMatchDetailView: View {
                     .fontWeight(.semibold)
             }
         }
-        .onAppear { scoreController.load(from: matchModel) }
+        .onAppear {
+            scoreController.load(from: matchModel)
+            let matchID = matchModel.id
+            let isGN = matchModel.isGameNight
+            let showLogs = AppConfig.DebugGameNight.showLogs
+            let hasLog = GameNightLogBuffer.shared.hasLog(for: matchID)
+            logger.debug(self, "GN log button check — matchID=\(matchID) isGameNight=\(isGN) showLogs=\(showLogs) hasLog=\(hasLog)")
+            let logDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent("gnlogs")
+            let files = (try? FileManager.default.contentsOfDirectory(atPath: logDir.path)) ?? []
+            logger.debug(self, "gnlogs dir contents (\(files.count) files): \(files.joined(separator: ", "))")
+        }
+        .sheet(isPresented: $showsGNLogs) {
+            GameNightLogSheet(matchID: matchModel.id)
+        }
     }
 
     private var currentScoresCard: some View {

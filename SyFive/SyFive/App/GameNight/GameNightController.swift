@@ -133,6 +133,16 @@ final class GameNightController {
     /// if the session has not returned within the recovery window.
     private var interruptionRecoveryTask: Task<Void, Never>?
 
+    /// True on spectator devices between receiving rollBegan and rollResult for a remote roll.
+    /// Suppresses score announcements from matchState messages that lose the race with rollBegan,
+    /// preventing the score card from re-appearing after clearAll() already dismissed it.
+    private var spectatorRollInProgress = false
+
+    /// Stored seat claim payload that has been sent but not yet acknowledged by the host
+    /// (i.e. our seatClaimID is not yet visible in a received tableState).
+    /// Allows automatic resend if the claim was sent before the host started listening.
+    private var pendingSeatClaim: SeatClaimPayload? = nil
+
     // MARK: - App-launch entry point
 
     /// Called by SyFiveApp via `.task` on the root ContentView. Running the for-await
@@ -385,6 +395,8 @@ final class GameNightController {
         onOpponentScored = nil
         pendingGuestUndoAvailable = false
         pendingHostUndoAvailable = false
+        pendingSeatClaim = nil
+        spectatorRollInProgress = false
         isGuestAwaitingReconnect = false
         isAudioInterrupted = false
         sessionDroppedDuringInterruption = false
@@ -483,6 +495,7 @@ final class GameNightController {
         let match = mc.buildMatchSnapshot(matchID: matchID, gameID: gameID)
         logger.info(self, "broadcastMatchComplete: matchID=\(matchID) winners=\(match.participants.filter { $0.rank == 1 }.map(\.displayName).joined(separator: ","))")
         phase = .completed
+        GameNightLogBuffer.shared.flushToDisk()
         send(.matchComplete, payload: MatchCompletePayload(match: match))
         Task { await broadcastTableState() }
     }
@@ -658,6 +671,17 @@ final class GameNightController {
         if let claimID = localSeatClaimID, !seats.contains(where: { $0.seatClaimID == claimID }) {
             localSeatClaimID = nil
         }
+        // If we have a pending claim that the host hasn't acknowledged yet, resend it.
+        // This recovers from the race where the guest claimed before the host started listening.
+        if let pending = pendingSeatClaim, phase == .settingTable {
+            if seats.contains(where: { $0.seatClaimID == pending.seatClaimID }) {
+                logger.debug(self, "tableState: pendingSeatClaim acknowledged by host — clearing")
+                pendingSeatClaim = nil
+            } else {
+                logger.info(self, "tableState: pendingSeatClaim not in seats — resending claim for '\(pending.displayName)'")
+                send(.seatClaim, payload: pending)
+            }
+        }
         logger.debug(self, "tableState received: \(seats.count) seats, phase=\(payload.phase.rawValue)")
     }
 
@@ -772,7 +796,7 @@ final class GameNightController {
     /// Scans for the one new nil→non-nil score entry introduced by the latest matchState.
     /// Skips Yatzy (has its own popup) and the final score of the game (game-over overlay takes over).
     private func detectAndAnnounceOpponentScore(scoresBefore: [[YatzyCategory: Int]], mc: MatchController) {
-        guard let announce = onOpponentScored, !mc.isGameOver else { return }
+        guard let announce = onOpponentScored, !mc.isGameOver, !spectatorRollInProgress else { return }
         let scoresAfter = mc.playerScores
         for (playerIndex, after) in scoresAfter.enumerated() {
             guard playerIndex < scoresBefore.count else { continue }
@@ -789,6 +813,7 @@ final class GameNightController {
               payload.participantID != localParticipantID,
               phase == .inProgress else { return }
         logger.debug(self, "handleRollBegan: roll=\(payload.rollIndex) held=\(payload.heldMask) seed=\(payload.recipe.seed) hookWired=\(onRollBegan != nil)")
+        spectatorRollInProgress = true
         pendingGuestUndoAvailable = false
         pendingHostUndoAvailable = false
         matchController?.clearUndoSnapshot()
@@ -801,6 +826,7 @@ final class GameNightController {
               payload.participantID != localParticipantID,
               phase == .inProgress else { return }
         logger.debug(self, "handleRollResult: values=\(payload.faceValues) hookWired=\(onRollResult != nil)")
+        spectatorRollInProgress = false
         pendingAuthoritativeResult = payload.faceValues
         onRollResult?(payload.faceValues)
     }
@@ -817,6 +843,7 @@ final class GameNightController {
               phase == .inProgress,
               let payload = try? envelope.decode(MatchCompletePayload.self) else { return }
         phase = .completed
+        GameNightLogBuffer.shared.flushToDisk()
         onMatchComplete?(payload.match)
         logger.debug(self, "matchComplete: \(payload.match.id)")
     }
@@ -878,6 +905,7 @@ final class GameNightController {
             addSeat(from: payload)
             Task { await self.broadcastTableState() }
         } else {
+            pendingSeatClaim = payload
             send(.seatClaim, payload: payload)
         }
     }

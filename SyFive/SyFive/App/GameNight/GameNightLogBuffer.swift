@@ -1,14 +1,16 @@
 import Foundation
 
-/// Thread-safe in-memory log buffer for a single Game Night session.
-/// Accumulates entries while a session is live; flushes to disk when the session tears down.
-/// Only active when `AppConfig.DebugGameNight.showLogs` is true.
+/// Writes Game Night session logs directly to disk as each entry arrives.
+/// Logs land in `<Documents>/gnlogs/current.log` from the moment the session
+/// starts, then are renamed to `<matchID>.log` once the match ID is known.
+/// The open FileHandle follows the renamed file's inode on POSIX, so no entries
+/// are lost during the rename. Only active when `AppConfig.DebugGameNight.showLogs` is true.
 final class GameNightLogBuffer: @unchecked Sendable {
     static let shared = GameNightLogBuffer()
 
     private let lock = NSLock()
     private var currentMatchID: UUID?
-    private var entries: [String] = []
+    private var fileHandle: FileHandle?
 
     private static let gnCategories: Set<String> = [
         "GameNightController", "MatchController", "ContentView",
@@ -23,41 +25,48 @@ final class GameNightLogBuffer: @unchecked Sendable {
 
     // MARK: - Lifecycle
 
-    /// Begin a new session log, discarding any prior in-memory entries.
+    /// Begin a new session log. Creates (or truncates) the staging file and
+    /// opens a FileHandle so every subsequent log line is written immediately.
     func startSession() {
         guard AppConfig.DebugGameNight.showLogs else { return }
         lock.withLock {
+            closeFileHandle()
             currentMatchID = nil
-            entries = []
         }
+        let url = stagingURL()
+        prepareDirs(for: url)
+        FileManager.default.createFile(atPath: url.path, contents: Data())
+        let fh = try? FileHandle(forWritingTo: url)
+        lock.withLock { fileHandle = fh }
         AppLogger.sinks["gameNight"] = { [weak self] category, level, message in
             guard Self.gnCategories.contains(category) else { return }
-            self?.append(category: category, level: level, message: message)
+            self?.appendLine(category: category, level: level, message: message)
         }
     }
 
-    /// Associate the running session with a persisted match ID so flush can write the file.
+    /// Associate the running session with a persisted match ID.
+    /// Renames the staging file to `<matchID>.log`; the open FileHandle
+    /// continues writing to the same inode transparently.
     func associateMatch(matchID: UUID) {
         guard AppConfig.DebugGameNight.showLogs else { return }
-        lock.withLock {
-            guard currentMatchID == nil else { return }
+        let alreadySet: Bool = lock.withLock {
+            guard currentMatchID == nil else { return true }
             currentMatchID = matchID
+            return false
         }
+        guard !alreadySet else { return }
+        let from = stagingURL()
+        let to = logFileURL(for: matchID)
+        // Remove any stale log for this matchID before renaming.
+        try? FileManager.default.removeItem(at: to)
+        try? FileManager.default.moveItem(at: from, to: to)
     }
 
-    /// Write accumulated entries to `<Documents>/gnlogs/<matchID>.log`.
-    /// Safe to call from any thread. No-op if no matchID has been associated yet.
+    /// Stop logging and sync the file to disk. Safe to call multiple times.
     func flushToDisk() {
         guard AppConfig.DebugGameNight.showLogs else { return }
         AppLogger.sinks.removeValue(forKey: "gameNight")
-        let (matchID, content): (UUID?, String) = lock.withLock {
-            (currentMatchID, entries.joined(separator: "\n"))
-        }
-        guard let matchID, !content.isEmpty else { return }
-        let url = logFileURL(for: matchID)
-        let dir = url.deletingLastPathComponent()
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        try? content.write(to: url, atomically: true, encoding: .utf8)
+        lock.withLock { closeFileHandle() }
     }
 
     // MARK: - Query
@@ -72,14 +81,41 @@ final class GameNightLogBuffer: @unchecked Sendable {
 
     // MARK: - Private
 
-    private func append(category: String, level: String, message: String) {
+    private func appendLine(category: String, level: String, message: String) {
         let ts = Self.timeFormatter.string(from: Date())
-        let line = "\(ts) [\(category)/\(level)] \(message)"
-        lock.withLock { entries.append(line) }
+        let line = "\(ts) [\(category)/\(level)] \(message)\n"
+        guard let data = line.data(using: .utf8) else { return }
+        lock.withLock {
+            guard let fh = fileHandle else { return }
+            try? fh.seekToEnd()
+            try? fh.write(contentsOf: data)
+        }
+    }
+
+    private func closeFileHandle() {
+        guard let fh = fileHandle else { return }
+        try? fh.synchronize()
+        try? fh.close()
+        fileHandle = nil
+    }
+
+    private func stagingURL() -> URL {
+        logDir().appendingPathComponent("current.log")
     }
 
     private func logFileURL(for matchID: UUID) -> URL {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return docs.appendingPathComponent("gnlogs/\(matchID.uuidString).log")
+        logDir().appendingPathComponent("\(matchID.uuidString).log")
+    }
+
+    private func logDir() -> URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("gnlogs")
+    }
+
+    private func prepareDirs(for url: URL) {
+        try? FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
     }
 }
