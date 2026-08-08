@@ -83,6 +83,7 @@ extension ContentView {
             Button {
                 model.abandonMatch(in: modelContext)
                 model.resetGame()
+                celebrationCoordinator.clearWinnerAnnouncement()
             } label: {
                 Image(systemName: "plus")
             }
@@ -261,6 +262,7 @@ extension ContentView {
             predicate: #Predicate { $0.scoringSystemID == yatzyID }
         )
         guard let gameID = (try? modelContext.fetch(descriptor))?.first?.id else { return }
+        celebrationCoordinator.clearWinnerAnnouncement()
         gameNight.broadcastRematch(gameID: gameID)
         markCurrentMatchAsGameNight()
     }

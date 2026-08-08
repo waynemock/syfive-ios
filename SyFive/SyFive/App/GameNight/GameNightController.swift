@@ -116,6 +116,10 @@ final class GameNightController {
     /// ContentView wires this to the score announcement banner coordinator.
     var onOpponentScored: ((Int, YatzyCategory, Int) -> Void)?
 
+    /// Fired on all devices when an undo is fully applied (host: after undoLastScore; guest: after undo matchState arrives).
+    /// ContentView wires this to clear the score announcement banner.
+    var onUndoApplied: (() -> Void)?
+
     private let groupStateObserver = GroupStateObserver()
 
     private let logger = AppLogger(category: "GameNightController")
@@ -393,6 +397,7 @@ final class GameNightController {
         onUndoWithDice = nil
         onMatchComplete = nil
         onOpponentScored = nil
+        onUndoApplied = nil
         pendingGuestUndoAvailable = false
         pendingHostUndoAvailable = false
         pendingSeatClaim = nil
@@ -671,14 +676,20 @@ final class GameNightController {
         if let claimID = localSeatClaimID, !seats.contains(where: { $0.seatClaimID == claimID }) {
             localSeatClaimID = nil
         }
-        // If we have a pending claim that the host hasn't acknowledged yet, resend it.
-        // This recovers from the race where the guest claimed before the host started listening.
-        if let pending = pendingSeatClaim, phase == .settingTable {
+        // If we have a pending claim, check whether the host has now acknowledged it.
+        // The acknowledgment check runs regardless of phase — a stale tableState (arriving before
+        // the guest's claim was processed) can clear localSeatClaimID, so we always restore it
+        // here. The resend only fires during settingTable since matchStart is already in flight
+        // once inProgress arrives.
+        if let pending = pendingSeatClaim {
             if seats.contains(where: { $0.seatClaimID == pending.seatClaimID }) {
-                logger.debug(self, "tableState: pendingSeatClaim acknowledged by host — clearing")
+                logger.debug(self, "tableState: pendingSeatClaim acknowledged by host — clearing, restoring localSeatClaimID")
+                localSeatClaimID = pending.seatClaimID
                 pendingSeatClaim = nil
-            } else {
+            } else if phase == .settingTable {
                 logger.info(self, "tableState: pendingSeatClaim not in seats — resending claim for '\(pending.displayName)'")
+                // Re-add own seat so it stays visible while the host processes the claim.
+                addSeat(from: pending)
                 send(.seatClaim, payload: pending)
             }
         }
@@ -702,9 +713,15 @@ final class GameNightController {
               let payload = try? envelope.decode(MatchStartPayload.self) else { return }
         phase = .inProgress
         // Primary: match by seat claim ID.
-        if let myClaimID = localSeatClaimID,
+        // Also try pendingSeatClaim as a fallback for localSeatClaimID — a race where a stale
+        // tableState (seats=[]) arrives before the host processes our claim can clear
+        // localSeatClaimID. pendingSeatClaim still holds the original claimID in that case.
+        let effectiveClaimID = localSeatClaimID ?? pendingSeatClaim?.seatClaimID
+        if let myClaimID = effectiveClaimID,
            let mapping = payload.seatMappings.first(where: { $0.seatClaimID == myClaimID }) {
             localParticipantID = mapping.participantID
+            localSeatClaimID = myClaimID
+            pendingSeatClaim = nil
         }
         // Fallback for reconnect: seatClaimID was cleared at relaunch.
         // Match the guest's old participantID → playerID → new participantID.
@@ -758,6 +775,7 @@ final class GameNightController {
         }
         logger.info(self, "handleUndoRequest: accepted participantID=\(payload.participantID) seat=\(index)")
         mc.undoLastScore()
+        onUndoApplied?()
         // onUndone hook broadcasts matchState automatically.
     }
 
@@ -777,6 +795,7 @@ final class GameNightController {
             // Undo broadcast — clear the pending flag and reload normally.
             pendingGuestUndoAvailable = false
             mc.loadFromGameNightMatch(payload.match, currentSeatIndex: payload.currentSeatIndex)
+            onUndoApplied?()
         } else if pendingGuestUndoAvailable {
             // Echo of our own score — preserve the undo snapshot so the button stays visible.
             mc.loadFromGameNightMatchPreservingUndo(payload.match, currentSeatIndex: payload.currentSeatIndex)
@@ -794,14 +813,14 @@ final class GameNightController {
     }
 
     /// Scans for the one new nil→non-nil score entry introduced by the latest matchState.
-    /// Skips Yatzy (has its own popup) and the final score of the game (game-over overlay takes over).
+    /// Skips only the final score of the game (game-over overlay takes over).
     private func detectAndAnnounceOpponentScore(scoresBefore: [[YatzyCategory: Int]], mc: MatchController) {
         guard let announce = onOpponentScored, !mc.isGameOver, !spectatorRollInProgress else { return }
         let scoresAfter = mc.playerScores
         for (playerIndex, after) in scoresAfter.enumerated() {
             guard playerIndex < scoresBefore.count else { continue }
             let before = scoresBefore[playerIndex]
-            for (cat, val) in after where before[cat] == nil && cat != .yahtzee {
+            for (cat, val) in after where before[cat] == nil {
                 announce(playerIndex, cat, val)
                 return
             }
@@ -906,8 +925,36 @@ final class GameNightController {
             Task { await self.broadcastTableState() }
         } else {
             pendingSeatClaim = payload
+            // Show own seat immediately — in Messages SharePlay the host may not have
+            // joined yet, so no tableState will arrive to confirm the claim for a while.
+            addSeat(from: payload)
             send(.seatClaim, payload: payload)
         }
+    }
+
+    /// Update display fields for the local player's own seat and propagate to the table.
+    /// Guest re-sends `seatClaim`; host updates directly and broadcasts `tableState`.
+    func updateOwnSeat(name: String, initials: String, themeID: String) {
+        guard phase == .settingTable, let claimID = localSeatClaimID,
+              let i = seats.firstIndex(where: { $0.seatClaimID == claimID }) else { return }
+        seats[i].displayName = name
+        seats[i].displayInitials = initials
+        seats[i].displayThemeID = themeID
+        let payload = SeatClaimPayload(
+            seatClaimID: claimID,
+            playerID: seats[i].playerID,
+            displayName: name,
+            displayInitials: initials,
+            displayThemeID: themeID,
+            isLocal: seats[i].isLocal
+        )
+        if pendingSeatClaim != nil { pendingSeatClaim = payload }
+        if role == .host {
+            Task { await self.broadcastTableState() }
+        } else {
+            send(.seatClaim, payload: payload)
+        }
+        logger.info(self, "updateOwnSeat: '\(name)' themeID=\(themeID)")
     }
 
     /// Host-only: reorder seats after a drag-and-drop in the table-setting UI.
@@ -941,7 +988,7 @@ final class GameNightController {
         let match: Match
         let mappings: [SeatMapping]
         let currentSeatIndex: Int
-        if let mc = matchController, let matchID = mc.persistedMatchID, mc.playerCount >= 2 {
+        if let mc = matchController, let matchID = mc.persistedMatchID, mc.playerCount >= 2, !mc.isGameOver {
             // Resume path: host was killed mid-match; same players re-seated.
             // Rebuild the snapshot and remap seatClaimIDs → existing participantIDs by playerID.
             let snapshot = mc.buildMatchSnapshot(matchID: matchID, gameID: gameID)
@@ -1039,7 +1086,13 @@ final class GameNightController {
     }
 
     private func addSeat(from payload: SeatClaimPayload) {
-        guard !seats.contains(where: { $0.seatClaimID == payload.seatClaimID }) else { return }
+        if let i = seats.firstIndex(where: { $0.seatClaimID == payload.seatClaimID }) {
+            seats[i].displayName = payload.displayName
+            seats[i].displayInitials = payload.displayInitials
+            seats[i].displayThemeID = payload.displayThemeID
+            logger.debug(self, "addSeat: updated '\(payload.displayName)' (upsert)")
+            return
+        }
         let snapshot = SeatSnapshot(
             seatClaimID: payload.seatClaimID,
             seat: seats.count,

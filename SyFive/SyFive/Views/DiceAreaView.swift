@@ -4,6 +4,7 @@ import RealityKit
 
 struct DiceAreaView: View {
     @Bindable var model: MatchController
+    var onPlayAgain: () -> Void = {}
     @State private var diceRoller = DiceRoller()
     @State private var feelAdapter: DiceFeelAdapter?
     @State private var traySize: CGSize = .zero
@@ -96,6 +97,11 @@ struct DiceAreaView: View {
         VStack(spacing: 8) {
             HStack(spacing: 12) {
                 Button {
+                    if isPlayAgainButton {
+                        onPlayAgain()
+                        return
+                    }
+
                     if shouldPrimeInitialTurn {
                         isAwaitingInitialTurnStart = true
                         diceRoller.clearDice()
@@ -143,11 +149,18 @@ struct DiceAreaView: View {
 
                 if isUndoTurn {
                     Button {
-                        suppressNextPlayerChangeDiceClear = true
-                        if let restoration = model.undoLastScore() {
-                            diceRoller.restoreDice(values: restoration.diceValues, held: restoration.held)
+                        if gameNight.isSessionActive && gameNight.phase == .inProgress && gameNight.role != .host {
+                            // Guest: propose undo to host before any local state changes —
+                            // undoLastScore() clears lastScoreSnapshot, making undoPlayerIndex nil
+                            // and causing proposeUndo() to fail its guard silently.
+                            gameNight.proposeUndo()
                         } else {
-                            suppressNextPlayerChangeDiceClear = false
+                            suppressNextPlayerChangeDiceClear = true
+                            if let restoration = model.undoLastScore() {
+                                diceRoller.restoreDice(values: restoration.diceValues, held: restoration.held)
+                            } else {
+                                suppressNextPlayerChangeDiceClear = false
+                            }
                         }
                     } label: {
                         Image(systemName: "arrow.uturn.backward")
@@ -306,7 +319,14 @@ struct DiceAreaView: View {
         model.canScore && !model.held.isEmpty && model.held.allSatisfy { $0 }
     }
 
+    private var isPlayAgainButton: Bool {
+        model.isGameOver
+    }
+
     private var canRoll: Bool {
+        if isPlayAgainButton {
+            return !gameNight.isSessionActive || gameNight.role == .host
+        }
         guard !gameNight.isGuestAwaitingReconnect else { return false }
         return model.playerCount > 0 && isLocalTurn && model.rollsRemaining > 0 && !model.isGameOver && !model.isRolling && !allDiceHeld
     }
@@ -318,6 +338,12 @@ struct DiceAreaView: View {
     }
 
     private var rollButtonTitle: String {
+        if isPlayAgainButton {
+            if gameNight.isSessionActive && gameNight.role != .host {
+                return "Waiting for host…"
+            }
+            return "Play Again"
+        }
         if gameNight.isGuestAwaitingReconnect {
             return "Waiting for Game Night…"
         }

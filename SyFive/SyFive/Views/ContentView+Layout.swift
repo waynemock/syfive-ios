@@ -20,7 +20,16 @@ extension ContentView {
             ? AnyLayout(VStackLayout(spacing: 12))
             : AnyLayout(HStackLayout(alignment: .top, spacing: 20))
         layout {
-            DiceAreaView(model: model)
+            DiceAreaView(model: model, onPlayAgain: {
+                if gameNight.isSessionActive {
+                    startGameNightRematch()
+                } else {
+                    model.abandonMatch(in: modelContext)
+                    model.resetGame()
+                    celebrationCoordinator.clearAll()
+                    celebrationCoordinator.clearWinnerAnnouncement()
+                }
+            })
                 .background(debugColor(Color.red.opacity(0.25)))
                 .frame(maxWidth: .infinity, maxHeight: isPortrait ? .infinity : landscapeDiceMaxHeight, alignment: .top)
             ScorecardView(model: model, availableWidth: scorecardAvailableWidth)

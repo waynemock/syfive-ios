@@ -16,6 +16,7 @@ struct PlayerEditSheet: View {
 
     let mode: Mode
     @Bindable var matchModel: MatchController
+    var onSave: (() -> Void)? = nil
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -29,9 +30,10 @@ struct PlayerEditSheet: View {
     @State private var initials: String
     @State private var themeType: Theme.ThemeType
 
-    init(mode: Mode, matchModel: MatchController) {
+    init(mode: Mode, matchModel: MatchController, onSave: (() -> Void)? = nil) {
         self.mode = mode
         self.matchModel = matchModel
+        self.onSave = onSave
         switch mode {
         case .create:
             _name = State(initialValue: "")
@@ -166,6 +168,7 @@ struct PlayerEditSheet: View {
             }
         }
 
+        onSave?()
         dismiss()
     }
 }

@@ -87,7 +87,7 @@ final class GameNightLogBuffer: @unchecked Sendable {
         guard let data = line.data(using: .utf8) else { return }
         lock.withLock {
             guard let fh = fileHandle else { return }
-            try? fh.seekToEnd()
+            _ = try? fh.seekToEnd()
             try? fh.write(contentsOf: data)
         }
     }

@@ -130,11 +130,13 @@ struct ContentView: View {
                     Button("New Game Night Game") {
                         model.abandonMatch(in: modelContext)
                         model.resetGame()
+                        celebrationCoordinator.clearWinnerAnnouncement()
                         startGameNightRematch()
                     }
                     Button("Play Locally", role: .destructive) {
                         model.abandonMatch(in: modelContext)
                         model.resetGame()
+                        celebrationCoordinator.clearWinnerAnnouncement()
                     }
                 } else {
                     Button("Pause") {
@@ -142,11 +144,13 @@ struct ContentView: View {
                         // as an Unfinished game resumable from the next app launch.
                         model.resetGame()
                         celebrationCoordinator.clearAll()
+                        celebrationCoordinator.clearWinnerAnnouncement()
                     }
                     Button("Delete & Start New", role: .destructive) {
                         model.abandonMatch(in: modelContext)
                         model.resetGame()
                         celebrationCoordinator.clearAll()
+                        celebrationCoordinator.clearWinnerAnnouncement()
                     }
                 }
             } message: {
@@ -193,6 +197,7 @@ struct ContentView: View {
             runCloudKitSchemaExercise()
             #endif
             loadMatchIfNeeded()
+            syncPlayerThemesFromRoster()
             healOrphanedParticipants()
             // Sync initial settings values (onChange won't fire for the first load).
             director.soundEnabled   = appSettings?.soundEnabled   ?? true
@@ -238,6 +243,9 @@ struct ContentView: View {
             let announcementCoordinator = celebrationCoordinator
             gameNight.onOpponentScored = { playerIndex, category, value in
                 announcementCoordinator.triggerScoreAnnouncement(playerIndex: playerIndex, category: category, value: value)
+            }
+            gameNight.onUndoApplied = {
+                announcementCoordinator.clearScoreAnnouncement()
             }
             let ctx = modelContext
             gameNight.onMatchComplete = { completedMatch in
@@ -304,7 +312,14 @@ struct ContentView: View {
         }
         .onChange(of: model.isGameOver) { _, isGameOver in
             guard isGameOver else { return }
+            celebrationCoordinator.clearAll()
             celebrationCoordinator.triggerGameOver(winnerIndices: model.winnerIndices)
+            if model.playerCount > 1 {
+                celebrationCoordinator.triggerWinnerAnnouncement(
+                    winnerIndices: model.winnerIndices,
+                    score: model.leaderScore ?? 0
+                )
+            }
         }
         .sheet(isPresented: $showsHouseRecords) {
             HouseRecordsView()
@@ -313,7 +328,10 @@ struct ContentView: View {
         .sheet(isPresented: $showsHistory) {
             MatchHistoryView(
                 activeMatchID: model.persistedMatchID,
-                onActiveMatchDeleted: { model.resetGame() },
+                onActiveMatchDeleted: {
+                    model.resetGame()
+                    celebrationCoordinator.clearWinnerAnnouncement()
+                },
                 onResume: { matchModel in
                     model.load(from: matchModel)
                     showsHistory = false
@@ -322,7 +340,7 @@ struct ContentView: View {
             .environment(\.theme, theme)
             .environment(director)
         }
-        .sheet(isPresented: $showsPlayers) {
+        .sheet(isPresented: $showsPlayers, onDismiss: { syncPlayerThemesFromRoster() }) {
             PlayersView()
                 .environment(\.theme, theme)
         }
@@ -351,7 +369,7 @@ struct ContentView: View {
                 .environment(\.theme, theme)
         }
         .sheet(isPresented: $showsGameNight) {
-            TableSettingView(gameNight: gameNight)
+            TableSettingView(gameNight: gameNight, matchModel: model)
                 .environment(\.theme, theme)
         }
         .sheet(isPresented: $showsInviteInstructions) {

@@ -423,6 +423,20 @@ final class MatchController {
         playerThemes[playerIndex] = theme
     }
 
+    /// Propagates current PlayerModel theme colors into playerThemes[]. Only runs before
+    /// the game starts so in-progress matches are not silently recolored mid-game.
+    func syncPlayerThemes(from players: [PlayerModel]) {
+        guard canEditPlayers else { return }
+        for i in playerIDs.indices {
+            guard let playerID = playerIDs[i],
+                  let player = players.first(where: { $0.id == playerID }),
+                  let themeType = Theme.ThemeType(rawValue: player.themeID),
+                  playerThemes.indices.contains(i),
+                  playerThemes[i] != themeType else { continue }
+            playerThemes[i] = themeType
+        }
+    }
+
     func toggleHold(at index: Int) {
         guard diceValues.indices.contains(index), !isGameOver, canScore else { return }
         held[index].toggle()
@@ -487,7 +501,7 @@ final class MatchController {
                                 gameJustEnded: gameJustEnded)
         }
         onScoreApplied?(category, capturedDice)
-        if playerCount > 1 && category != .yahtzee && !gameJustEnded {
+        if playerCount > 1 && !gameJustEnded {
             onScoreAnnounced?(scoringPlayerIndex, category, scoreVal)
         }
     }
@@ -778,4 +792,11 @@ final class MatchController {
             participants: buildParticipants()
         )
     }
+
+#if DEBUG
+    func seedScoresForPreview(_ scores: [YatzyCategory: Int], forPlayerIndex index: Int) {
+        guard playerScores.indices.contains(index) else { return }
+        playerScores[index] = scores
+    }
+#endif
 }

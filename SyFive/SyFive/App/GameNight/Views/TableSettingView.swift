@@ -6,6 +6,7 @@ import SwiftData
 /// Commentary override row is editable by the host and read-only for guests.
 struct TableSettingView: View {
     @Bindable var gameNight: GameNightController
+    let matchModel: MatchController
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.theme) private var theme
@@ -87,7 +88,9 @@ struct TableSettingView: View {
                 SeatRow(seat: seat, colorScheme: colorScheme,
                         isLocal: isOwnSeat,
                         canRemove: gameNight.phase == .settingTable && (gameNight.role == .host || isOwnSeat),
-                        canReorder: gameNight.role == .host && gameNight.phase == .settingTable) {
+                        canReorder: gameNight.role == .host && gameNight.phase == .settingTable,
+                        matchModel: matchModel,
+                        gameNight: gameNight) {
                     if gameNight.role == .host {
                         gameNight.removeSeat(seatClaimID: seat.seatClaimID)
                     } else {
@@ -199,9 +202,13 @@ private struct SeatRow: View {
     let isLocal: Bool
     let canRemove: Bool
     let canReorder: Bool
+    let matchModel: MatchController
+    let gameNight: GameNightController
     let onRemove: () -> Void
 
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.editMode) private var editMode
+    @State private var showsPlayerEdit: PlayerEditSheet.Mode? = nil
 
     private var isEditing: Bool { editMode?.wrappedValue.isEditing == true }
 
@@ -209,7 +216,19 @@ private struct SeatRow: View {
         HStack(spacing: 12) {
             InitialsCircle(initials: seat.displayInitials, themeID: seat.displayThemeID, colorScheme: colorScheme)
             VStack(alignment: .leading, spacing: 2) {
-                Text(seat.displayName)
+                HStack(spacing: 4) {
+                    Text(seat.displayName)
+                    if isLocal && gameNight.phase == .settingTable {
+                        Button {
+                            showsPlayerEdit = fetchPlayerEditMode()
+                        } label: {
+                            Image(systemName: "pencil")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
                 if isLocal {
                     Text("You")
                         .font(.caption)
@@ -230,6 +249,21 @@ private struct SeatRow: View {
                     .font(.title3)
             }
         }
+        .sheet(item: $showsPlayerEdit) { mode in
+            PlayerEditSheet(mode: mode, matchModel: matchModel) {
+                if case .edit(let pm, _) = mode {
+                    gameNight.updateOwnSeat(name: pm.name, initials: pm.initials, themeID: pm.themeID)
+                }
+            }
+        }
+    }
+
+    private func fetchPlayerEditMode() -> PlayerEditSheet.Mode? {
+        guard let playerID = seat.playerID else { return nil }
+        var desc = FetchDescriptor<PlayerModel>(predicate: #Predicate { $0.id == playerID })
+        desc.fetchLimit = 1
+        guard let pm = (try? modelContext.fetch(desc))?.first else { return nil }
+        return .edit(pm, matchSlot: nil)
     }
 }
 

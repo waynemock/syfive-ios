@@ -113,11 +113,38 @@ struct DiceTrayOverlayView: View {
                         removal: .move(edge: .bottom).combined(with: .opacity)
                     ))
                 }
+
+                if let winner = coordinator.winnerAnnouncement {
+                    let isTied = winner.winnerIndices.count > 1
+                    let winners: [(initials: String, themeType: Theme.ThemeType)] = winner.winnerIndices.map {
+                        (model.playerInitials(for: $0), model.themeType(for: $0))
+                    }
+                    let winnerNames = joinedWithAmpersand(winner.winnerIndices
+                        .compactMap { model.playerDisplayNames.indices.contains($0) ? model.playerDisplayNames[$0] : nil })
+                    let primaryTheme = Theme(type: model.themeType(for: winner.winnerIndices.first ?? 0), colorScheme: colorScheme)
+                    WinnerCardView(
+                        isTied: isTied,
+                        winners: winners,
+                        winnerNames: winnerNames,
+                        primaryTheme: primaryTheme,
+                        score: winner.score
+                    )
+                    .id(winner.id)
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.85).combined(with: .opacity),
+                        removal: .move(edge: .bottom).combined(with: .opacity)
+                    ))
+                    .task(id: winner.id) {
+                        try? await Task.sleep(for: .seconds(30))
+                        coordinator.clearWinnerAnnouncement()
+                    }
+                }
             }
             .padding(.horizontal, 16)
             .frame(maxWidth: 390)
             .animation(.spring(response: 0.45, dampingFraction: 0.78), value: coordinator.yatzyEvent?.id)
             .animation(.spring(response: 0.45, dampingFraction: 0.78), value: coordinator.scoreAnnouncement?.id)
+            .animation(.spring(response: 0.45, dampingFraction: 0.78), value: coordinator.winnerAnnouncement?.id)
         }
         .allowsHitTesting(false)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -180,10 +207,10 @@ private struct YatzyTextCard: View {
     let playerInitials: String
     let playerCount: Int
     let onDone: () -> Void
-
+    
     @ScaledMetric private var yatzyFontSize: CGFloat = 40
     @ScaledMetric private var bonusFontSize: CGFloat = 24
-
+    
     var body: some View {
         VStack(spacing: 4) {
             if playerCount > 1 {
@@ -194,14 +221,14 @@ private struct YatzyTextCard: View {
                         .fontDesign(.rounded)
                         .foregroundStyle(theme.secondaryAccent)
                 }
+                HStack {
+                    yatzyInfo
+                }
+            } else {
+                yatzyInfo
             }
-            Text("YATZY")
-                .font(.system(size: yatzyFontSize, weight: .black, design: .rounded))
-                .foregroundStyle(theme.primaryAccent)
-            Text("+50")
-                .font(.system(size: bonusFontSize, weight: .bold, design: .rounded))
-                .foregroundStyle(theme.secondaryAccent)
         }
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, 32)
         .padding(.vertical, 18)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
@@ -209,6 +236,88 @@ private struct YatzyTextCard: View {
         .task {
             do { try await Task.sleep(for: .seconds(10)) } catch { return }
             onDone()
+        }
+    }
+    
+    var yatzyInfo: some View {
+        Group {
+            Text("YATZY")
+                .font(.system(size: yatzyFontSize, weight: .black, design: .rounded))
+                .foregroundStyle(theme.primaryAccent)
+            Text("+50")
+                .font(.system(size: bonusFontSize, weight: .bold, design: .rounded))
+                .foregroundStyle(theme.secondaryAccent)
+        }
+    }
+}
+
+
+// MARK: - Winner card
+
+private struct WinnerCardView: View {
+    let isTied: Bool
+    let winners: [(initials: String, themeType: Theme.ThemeType)]
+    let winnerNames: String
+    let primaryTheme: Theme
+    let score: Int
+
+    @ScaledMetric private var headlineFontSize: CGFloat = 40
+    @ScaledMetric private var scoreFontSize: CGFloat = 24
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var activeThemeIndex = 0
+
+    // Cycles through tied players' themes; falls back to the single winner's theme.
+    private var displayTheme: Theme {
+        guard isTied, winners.indices.contains(activeThemeIndex) else { return primaryTheme }
+        return Theme(type: winners[activeThemeIndex].themeType, colorScheme: colorScheme)
+    }
+
+    var body: some View {
+        VStack(spacing: 4) {
+            if isTied {
+                HStack(spacing: 6) {
+                    ForEach(Array(winners.enumerated()), id: \.offset) { _, w in
+                        PlayerInitialsCircle(initials: w.initials, themeType: w.themeType)
+                    }
+                }
+                Text(winnerNames)
+                    .font(.subheadline.weight(.semibold))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(displayTheme.secondaryAccent)
+                    .multilineTextAlignment(.center)
+            } else if let solo = winners.first {
+                HStack(spacing: 6) {
+                    PlayerInitialsCircle(initials: solo.initials, themeType: solo.themeType)
+                    Text(winnerNames)
+                        .font(.subheadline.weight(.semibold))
+                        .fontDesign(.rounded)
+                        .foregroundStyle(displayTheme.secondaryAccent)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+            }
+            Text(isTied ? "IT'S A TIE" : "WINNER")
+                .font(.system(size: headlineFontSize, weight: .black, design: .rounded))
+                .foregroundStyle(displayTheme.primaryAccent)
+            Text("\(score) pts")
+                .font(.system(size: scoreFontSize, weight: .bold, design: .rounded))
+                .foregroundStyle(displayTheme.secondaryAccent)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 32)
+        .padding(.vertical, 18)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .modifier(RainbowBorderModifier(cornerRadius: 22))
+        .shadow(color: displayTheme.primaryAccent.opacity(0.3), radius: 20, x: 0, y: 6)
+        .task {
+            guard isTied, winners.count > 1 else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1.5))
+                guard !Task.isCancelled else { return }
+                withAnimation(.easeInOut(duration: 0.6)) {
+                    activeThemeIndex = (activeThemeIndex + 1) % winners.count
+                }
+            }
         }
     }
 }
@@ -389,6 +498,17 @@ private struct ScoreAnnouncementBannerView: View {
     }
 }
 
+// MARK: - Helpers
+
+private func joinedWithAmpersand(_ names: [String]) -> String {
+    switch names.count {
+    case 0: return ""
+    case 1: return names[0]
+    case 2: return "\(names[0]) & \(names[1])"
+    default: return names.dropLast().joined(separator: ", ") + " & " + names[names.count - 1]
+    }
+}
+
 // MARK: - Particle factories
 
 // Approximate normalized positions of 5 dice within the tray view (0-1 relative to tray bounds).
@@ -437,7 +557,24 @@ private func makeFallParticles(winnerThemes: [Theme]) -> [Mote] {
 
 // MARK: - Previews
 
-#Preview("Yatzy — Midnight") {
+#if DEBUG
+
+#Preview("Yatzy — Single player") {
+    let coordinator = CelebrationCoordinator()
+    let model = MatchController()
+    let p1 = Player(id: UUID(), name: "Wayne", initials: "WM",
+                    themeID: Theme.ThemeType.midnight.rawValue,
+                    createdAt: Date(), isArchived: false, source: .local)
+    let _ = model.addPlayer(from: p1)
+    ZStack {
+        Color(red: 0.05, green: 0.05, blue: 0.08).ignoresSafeArea()
+        DiceTrayOverlayView(model: model)
+    }
+    .environment(coordinator)
+    .onAppear { coordinator.triggerYatzy(playerIndex: 0) }
+}
+
+#Preview("Yatzy — Multiplayer") {
     let coordinator = CelebrationCoordinator()
     let model = MatchController()
     let p1 = Player(id: UUID(), name: "Wayne", initials: "WM",
@@ -446,9 +583,9 @@ private func makeFallParticles(winnerThemes: [Theme]) -> [Mote] {
     let p2 = Player(id: UUID(), name: "Sherida", initials: "SM",
                     themeID: Theme.ThemeType.forest.rawValue,
                     createdAt: Date(), isArchived: false, source: .local)
-    model.addPlayer(from: p1)
-    model.addPlayer(from: p2)
-    return ZStack {
+    let _ = model.addPlayer(from: p1)
+    let _ = model.addPlayer(from: p2)
+    ZStack {
         Color(red: 0.05, green: 0.05, blue: 0.08).ignoresSafeArea()
         DiceTrayOverlayView(model: model)
     }
@@ -465,41 +602,20 @@ private func makeFallParticles(winnerThemes: [Theme]) -> [Mote] {
     let p2 = Player(id: UUID(), name: "Sherida", initials: "SM",
                     themeID: Theme.ThemeType.forest.rawValue,
                     createdAt: Date(), isArchived: false, source: .local)
-    model.addPlayer(from: p1)
-    model.addPlayer(from: p2)
-    return ZStack {
+    let _ = model.addPlayer(from: p1)
+    let _ = model.addPlayer(from: p2)
+    ZStack {
         Color(red: 0.05, green: 0.05, blue: 0.08).ignoresSafeArea()
         DiceTrayOverlayView(model: model)
     }
     .environment(coordinator)
     .onAppear {
+        model.seedScoresForPreview([.ones: 3, .twos: 6, .fullHouse: 25], forPlayerIndex: 1)
         coordinator.triggerYatzy(playerIndex: 0)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             coordinator.triggerScoreAnnouncement(playerIndex: 0, category: .yahtzee, value: 50)
         }
     }
-}
-
-#Preview("Game Over — single winner") {
-    let coordinator = CelebrationCoordinator()
-    let model = MatchController()
-    return ZStack {
-        Color(red: 0.05, green: 0.05, blue: 0.08).ignoresSafeArea()
-        CelebrationView(model: model)
-    }
-    .environment(coordinator)
-    .onAppear { coordinator.triggerGameOver(winnerIndices: [0]) }
-}
-
-#Preview("Game Over — tie (two winners)") {
-    let coordinator = CelebrationCoordinator()
-    let model = MatchController()
-    return ZStack {
-        Color(red: 0.05, green: 0.05, blue: 0.08).ignoresSafeArea()
-        CelebrationView(model: model)
-    }
-    .environment(coordinator)
-    .onAppear { coordinator.triggerGameOver(winnerIndices: [0, 1]) }
 }
 
 #Preview("Score Announcement") {
@@ -511,14 +627,107 @@ private func makeFallParticles(winnerThemes: [Theme]) -> [Mote] {
     let leaderPlayer = Player(id: UUID(), name: "Sherida", initials: "SM",
                               themeID: Theme.ThemeType.forest.rawValue,
                               createdAt: Date(), isArchived: false, source: .local)
-    model.addPlayer(from: mockPlayer)
-    model.addPlayer(from: leaderPlayer)
-    return ZStack {
+    let _ = model.addPlayer(from: mockPlayer)
+    let _ = model.addPlayer(from: leaderPlayer)
+    ZStack {
         Color(red: 0.05, green: 0.05, blue: 0.08).ignoresSafeArea()
         DiceTrayOverlayView(model: model)
     }
     .environment(coordinator)
     .onAppear {
+        model.seedScoresForPreview([.ones: 3, .twos: 6, .threes: 9], forPlayerIndex: 1)
         coordinator.triggerScoreAnnouncement(playerIndex: 0, category: .fullHouse, value: 25)
     }
 }
+
+#Preview("Winner — single") {
+    let coordinator = CelebrationCoordinator()
+    let model = MatchController()
+    let p1 = Player(id: UUID(), name: "Wayne", initials: "WM",
+                    themeID: Theme.ThemeType.midnight.rawValue,
+                    createdAt: Date(), isArchived: false, source: .local)
+    let p2 = Player(id: UUID(), name: "Sherida", initials: "SM",
+                    themeID: Theme.ThemeType.forest.rawValue,
+                    createdAt: Date(), isArchived: false, source: .local)
+    let _ = model.addPlayer(from: p1)
+    let _ = model.addPlayer(from: p2)
+    ZStack {
+        Color(red: 0.05, green: 0.05, blue: 0.08).ignoresSafeArea()
+        DiceTrayOverlayView(model: model)
+    }
+    .environment(coordinator)
+    .onAppear {
+        model.seedScoresForPreview([.ones: 3, .twos: 6, .threes: 9, .fours: 16, .fullHouse: 25], forPlayerIndex: 0)
+        coordinator.triggerWinnerAnnouncement(winnerIndices: [0], score: 243)
+    }
+}
+
+#Preview("Winner — tie") {
+    let coordinator = CelebrationCoordinator()
+    let model = MatchController()
+    let p1 = Player(id: UUID(), name: "Wayne", initials: "WM",
+                    themeID: Theme.ThemeType.midnight.rawValue,
+                    createdAt: Date(), isArchived: false, source: .local)
+    let p2 = Player(id: UUID(), name: "Sherida", initials: "SM",
+                    themeID: Theme.ThemeType.forest.rawValue,
+                    createdAt: Date(), isArchived: false, source: .local)
+    let _ = model.addPlayer(from: p1)
+    let _ = model.addPlayer(from: p2)
+    ZStack {
+        Color(red: 0.05, green: 0.05, blue: 0.08).ignoresSafeArea()
+        DiceTrayOverlayView(model: model)
+    }
+    .environment(coordinator)
+    .onAppear {
+        coordinator.triggerWinnerAnnouncement(winnerIndices: [0, 1], score: 243)
+    }
+}
+
+#Preview("Winner — 3-way tie") {
+    let coordinator = CelebrationCoordinator()
+    let model = MatchController()
+    let p1 = Player(id: UUID(), name: "Wayne", initials: "WM",
+                    themeID: Theme.ThemeType.midnight.rawValue,
+                    createdAt: Date(), isArchived: false, source: .local)
+    let p2 = Player(id: UUID(), name: "Sherida", initials: "SM",
+                    themeID: Theme.ThemeType.forest.rawValue,
+                    createdAt: Date(), isArchived: false, source: .local)
+    let p3 = Player(id: UUID(), name: "Winry Ember", initials: "WE",
+                    themeID: Theme.ThemeType.ember.rawValue,
+                    createdAt: Date(), isArchived: false, source: .local)
+    let _ = model.addPlayer(from: p1)
+    let _ = model.addPlayer(from: p2)
+    let _ = model.addPlayer(from: p3)
+    ZStack {
+        Color(red: 0.05, green: 0.05, blue: 0.08).ignoresSafeArea()
+        DiceTrayOverlayView(model: model)
+    }
+    .environment(coordinator)
+    .onAppear {
+        coordinator.triggerWinnerAnnouncement(winnerIndices: [0, 1, 2], score: 243)
+    }
+}
+
+#Preview("Game Over — single winner") {
+    let coordinator = CelebrationCoordinator()
+    let model = MatchController()
+    ZStack {
+        Color(red: 0.05, green: 0.05, blue: 0.08).ignoresSafeArea()
+        CelebrationView(model: model)
+    }
+    .environment(coordinator)
+    .onAppear { coordinator.triggerGameOver(winnerIndices: [0]) }
+}
+
+#Preview("Game Over — tie (two winners)") {
+    let coordinator = CelebrationCoordinator()
+    let model = MatchController()
+    ZStack {
+        Color(red: 0.05, green: 0.05, blue: 0.08).ignoresSafeArea()
+        CelebrationView(model: model)
+    }
+    .environment(coordinator)
+    .onAppear { coordinator.triggerGameOver(winnerIndices: [0, 1]) }
+}
+
+#endif

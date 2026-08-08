@@ -19,12 +19,20 @@ final class CelebrationCoordinator {
         let value: Int
     }
 
+    struct WinnerAnnouncement: Identifiable {
+        let id = UUID()
+        let winnerIndices: [Int]
+        let score: Int
+    }
+
     // Replaced (not stacked) on rapid-fire Yatzy succession — §2.4.
     var yatzyEvent: YatzyEvent? = nil
     var isGameOverActive = false
     var winnerIndices: [Int] = []
     // Replaced on successive scores — only the latest score banner shows.
     var scoreAnnouncement: ScoreAnnouncement? = nil
+    // Persists until a new game starts — not cleared by clearAll().
+    var winnerAnnouncement: WinnerAnnouncement? = nil
 
     func triggerYatzy(playerIndex: Int) {
         yatzyEvent = YatzyEvent(playerIndex: playerIndex)
@@ -41,6 +49,12 @@ final class CelebrationCoordinator {
         logger.debug(self, "trigger id=\(announcement.id.uuidString.prefix(8)) playerIndex=\(playerIndex) category=\(category.displayName) value=\(value) replacingExisting=\(scoreAnnouncement != nil)")
         scoreAnnouncement = announcement
     }
+
+    func triggerWinnerAnnouncement(winnerIndices: [Int], score: Int) {
+        winnerAnnouncement = WinnerAnnouncement(winnerIndices: winnerIndices, score: score)
+    }
+
+    func clearWinnerAnnouncement() { winnerAnnouncement = nil }
 
     func clearYatzy() { yatzyEvent = nil }
 

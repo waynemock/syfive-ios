@@ -1,5 +1,6 @@
 import SwiftUI
 import Observation
+import SwiftData
 
 struct PlayerScoreCardView: View {
     @Bindable var model: MatchController
@@ -22,12 +23,13 @@ struct PlayerScoreCardView: View {
     @Environment(FeelDirector.self) private var director
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.sizeCategory) private var sizeCategory
+    @Environment(\.modelContext) private var modelContext
     @ScaledMetric private var initialsCircleSize: CGFloat = 28
     @ScaledMetric private var initialsFontSize: CGFloat = 11
     @State private var isWinnerHighlightExpanded = false
     @State private var showsProfile = false
+    @State private var showsPlayerEdit: PlayerEditSheet.Mode? = nil
     @State private var displayedTotal: Int = 0
-    @State private var rainbowRotation: Double = 0
 
     var body: some View {
         guard model.playerScores.indices.contains(playerIndex) else {
@@ -41,17 +43,6 @@ struct PlayerScoreCardView: View {
         let totalScore = (isWinner && model.isGameOver) ? displayedTotal : rawTotal
         let theme = Theme(type: model.themeType(for: playerIndex), colorScheme: colorScheme)
         let gameOverWinner = isWinner && model.isGameOver
-        let borderShapeStyle: AnyShapeStyle = gameOverWinner
-            ? AnyShapeStyle(AngularGradient(
-                colors: [.red, .orange, .yellow, .green, .cyan, .blue, .purple, .pink, .red],
-                center: .center,
-                startAngle: .degrees(rainbowRotation),
-                endAngle: .degrees(rainbowRotation + 360)
-            ))
-            : AnyShapeStyle(theme.primaryAccent)
-        let borderWidth: CGFloat = gameOverWinner
-            ? (isWinnerHighlightExpanded ? 4.0 : 2.5)
-            : 2.0
 
         return AnyView(
             VStack(alignment: .leading, spacing: scoreSectionSpacing) {
@@ -97,9 +88,10 @@ struct PlayerScoreCardView: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(borderShapeStyle, lineWidth: borderWidth)
+                        .strokeBorder(theme.primaryAccent, lineWidth: gameOverWinner ? 0 : 2.0)
                 )
             )
+            .rainbowBorderIfNeeded(gameOverWinner, cornerRadius: 16)
             .onAppear {
                 updateWinnerHighlightAnimation(isWinner: isWinner)
                 displayedTotal = rawTotal
@@ -115,6 +107,10 @@ struct PlayerScoreCardView: View {
                         themeType: model.themeType(for: playerIndex)
                     )
                 }
+            }
+            .sheet(item: $showsPlayerEdit) { mode in
+                PlayerEditSheet(mode: mode, matchModel: model)
+                    .environment(\.theme, theme)
             }
             .task(id: model.isGameOver && isWinner) {
                 let finalTotal = model.totalScore(for: playerIndex)
@@ -150,6 +146,16 @@ struct PlayerScoreCardView: View {
                     .lineLimit(1)
                 if isCurrentPlayer && model.playerCount > 1 && model.hasStarted && !model.isGameOver {
                     Image(systemName: "dice.fill")
+                }
+                if model.canEditPlayers {
+                    Button {
+                        showsPlayerEdit = fetchPlayerEditMode()
+                    } label: {
+                        Image(systemName: "pencil")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
 
@@ -381,23 +387,12 @@ struct PlayerScoreCardView: View {
             withAnimation(.none) {
                 isWinnerHighlightExpanded = false
             }
-            rainbowRotation = 0
             return
         }
 
         isWinnerHighlightExpanded = false
         withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
             isWinnerHighlightExpanded = true
-        }
-        if model.isGameOver {
-            startRainbowRotation()
-        }
-    }
-
-    private func startRainbowRotation() {
-        rainbowRotation = 0
-        withAnimation(.linear(duration: 3.0).repeatForever(autoreverses: false)) {
-            rainbowRotation = 360
         }
     }
 
@@ -414,6 +409,14 @@ struct PlayerScoreCardView: View {
 
     private var colorButtonBorder: Color {
         colorScheme == .dark ? Color.white.opacity(0.45) : Color.black.opacity(0.18)
+    }
+
+    private func fetchPlayerEditMode() -> PlayerEditSheet.Mode? {
+        guard let playerID = model.playerIDs[playerIndex] else { return nil }
+        var desc = FetchDescriptor<PlayerModel>(predicate: #Predicate { $0.id == playerID })
+        desc.fetchLimit = 1
+        guard let pm = (try? modelContext.fetch(desc))?.first else { return nil }
+        return .edit(pm, matchSlot: playerIndex)
     }
 }
 

@@ -160,6 +160,11 @@ extension ContentView {
         try? modelContext.save()
     }
 
+    func syncPlayerThemesFromRoster() {
+        let players = (try? modelContext.fetch(FetchDescriptor<PlayerModel>())) ?? []
+        model.syncPlayerThemes(from: players)
+    }
+
     func saveMatch() {
         guard model.hasGameActivity else { return }
         guard model.playerCount > 0 else { return }
