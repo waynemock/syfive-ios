@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 // MARK: - Shared particle type
 
@@ -131,12 +132,28 @@ struct DiceTrayOverlayView: View {
                     )
                     .id(winner.id)
                     .transition(.asymmetric(
-                        insertion: .scale(scale: 0.85).combined(with: .opacity),
+                        insertion: .move(edge: .top).combined(with: .opacity),
                         removal: .move(edge: .bottom).combined(with: .opacity)
                     ))
                     .task(id: winner.id) {
                         try? await Task.sleep(for: .seconds(30))
                         coordinator.clearWinnerAnnouncement()
+                    }
+
+                    if model.playerCount == 2,
+                       let aID = model.playerIDs.first.flatMap({ $0 }),
+                       let bID = model.playerIDs.last.flatMap({ $0 }) {
+                        PostMatchH2HView(
+                            playerAID: aID,
+                            playerAName: model.playerDisplayNames[0],
+                            playerBID: bID,
+                            playerBName: model.playerDisplayNames[1]
+                        )
+                        .id(winner.id)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .bottom).combined(with: .opacity),
+                            removal: .move(edge: .bottom).combined(with: .opacity)
+                        ))
                     }
                 }
             }
@@ -318,6 +335,47 @@ private struct WinnerCardView: View {
                     activeThemeIndex = (activeThemeIndex + 1) % winners.count
                 }
             }
+        }
+    }
+}
+
+// MARK: - Post-match head-to-head card
+
+private struct PostMatchH2HView: View {
+    let playerAID: UUID
+    let playerAName: String
+    let playerBID: UUID
+    let playerBName: String
+
+    @Query(filter: #Predicate<MatchModel> { $0.statusRaw == "completed" },
+           sort: \MatchModel.startedAt)
+    private var completedModels: [MatchModel]
+
+    @Environment(\.theme) private var theme
+
+    private var hasHistory: Bool {
+        let aID = playerAID
+        let bID = playerBID
+        return completedModels.contains { m in
+            let parts = m.participants
+            return parts.contains { $0.playerID == aID } && parts.contains { $0.playerID == bID }
+        }
+    }
+
+    var body: some View {
+        if hasHistory {
+            HeadToHeadCard(
+                playerAID: playerAID,
+                playerAName: playerAName,
+                playerBID: playerBID,
+                playerBName: playerBName,
+                showsMeta: false
+            )
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 14)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .shadow(color: theme.primaryAccent.opacity(0.2), radius: 12, x: 0, y: 4)
         }
     }
 }
@@ -656,9 +714,53 @@ private func makeFallParticles(winnerThemes: [Theme]) -> [Mote] {
         DiceTrayOverlayView(model: model)
     }
     .environment(coordinator)
+    .modelContainer(for: MatchModel.self, inMemory: true)
     .onAppear {
         model.seedScoresForPreview([.ones: 3, .twos: 6, .threes: 9, .fours: 16, .fullHouse: 25], forPlayerIndex: 0)
         coordinator.triggerWinnerAnnouncement(winnerIndices: [0], score: 243)
+    }
+}
+
+#Preview("Winner — with H2H history") {
+    let aID = UUID()
+    let bID = UUID()
+    let schema = Schema([MatchModel.self, ParticipantModel.self])
+    let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: schema, configurations: config)
+
+    let coordinator = CelebrationCoordinator()
+    let model = MatchController()
+    let p1 = Player(id: aID, name: "Wayne", initials: "WM",
+                    themeID: Theme.ThemeType.midnight.rawValue,
+                    createdAt: Date(), isArchived: false, source: .local)
+    let p2 = Player(id: bID, name: "Sherida", initials: "SM",
+                    themeID: Theme.ThemeType.forest.rawValue,
+                    createdAt: Date(), isArchived: false, source: .local)
+    let _ = model.addPlayer(from: p1)
+    let _ = model.addPlayer(from: p2)
+
+    ZStack {
+        Color(red: 0.05, green: 0.05, blue: 0.08).ignoresSafeArea()
+        DiceTrayOverlayView(model: model)
+    }
+    .environment(coordinator)
+    .modelContainer(container)
+    .onAppear {
+        let ctx = container.mainContext
+        func addMatch(winner: UUID, loser: UUID, winnerScore: Int, loserScore: Int, daysAgo: Double) {
+            let m = MatchModel()
+            m.statusRaw = "completed"
+            m.startedAt = Date().addingTimeInterval(-daysAgo * 86_400)
+            m.completedAt = m.startedAt.addingTimeInterval(3_600)
+            let pA = ParticipantModel(); pA.playerID = winner; pA.finalScore = Decimal(winnerScore); pA.rank = 1; pA.seat = 0
+            let pB = ParticipantModel(); pB.playerID = loser;  pB.finalScore = Decimal(loserScore);  pB.rank = 2; pB.seat = 1
+            m.participants = [pA, pB]
+            ctx.insert(m); ctx.insert(pA); ctx.insert(pB)
+        }
+        addMatch(winner: aID, loser: bID, winnerScore: 287, loserScore: 241, daysAgo: 30)
+        addMatch(winner: bID, loser: aID, winnerScore: 263, loserScore: 198, daysAgo: 14)
+        addMatch(winner: aID, loser: bID, winnerScore: 301, loserScore: 278, daysAgo: 3)
+        coordinator.triggerWinnerAnnouncement(winnerIndices: [0], score: 301)
     }
 }
 
@@ -678,6 +780,7 @@ private func makeFallParticles(winnerThemes: [Theme]) -> [Mote] {
         DiceTrayOverlayView(model: model)
     }
     .environment(coordinator)
+    .modelContainer(for: MatchModel.self, inMemory: true)
     .onAppear {
         coordinator.triggerWinnerAnnouncement(winnerIndices: [0, 1], score: 243)
     }

@@ -65,7 +65,6 @@ struct MatchHistoryView: View {
                     }
                 }
                 .animation(.default, value: segment)
-                .contentMargins(.top, 0, for: .scrollContent)
             }
             .navigationTitle("History")
             .navigationBarTitleDisplayMode(.inline)

@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 struct HeadToHeadDetailView: View {
     let profilePlayerName: String
@@ -10,23 +11,111 @@ struct HeadToHeadDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
 
+    @Query(filter: #Predicate<MatchModel> { $0.statusRaw == "completed" },
+           sort: \MatchModel.startedAt, order: .reverse)
+    private var completedModels: [MatchModel]
+
+    private var sharedMatchModels: [MatchModel] {
+        let aID = h2h.playerA
+        let bID = h2h.playerB
+        return completedModels.filter { m in
+            let parts = m.participants
+            return parts.contains { $0.playerID == aID } && parts.contains { $0.playerID == bID }
+        }
+    }
+
     private var profileTheme: Theme { Theme(type: profileThemeType, colorScheme: colorScheme) }
     private var opponentTheme: Theme { Theme(type: opponentThemeType, colorScheme: colorScheme) }
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 16) {
-                    winsCard
-                    scoresCard
-                    if showsPairwise { pairwiseCard }
-                    if abs(h2h.currentStreakA) >= 1 { streakCard }
+            List {
+                Section {
+                    VStack(spacing: 10) {
+                        HStack(spacing: 0) {
+                            winsPillar(name: profilePlayerName, wins: h2h.matchWinsA,
+                                       isLeader: h2h.matchWinsA > h2h.matchWinsB,
+                                       accent: profileTheme.primaryAccent,
+                                       themeType: profileThemeType)
+                            Text("–")
+                                .font(.title2.weight(.thin))
+                                .foregroundStyle(.tertiary)
+                                .frame(maxWidth: .infinity)
+                            winsPillar(name: opponentName, wins: h2h.matchWinsB,
+                                       isLeader: h2h.matchWinsB > h2h.matchWinsA,
+                                       accent: opponentTheme.primaryAccent,
+                                       themeType: opponentThemeType)
+                        }
+                        winsMetaText
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .listRowInsets(EdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16))
+                    .listRowBackground(profileTheme.cellBackgroundColor)
                 }
-                .padding(16)
+
+                Section {
+                    HStack(spacing: 0) {
+                        scorePillar(name: profilePlayerName, avg: h2h.averageScoreA,
+                                    isHigher: h2h.averageScoreA > h2h.averageScoreB,
+                                    accent: profileTheme.primaryAccent)
+                        Spacer()
+                        scorePillar(name: opponentName, avg: h2h.averageScoreB,
+                                    isHigher: h2h.averageScoreB > h2h.averageScoreA,
+                                    accent: opponentTheme.primaryAccent)
+                    }
+                    .listRowBackground(profileTheme.cellBackgroundColor)
+                } header: {
+                    Text("Average Score").foregroundStyle(profileTheme.primaryAccent)
+                }
+
+                if showsPairwise {
+                    Section {
+                        Text("\(profilePlayerName) finished ahead in \(h2h.pairwiseAheadA) of \(h2h.sharedMatches) shared games.")
+                            .font(.subheadline)
+                            .listRowBackground(profileTheme.cellBackgroundColor)
+                        if h2h.pairwiseTies > 0 {
+                            Text("Tied placement \(h2h.pairwiseTies) time\(h2h.pairwiseTies == 1 ? "" : "s").")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .listRowBackground(profileTheme.cellBackgroundColor)
+                        }
+                    } header: {
+                        Text("Head-to-Head Placement").foregroundStyle(profileTheme.primaryAccent)
+                    }
+                }
+
+                if abs(h2h.currentStreakA) >= 1 {
+                    Section {
+                        Text(streakText)
+                            .font(.subheadline)
+                            .listRowBackground(profileTheme.cellBackgroundColor)
+                    } header: {
+                        Text("Current Streak").foregroundStyle(profileTheme.primaryAccent)
+                    }
+                }
+
+                if !sharedMatchModels.isEmpty {
+                    Section {
+                        ForEach(sharedMatchModels) { matchModel in
+                            NavigationLink(value: matchModel) {
+                                MatchHistoryRow(match: matchModel.toDomain())
+                            }
+                            .listRowBackground(profileTheme.cellBackgroundColor)
+                        }
+                    } header: {
+                        Text("Shared Games").foregroundStyle(profileTheme.primaryAccent)
+                    }
+                }
             }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
             .background(profileTheme.backgroundColor)
             .navigationTitle("\(profilePlayerName) vs \(opponentName)")
             .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(for: MatchModel.self) { matchModel in
+                MatchDetailView(matchModel: matchModel)
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
@@ -37,33 +126,9 @@ struct HeadToHeadDetailView: View {
         .environment(\.theme, profileTheme)
     }
 
-    // MARK: - Cards
-
-    private var winsCard: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 0) {
-                winsPillar(name: profilePlayerName, wins: h2h.matchWinsA,
-                           isLeader: h2h.matchWinsA > h2h.matchWinsB,
-                           accent: profileTheme.primaryAccent)
-                Text("–")
-                    .font(.title2.weight(.thin))
-                    .foregroundStyle(.tertiary)
-                    .frame(maxWidth: .infinity)
-                winsPillar(name: opponentName, wins: h2h.matchWinsB,
-                           isLeader: h2h.matchWinsB > h2h.matchWinsA,
-                           accent: opponentTheme.primaryAccent)
-            }
-            winsMetaText
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
-            .fill(profileTheme.cellBackgroundColor))
-    }
-
-    private func winsPillar(name: String, wins: Int, isLeader: Bool, accent: Color) -> some View {
-        VStack(spacing: 2) {
+    private func winsPillar(name: String, wins: Int, isLeader: Bool, accent: Color, themeType: Theme.ThemeType) -> some View {
+        VStack(spacing: 4) {
+            PlayerInitialsCircle(initials: deriveInitials(from: name), themeType: themeType)
             Text("\(wins)")
                 .font(.title2.weight(.bold))
                 .foregroundStyle(isLeader ? accent : Color.primary.opacity(0.55))
@@ -87,20 +152,6 @@ struct HeadToHeadDetailView: View {
         return Text(parts.joined(separator: " · "))
     }
 
-    private var scoresCard: some View {
-        detailCard(title: "Average Score") {
-            HStack(spacing: 0) {
-                scorePillar(name: profilePlayerName, avg: h2h.averageScoreA,
-                            isHigher: h2h.averageScoreA > h2h.averageScoreB,
-                            accent: profileTheme.primaryAccent)
-                Spacer()
-                scorePillar(name: opponentName, avg: h2h.averageScoreB,
-                            isHigher: h2h.averageScoreB > h2h.averageScoreA,
-                            accent: opponentTheme.primaryAccent)
-            }
-        }
-    }
-
     private func scorePillar(name: String, avg: Decimal, isHigher: Bool, accent: Color) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(name)
@@ -121,26 +172,6 @@ struct HeadToHeadDetailView: View {
         h2h.matchWinsA + h2h.matchWinsB + h2h.sharedTies < h2h.sharedMatches
     }
 
-    private var pairwiseCard: some View {
-        detailCard(title: "Head-to-Head Placement") {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("\(profilePlayerName) finished ahead in \(h2h.pairwiseAheadA) of \(h2h.sharedMatches) shared games.")
-                    .font(.subheadline)
-                if h2h.pairwiseTies > 0 {
-                    Text("Tied placement \(h2h.pairwiseTies) time\(h2h.pairwiseTies == 1 ? "" : "s").")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-    }
-
-    private var streakCard: some View {
-        detailCard(title: "Current Streak") {
-            Text(streakText).font(.subheadline)
-        }
-    }
-
     private var streakText: String {
         let s = h2h.currentStreakA
         if s >= 2  { return "\(profilePlayerName) is on a \(s)-game winning streak." }
@@ -149,17 +180,6 @@ struct HeadToHeadDetailView: View {
         return "\(opponentName) won the last matchup."
     }
 
-    @ViewBuilder
-    private func detailCard<C: View>(title: String, @ViewBuilder content: () -> C) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.headline).padding(.horizontal, 2)
-            content()
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
-            .fill(profileTheme.cellBackgroundColor))
-    }
 }
 
 // MARK: - Decimal display
@@ -179,8 +199,10 @@ private extension Decimal {
     return HeadToHeadDetailView(
         profilePlayerName: "Wayne",
         profileThemeType: .midnight,
-        opponentName: "Robin",
+        opponentName: "Sherida",
         opponentThemeType: .forest,
         h2h: h2h
     )
+    .modelContainer(for: MatchModel.self, inMemory: true)
+    .environment(FeelDirector())
 }

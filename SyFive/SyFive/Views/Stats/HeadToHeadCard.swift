@@ -8,6 +8,7 @@ struct HeadToHeadCard: View {
     let playerAName: String
     let playerBID: UUID
     let playerBName: String
+    var showsMeta: Bool = true
 
     @Query(filter: #Predicate<MatchModel> { $0.statusRaw == "completed" },
            sort: \MatchModel.startedAt)
@@ -28,9 +29,11 @@ struct HeadToHeadCard: View {
         } else {
             VStack(alignment: .leading, spacing: 8) {
                 winsRow
-                metaText
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                if showsMeta {
+                    metaText
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
     }
@@ -79,7 +82,7 @@ struct HeadToHeadCard: View {
         playerAID: UUID(),
         playerAName: "Wayne",
         playerBID: UUID(),
-        playerBName: "Robin"
+        playerBName: "Sherida"
     )
     .padding()
     .environment(\.theme, Theme(type: .midnight, colorScheme: .dark))

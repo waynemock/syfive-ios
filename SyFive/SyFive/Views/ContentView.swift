@@ -320,6 +320,11 @@ struct ContentView: View {
                     score: model.leaderScore ?? 0
                 )
             }
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(30))
+                guard model.isGameOver else { return }
+                model.clearUndoSnapshot()
+            }
         }
         .sheet(isPresented: $showsHouseRecords) {
             HouseRecordsView()
@@ -343,6 +348,7 @@ struct ContentView: View {
         .sheet(isPresented: $showsPlayers, onDismiss: { syncPlayerThemesFromRoster() }) {
             PlayersView()
                 .environment(\.theme, theme)
+                .environment(director)
         }
         .sheet(isPresented: $showsSettings, onDismiss: { syncCommentaryEngine() }) {
             SettingsView()

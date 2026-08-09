@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 struct OpponentRecord: Identifiable {
     var id: UUID { opponentID }
@@ -100,10 +101,12 @@ struct OpponentSummaryRow: View {
         lastMeeting: Date(), currentStreakA: 2
     )
     let record = OpponentRecord(
-        opponentID: UUID(), opponentName: "Robin", opponentInitials: "RM",
+        opponentID: UUID(), opponentName: "Sherida", opponentInitials: "RM",
         opponentThemeType: .forest, h2h: h2h
     )
     return OpponentSummaryRow(profilePlayerName: "Wayne", profileThemeType: .midnight, record: record)
         .padding()
         .environment(\.theme, Theme(type: .midnight, colorScheme: .dark))
+        .modelContainer(for: MatchModel.self, inMemory: true)
+        .environment(FeelDirector())
 }

@@ -801,9 +801,16 @@ final class GameNightController {
             mc.loadFromGameNightMatchPreservingUndo(payload.match, currentSeatIndex: payload.currentSeatIndex)
         } else {
             // Opponent's score — diff before/after to announce it.
+            // Capture whether the local player was already mid-turn before loading.
+            // loadFromGameNightMatch resets rollsRemaining to 3, so a late-arriving
+            // matchState would otherwise trigger an announcement mid-roll and leave it
+            // stuck until the next roll clears it.
+            let guestAlreadyRolled = mc.rollsRemaining < 3
             let scoresBefore = mc.playerScores
             mc.loadFromGameNightMatch(payload.match, currentSeatIndex: payload.currentSeatIndex)
-            detectAndAnnounceOpponentScore(scoresBefore: scoresBefore, mc: mc)
+            if !guestAlreadyRolled {
+                detectAndAnnounceOpponentScore(scoresBefore: scoresBefore, mc: mc)
+            }
         }
         if let dv = payload.diceValues, let rr = payload.rollsRemaining {
             mc.restoreDiceStateAfterUndo(values: dv, rollsRemaining: rr)
