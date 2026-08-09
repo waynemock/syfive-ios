@@ -169,6 +169,9 @@ struct PlayerProfileView: View {
             GridRow {
                 badge(title: "Games", value: "\(s.matchesPlayed)")
                 badge(title: "Wins",  value: "\(s.wins)")
+                if s.ties > 0 {
+                    badge(title: "Tied", value: "\(s.ties)")
+                }
                 badge(title: "Win %", value: "\(Int(s.winRate * 100))%")
             }
             GridRow {

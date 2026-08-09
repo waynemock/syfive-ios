@@ -68,9 +68,16 @@ struct OpponentSummaryRow: View {
                 .font(.title3.weight(.bold))
                 .foregroundStyle(record.h2h.matchWinsA >= record.h2h.matchWinsB
                     ? profileTheme.primaryAccent : Color.primary.opacity(0.5))
-            Text("–")
-                .font(.title3.weight(.thin))
-                .foregroundStyle(.tertiary)
+            VStack(spacing: 1) {
+                Text("–")
+                    .font(.title3.weight(.thin))
+                    .foregroundStyle(.tertiary)
+                if record.h2h.sharedTies > 0 {
+                    Text("\(record.h2h.sharedTies)T")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
             Text("\(record.h2h.matchWinsB)")
                 .font(.title3.weight(.bold))
                 .foregroundStyle(record.h2h.matchWinsB > record.h2h.matchWinsA

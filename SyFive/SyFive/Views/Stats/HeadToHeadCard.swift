@@ -42,10 +42,17 @@ struct HeadToHeadCard: View {
         HStack(spacing: 0) {
             playerPill(name: playerAName, wins: h2h.matchWinsA,
                        isLeader: h2h.matchWinsA > h2h.matchWinsB)
-            Text("–")
-                .font(.title2.weight(.thin))
-                .foregroundStyle(.tertiary)
-                .frame(maxWidth: .infinity)
+            VStack(spacing: 1) {
+                Text("–")
+                    .font(.title2.weight(.thin))
+                    .foregroundStyle(.tertiary)
+                if h2h.sharedTies > 0 {
+                    Text(h2h.sharedTies == 1 ? "1 tie" : "\(h2h.sharedTies) ties")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity)
             playerPill(name: playerBName, wins: h2h.matchWinsB,
                        isLeader: h2h.matchWinsB > h2h.matchWinsA)
         }

@@ -265,6 +265,9 @@ struct DiceAreaView: View {
         // Show settled values: held dice in the far-wall row, non-held in the pip
         // pattern matching the count. Uses currentHeld — kept accurate by onHoldToggled.
         gn.onRollResult = { values in
+            // First roll of a turn sends rollResult only (no preceding rollBegan),
+            // so clear here too. Idempotent if onRollBegan already cleared it.
+            cc.clearAll()
             dr.displaySpectatorResult(values: values, held: dr.currentHeld)
             let isYatzy = !values.isEmpty && values.dropFirst().allSatisfy { $0 == values[0] }
             guard isYatzy else { return }

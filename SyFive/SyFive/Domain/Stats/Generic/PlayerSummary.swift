@@ -7,6 +7,7 @@ struct PlayerSummary: Sendable {
     var playerID: UUID
     var matchesPlayed: Int
     var wins: Int                           // sole rank-1 finishes (ties excluded)
+    var ties: Int                           // rank-1 finishes shared with at least one co-winner
     var winRate: Double                     // wins / matchesPlayed
     var podiumRate: Double                  // rank ≤ 3 finishes / matchesPlayed
     var placementDistribution: [Int: Int]   // rank → count
@@ -48,6 +49,10 @@ func playerSummary(playerID: UUID, matches: [Match]) -> PlayerSummary? {
     let wins = entries.filter { (match, participant) in
         participant.rank == 1 &&
         !match.participants.contains { $0.id != participant.id && $0.rank == 1 }
+    }.count
+    let ties = entries.filter { (match, participant) in
+        participant.rank == 1 &&
+        match.participants.contains { $0.id != participant.id && $0.rank == 1 }
     }.count
 
     // -- Scores --
@@ -92,6 +97,7 @@ func playerSummary(playerID: UUID, matches: [Match]) -> PlayerSummary? {
         playerID: playerID,
         matchesPlayed: count,
         wins: wins,
+        ties: ties,
         winRate: Double(wins) / Double(count),
         podiumRate: podiumRate,
         placementDistribution: placementDist,

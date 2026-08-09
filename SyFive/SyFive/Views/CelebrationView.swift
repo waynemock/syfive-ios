@@ -757,8 +757,19 @@ private func makeFallParticles(winnerThemes: [Theme]) -> [Mote] {
             m.participants = [pA, pB]
             ctx.insert(m); ctx.insert(pA); ctx.insert(pB)
         }
+        func addTie(score: Int, daysAgo: Double) {
+            let m = MatchModel()
+            m.statusRaw = "completed"
+            m.startedAt = Date().addingTimeInterval(-daysAgo * 86_400)
+            m.completedAt = m.startedAt.addingTimeInterval(3_600)
+            let pA = ParticipantModel(); pA.playerID = aID; pA.finalScore = Decimal(score); pA.rank = 1; pA.seat = 0
+            let pB = ParticipantModel(); pB.playerID = bID; pB.finalScore = Decimal(score); pB.rank = 1; pB.seat = 1
+            m.participants = [pA, pB]
+            ctx.insert(m); ctx.insert(pA); ctx.insert(pB)
+        }
         addMatch(winner: aID, loser: bID, winnerScore: 287, loserScore: 241, daysAgo: 30)
         addMatch(winner: bID, loser: aID, winnerScore: 263, loserScore: 198, daysAgo: 14)
+        addTie(score: 259, daysAgo: 7)
         addMatch(winner: aID, loser: bID, winnerScore: 301, loserScore: 278, daysAgo: 3)
         coordinator.triggerWinnerAnnouncement(winnerIndices: [0], score: 301)
     }
