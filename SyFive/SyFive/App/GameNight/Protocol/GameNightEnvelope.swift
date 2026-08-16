@@ -27,6 +27,7 @@ enum GameNightMessageKind: String, Sendable {
     case matchComplete
     case matchAbandoned
     case seatRelease
+    case commentary
 }
 
 extension GameNightEnvelope {

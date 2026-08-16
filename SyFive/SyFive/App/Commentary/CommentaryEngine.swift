@@ -11,11 +11,23 @@ final class CommentaryEngine: NSObject {
     private var lastUsedIndex: [CommentaryEventKind: Int] = [:]
     private var currentTier: CommentaryEventTier?
 
+    /// When true the engine silently drops all speech. Controlled by the
+    /// app-level sound mode setting; does not affect the commentary enabled toggle.
+    var isMuted: Bool = false
+
+    /// Called just before the engine speaks a generated line.
+    /// The host wires this to broadcast the text over SharePlay so all
+    /// guest devices speak the identical commentary with their own voice.
+    var onWillSpeak: ((String, CommentaryEventTier) -> Void)?
+
     init(personality: CommentaryPersonality, voice: AVSpeechSynthesisVoice?, level: CommentaryLevel) {
         self.personality = personality
         self.voice = voice
         self.level = level
         super.init()
+        // Use the app's audio session (.ambient + .mixWithOthers) so the synthesizer
+        // never interrupts FeelAudioEngine's AVAudioEngine or the dice audio.
+        synthesizer.usesApplicationAudioSession = true
         synthesizer.delegate = self
     }
 
@@ -52,6 +64,19 @@ final class CommentaryEngine: NSObject {
 
     func stopSpeaking() {
         synthesizer.stopSpeaking(at: .immediate)
+    }
+
+    /// Speak text received from the host's broadcast directly, bypassing the
+    /// event→text pipeline and the level gate (host already applied the gate).
+    /// Only interrupts for celebration-tier (Yatzy / winner) to ensure those
+    /// are heard immediately; all other texts are queued so back-to-back lines
+    /// from the same scoring action (e.g. primary event + turnStart) both play.
+    func receiveText(_ text: String, tier: CommentaryEventTier) {
+        guard !UIAccessibility.isVoiceOverRunning else { return }
+        if tier == .celebration {
+            synthesizer.stopSpeaking(at: .immediate)
+        }
+        speak(text: text, tier: tier)
     }
 
     private func passesLevelGate(tier: CommentaryEventTier) -> Bool {
@@ -92,6 +117,8 @@ final class CommentaryEngine: NSObject {
     }
 
     private func speak(text: String, tier: CommentaryEventTier) {
+        guard !isMuted else { return }
+        onWillSpeak?(text, tier)
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = voice
         utterance.rate = personality.prosody.rate

@@ -25,8 +25,14 @@ final class CelebrationCoordinator {
         let score: Int
     }
 
+    struct UpperBonusEvent: Identifiable {
+        let id = UUID()
+        let playerIndex: Int
+    }
+
     // Replaced (not stacked) on rapid-fire Yatzy succession — §2.4.
     var yatzyEvent: YatzyEvent? = nil
+    var upperBonusEvent: UpperBonusEvent? = nil
     var isGameOverActive = false
     var winnerIndices: [Int] = []
     // Replaced on successive scores — only the latest score banner shows.
@@ -56,7 +62,13 @@ final class CelebrationCoordinator {
 
     func clearWinnerAnnouncement() { winnerAnnouncement = nil }
 
+    func triggerUpperBonus(playerIndex: Int) {
+        upperBonusEvent = UpperBonusEvent(playerIndex: playerIndex)
+    }
+
     func clearYatzy() { yatzyEvent = nil }
+
+    func clearUpperBonus() { upperBonusEvent = nil }
 
     func clearGameOver() {
         isGameOverActive = false
@@ -71,6 +83,7 @@ final class CelebrationCoordinator {
 
     func clearAll() {
         clearYatzy()
+        clearUpperBonus()
         clearScoreAnnouncement()
     }
 

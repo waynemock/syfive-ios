@@ -63,12 +63,31 @@ final class FeelAudioEngine {
 
     // MARK: - Session + engine lifecycle
 
-    private func configureSession() {
+    private var currentMode: AppSoundMode = .mix
+
+    /// Called when the user changes the sound mode setting. Updates the audio session
+    /// category so that subsequent sounds use the correct mixing behaviour.
+    func applyMode(_ mode: AppSoundMode) {
+        currentMode = mode
+        applySessionCategory()
+        if isStarted { try? AVAudioSession.sharedInstance().setActive(true) }
+    }
+
+    private func applySessionCategory() {
         let session = AVAudioSession.sharedInstance()
-        // .ambient: silent switch respected, mixes with the user's audio (D-051).
-        // Never change this category even if a silent-switch bug is reported.
-        try? session.setCategory(.ambient, mode: .default, options: .mixWithOthers)
-        try? session.setActive(true)
+        switch currentMode {
+        case .off, .mix:
+            // .ambient + .mixWithOthers: respects silent switch, mixes with podcasts/music.
+            try? session.setCategory(.ambient, mode: .default, options: .mixWithOthers)
+        case .exclusive:
+            // .soloAmbient: respects silent switch, ducks other audio (podcasts pause).
+            try? session.setCategory(.soloAmbient, mode: .default, options: [])
+        }
+    }
+
+    private func configureSession() {
+        applySessionCategory()
+        try? AVAudioSession.sharedInstance().setActive(true)
     }
 
     private func ensureStarted() {

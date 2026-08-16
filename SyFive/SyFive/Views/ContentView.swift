@@ -200,7 +200,7 @@ struct ContentView: View {
             syncPlayerThemesFromRoster()
             healOrphanedParticipants()
             // Sync initial settings values (onChange won't fire for the first load).
-            director.soundEnabled   = appSettings?.soundEnabled   ?? true
+            director.soundMode      = appSettings?.soundMode      ?? .mix
             director.hapticsEnabled = appSettings?.hapticsEnabled ?? true
             // Warm up haptic engine before first roll to avoid first-event latency (§6.2).
             director.warmUpHaptics()
@@ -209,6 +209,9 @@ struct ContentView: View {
             let coordinator = celebrationCoordinator
             model.onScoreAnnounced = { playerIndex, category, value in
                 coordinator.triggerScoreAnnouncement(playerIndex: playerIndex, category: category, value: value)
+            }
+            model.onUpperBonusEarned = { playerIndex in
+                coordinator.triggerUpperBonus(playerIndex: playerIndex)
             }
         }
         // Restore commentary when session ends (isSessionActive false→true is handled below).
@@ -228,6 +231,15 @@ struct ContentView: View {
                 logger.warning(self, "onChange(sessionActivationCount): isSessionActive=false, skipping")
                 return
             }
+            // Host: restore last session's commentary settings so guests inherit them via the
+            // first tableState broadcast. Guests don't touch this block — their settings come
+            // from the host via handleTableState / onCommentarySettingsChanged.
+            if gameNight.role == .host, let settings = appSettings {
+                gameNight.commentaryEnabled    = settings.commentaryMode != .off
+                gameNight.commentaryPackID     = settings.commentaryPersonalityID
+                gameNight.commentaryLevelRaw   = settings.commentaryLevelRaw
+                Task { await gameNight.broadcastTableState() }
+            }
             syncCommentaryEngine()
             showsGameNightReconnect = false
             // Close any open sheets so the seating sheet can present immediately.
@@ -246,6 +258,14 @@ struct ContentView: View {
             }
             gameNight.onUndoApplied = {
                 announcementCoordinator.clearScoreAnnouncement()
+            }
+            gameNight.onCommentarySettingsChanged = {
+                syncCommentaryEngine()
+                // Host: persist voice/personality/level so they're pre-loaded next session.
+                if gameNight.role == .host, let settings = appSettings {
+                    settings.commentaryPersonalityID = gameNight.commentaryPackID
+                    settings.commentaryLevelRaw      = gameNight.commentaryLevelRaw
+                }
             }
             let ctx = modelContext
             gameNight.onMatchComplete = { completedMatch in
@@ -298,9 +318,12 @@ struct ContentView: View {
         }
         .onChange(of: model.playerCount) { saveMatch() }
         .onChange(of: model.playerScores) { saveMatch() }
-        .onChange(of: appSettings?.soundEnabled)   { _, v in director.soundEnabled   = v ?? true }
+        .onChange(of: appSettings?.soundModeRaw) { _, _ in
+            director.soundMode = appSettings?.soundMode ?? .mix
+            commentaryEngine?.isMuted = (director.soundMode == .off)
+        }
         .onChange(of: appSettings?.hapticsEnabled) { _, v in director.hapticsEnabled = v ?? true }
-        .onChange(of: appSettings?.commentaryEnabled)       { _, _ in syncCommentaryEngine() }
+        .onChange(of: appSettings?.commentaryModeRaw)        { _, _ in syncCommentaryEngine() }
         .onChange(of: appSettings?.commentaryLevelRaw)      { _, _ in syncCommentaryEngine() }
         .onChange(of: appSettings?.commentaryPersonalityID) { _, _ in syncCommentaryEngine() }
         .onChange(of: scenePhase) { _, phase in

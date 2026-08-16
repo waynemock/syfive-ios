@@ -56,7 +56,7 @@ struct DiceTrayOverlayView: View {
 
     var body: some View {
         ZStack(alignment: .center) {
-            // Full-frame particle burst — sits behind the card stack.
+            // Full-frame particle burst — Yatzy only.
             if let event = coordinator.yatzyEvent {
                 YatzyParticleCanvas(
                     theme: Theme(type: model.themeType(for: event.playerIndex), colorScheme: colorScheme),
@@ -78,6 +78,23 @@ struct DiceTrayOverlayView: View {
                         playerInitials: model.playerInitials(for: playerIndex),
                         playerCount: model.playerDisplayNames.count,
                         onDone: { coordinator.clearYatzy() }
+                    )
+                    .id(event.id)
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.85).combined(with: .opacity),
+                        removal: .move(edge: .top).combined(with: .opacity)
+                    ))
+                }
+
+                if let event = coordinator.upperBonusEvent {
+                    let playerIndex = event.playerIndex
+                    UpperBonusTextCard(
+                        theme: Theme(type: model.themeType(for: playerIndex), colorScheme: colorScheme),
+                        playerName: model.playerDisplayNames.indices.contains(playerIndex)
+                            ? model.playerDisplayNames[playerIndex] : "",
+                        playerInitials: model.playerInitials(for: playerIndex),
+                        playerCount: model.playerDisplayNames.count,
+                        onDone: { coordinator.clearUpperBonus() }
                     )
                     .id(event.id)
                     .transition(.asymmetric(
@@ -160,6 +177,7 @@ struct DiceTrayOverlayView: View {
             .padding(.horizontal, 16)
             .frame(maxWidth: 390)
             .animation(.spring(response: 0.45, dampingFraction: 0.78), value: coordinator.yatzyEvent?.id)
+            .animation(.spring(response: 0.45, dampingFraction: 0.78), value: coordinator.upperBonusEvent?.id)
             .animation(.spring(response: 0.45, dampingFraction: 0.78), value: coordinator.scoreAnnouncement?.id)
             .animation(.spring(response: 0.45, dampingFraction: 0.78), value: coordinator.winnerAnnouncement?.id)
         }
@@ -268,6 +286,58 @@ private struct YatzyTextCard: View {
     }
 }
 
+
+// MARK: - Upper bonus text card
+
+private struct UpperBonusTextCard: View {
+    let theme: Theme
+    let playerName: String
+    let playerInitials: String
+    let playerCount: Int
+    let onDone: () -> Void
+
+    @ScaledMetric private var bonusFontSize: CGFloat = 36
+    @ScaledMetric private var valueFontSize: CGFloat = 24
+
+    var body: some View {
+        VStack(spacing: 4) {
+            if playerCount > 1 {
+                HStack(spacing: 6) {
+                    PlayerInitialsCircle(initials: playerInitials, themeType: theme.type)
+                    Text(playerName)
+                        .font(.subheadline.weight(.semibold))
+                        .fontDesign(.rounded)
+                        .foregroundStyle(theme.secondaryAccent)
+                }
+                HStack {
+                    bonusInfo
+                }
+            } else {
+                bonusInfo
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 32)
+        .padding(.vertical, 18)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: theme.primaryAccent.opacity(0.3), radius: 20, x: 0, y: 6)
+        .task {
+            do { try await Task.sleep(for: .seconds(10)) } catch { return }
+            onDone()
+        }
+    }
+
+    var bonusInfo: some View {
+        Group {
+            Text("BONUS")
+                .font(.system(size: bonusFontSize, weight: .black, design: .rounded))
+                .foregroundStyle(theme.primaryAccent)
+            Text("+35")
+                .font(.system(size: valueFontSize, weight: .bold, design: .rounded))
+                .foregroundStyle(theme.secondaryAccent)
+        }
+    }
+}
 
 // MARK: - Winner card
 
@@ -649,6 +719,40 @@ private func makeFallParticles(winnerThemes: [Theme]) -> [Mote] {
     }
     .environment(coordinator)
     .onAppear { coordinator.triggerYatzy(playerIndex: 0) }
+}
+
+#Preview("Upper Bonus — Single player") {
+    let coordinator = CelebrationCoordinator()
+    let model = MatchController()
+    let p1 = Player(id: UUID(), name: "Wayne", initials: "WM",
+                    themeID: Theme.ThemeType.midnight.rawValue,
+                    createdAt: Date(), isArchived: false, source: .local)
+    let _ = model.addPlayer(from: p1)
+    ZStack {
+        Color(red: 0.05, green: 0.05, blue: 0.08).ignoresSafeArea()
+        DiceTrayOverlayView(model: model)
+    }
+    .environment(coordinator)
+    .onAppear { coordinator.triggerUpperBonus(playerIndex: 0) }
+}
+
+#Preview("Upper Bonus — Multiplayer") {
+    let coordinator = CelebrationCoordinator()
+    let model = MatchController()
+    let p1 = Player(id: UUID(), name: "Wayne", initials: "WM",
+                    themeID: Theme.ThemeType.midnight.rawValue,
+                    createdAt: Date(), isArchived: false, source: .local)
+    let p2 = Player(id: UUID(), name: "Sherida", initials: "SM",
+                    themeID: Theme.ThemeType.forest.rawValue,
+                    createdAt: Date(), isArchived: false, source: .local)
+    let _ = model.addPlayer(from: p1)
+    let _ = model.addPlayer(from: p2)
+    ZStack {
+        Color(red: 0.05, green: 0.05, blue: 0.08).ignoresSafeArea()
+        DiceTrayOverlayView(model: model)
+    }
+    .environment(coordinator)
+    .onAppear { coordinator.triggerUpperBonus(playerIndex: 1) }
 }
 
 #Preview("Yatzy + Score") {

@@ -130,6 +130,7 @@ struct TableSettingView: View {
                 Toggle("Commentary on", isOn: $gameNight.commentaryEnabled)
                     .onChange(of: gameNight.commentaryEnabled) { _, _ in
                         Task { await gameNight.broadcastTableState() }
+                        gameNight.onCommentarySettingsChanged?()
                     }
                 if gameNight.commentaryEnabled {
                     Picker("Personality", selection: $gameNight.commentaryPackID) {
@@ -139,6 +140,7 @@ struct TableSettingView: View {
                     }
                     .onChange(of: gameNight.commentaryPackID) { _, _ in
                         Task { await gameNight.broadcastTableState() }
+                        gameNight.onCommentarySettingsChanged?()
                     }
                     Picker("Level", selection: $gameNight.commentaryLevelRaw) {
                         ForEach(CommentaryLevel.allCases, id: \.rawValue) { level in
@@ -147,6 +149,7 @@ struct TableSettingView: View {
                     }
                     .onChange(of: gameNight.commentaryLevelRaw) { _, _ in
                         Task { await gameNight.broadcastTableState() }
+                        gameNight.onCommentarySettingsChanged?()
                     }
                 }
             } else {

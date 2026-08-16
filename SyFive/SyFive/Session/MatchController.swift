@@ -501,6 +501,9 @@ final class MatchController {
                                 gameJustEnded: gameJustEnded)
         }
         onScoreApplied?(category, capturedDice)
+        if !hadUpperBonus && upperBonus(for: scoringPlayerIndex) > 0 {
+            onUpperBonusEarned?(scoringPlayerIndex)
+        }
         if playerCount > 1 && !gameJustEnded {
             onScoreAnnounced?(scoringPlayerIndex, category, scoreVal)
         }
@@ -698,6 +701,10 @@ final class MatchController {
     /// before `beginNextTurn()` — carrying the scorer's index at time of scoring.
     /// ContentView wires this to the score announcement banner.
     var onScoreAnnounced: ((Int, YatzyCategory, Int) -> Void)?
+
+    /// Fires from `score()` the moment the upper section bonus (35 pts) is first earned.
+    /// ContentView wires this to the upper bonus celebration card.
+    var onUpperBonusEarned: ((Int) -> Void)?
 
     // MARK: - Game Night state loading
 

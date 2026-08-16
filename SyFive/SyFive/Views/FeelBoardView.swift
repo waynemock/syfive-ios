@@ -60,7 +60,7 @@ struct FeelBoardView: View {
                 Spacer()
                 Toggle("", isOn: Binding(
                     get: { director.soundEnabled },
-                    set: { director.soundEnabled = $0 }
+                    set: { director.soundMode = $0 ? .mix : .off }
                 ))
             }
             HStack {

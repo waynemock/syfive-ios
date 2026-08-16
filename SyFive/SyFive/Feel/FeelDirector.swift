@@ -9,7 +9,10 @@ import AVFoundation
 final class FeelDirector {
 
     // Synced from AppSettingsModel by ContentView (§7).
-    var soundEnabled: Bool = true
+    var soundMode: AppSoundMode = .mix {
+        didSet { audio.applyMode(soundMode) }
+    }
+    var soundEnabled: Bool { soundMode != .off }
     var hapticsEnabled: Bool = true
 
     private let catalog: FeelCatalog

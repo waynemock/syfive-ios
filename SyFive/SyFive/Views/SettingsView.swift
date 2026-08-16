@@ -28,7 +28,6 @@ private struct SettingsForm: View {
     @Environment(\.theme) private var theme
     
     @Bindable var settings: AppSettingsModel
-    @AppStorage(UserDefaults.Key.theaterAudioEnabled) private var theaterAudioEnabled: Bool = false
 
     var body: some View {
         Form {
@@ -44,11 +43,17 @@ private struct SettingsForm: View {
             }
             
             Section {
-                Toggle("Sound", isOn: $settings.soundEnabled)
+                Picker("Sound", selection: $settings.soundModeRaw) {
+                    ForEach(AppSoundMode.allCases, id: \.rawValue) { mode in
+                        Text(mode.displayName).tag(mode.rawValue)
+                    }
+                }
                 Toggle("Haptics", isOn: $settings.hapticsEnabled)
             } header: {
                 Text("Audio & Feedback")
                     .foregroundStyle(theme.primaryAccent)
+            } footer: {
+                Text("Mix with Other Audio plays alongside your music or podcast. Game Audio Only pauses it.")
             }
 
             Section {
@@ -59,8 +64,12 @@ private struct SettingsForm: View {
             }
 
             Section {
-                Toggle("Commentary", isOn: $settings.commentaryEnabled)
-                if settings.commentaryEnabled {
+                Picker("Commentary", selection: $settings.commentaryModeRaw) {
+                    ForEach(CommentaryMode.allCases, id: \.rawValue) { mode in
+                        Text(mode.displayName).tag(mode.rawValue)
+                    }
+                }
+                if settings.commentaryMode != .off {
                     NavigationLink {
                         CommentarySettingsView(settings: settings)
                     } label: {
@@ -72,14 +81,6 @@ private struct SettingsForm: View {
                     .foregroundStyle(theme.primaryAccent)
             }
 
-            Section {
-                Toggle("Theater sound on this device", isOn: $theaterAudioEnabled)
-            } header: {
-                Text("Game Night")
-                    .foregroundStyle(theme.primaryAccent)
-            } footer: {
-                Text("Play dice audio during other players' rolls. Turn off when you can hear their device.")
-            }
         }
     }
 }

@@ -116,6 +116,14 @@ final class GameNightController {
     /// ContentView wires this to the score announcement banner coordinator.
     var onOpponentScored: ((Int, YatzyCategory, Int) -> Void)?
 
+    /// Fired on guest devices when the host broadcasts a commentary line.
+    /// ContentView wires this to the guest's CommentaryEngine.receiveText(_:tier:).
+    var onCommentaryReceived: ((String, CommentaryEventTier) -> Void)?
+
+    /// Fired on guest devices when tableState updates the host's commentary settings.
+    /// ContentView wires this to re-sync the commentary engine on the guest.
+    var onCommentarySettingsChanged: (() -> Void)?
+
     /// Fired on all devices when an undo is fully applied (host: after undoLastScore; guest: after undo matchState arrives).
     /// ContentView wires this to clear the score announcement banner.
     var onUndoApplied: (() -> Void)?
@@ -397,6 +405,8 @@ final class GameNightController {
         onUndoWithDice = nil
         onMatchComplete = nil
         onOpponentScored = nil
+        onCommentaryReceived = nil
+        onCommentarySettingsChanged = nil
         onUndoApplied = nil
         pendingGuestUndoAvailable = false
         pendingHostUndoAvailable = false
@@ -635,6 +645,7 @@ final class GameNightController {
         case .matchComplete:  handleMatchComplete(envelope)                     // Phase 7
         case .matchAbandoned: handleMatchAbandoned()                            // Phase 8
         case .seatRelease:    handleSeatRelease(envelope)
+        case .commentary:     handleCommentary(envelope)
         }
     }
 
@@ -693,6 +704,7 @@ final class GameNightController {
                 send(.seatClaim, payload: pending)
             }
         }
+        onCommentarySettingsChanged?()
         logger.debug(self, "tableState received: \(seats.count) seats, phase=\(payload.phase.rawValue)")
     }
 
@@ -819,16 +831,32 @@ final class GameNightController {
         logger.debug(self, "handleMatchState: matchID=\(payload.match.id) seat=\(payload.currentSeatIndex) scores=\(payload.match.participants.map { $0.scoreEntries.count }) undo=\(payload.diceValues != nil) pendingUndo=\(pendingGuestUndoAvailable) reconnect=\(isReconnect)")
     }
 
+    // MARK: - Commentary broadcast (Game Night)
+
+    /// Host: broadcast the spoken commentary line to all guests.
+    func broadcastCommentary(text: String, tier: CommentaryEventTier) {
+        guard role == .host, phase == .inProgress else { return }
+        send(.commentary, payload: CommentaryPayload(text: text, tierRaw: tier.rawValue))
+    }
+
+    private func handleCommentary(_ envelope: GameNightEnvelope) {
+        guard role != .host,
+              phase == .inProgress,
+              let payload = try? envelope.decode(CommentaryPayload.self) else { return }
+        let tier = CommentaryEventTier(rawValue: payload.tierRaw) ?? .playByPlay
+        onCommentaryReceived?(payload.text, tier)
+    }
+
     /// Scans for the one new nil→non-nil score entry introduced by the latest matchState.
     /// Skips only the final score of the game (game-over overlay takes over).
     private func detectAndAnnounceOpponentScore(scoresBefore: [[YatzyCategory: Int]], mc: MatchController) {
-        guard let announce = onOpponentScored, !mc.isGameOver, !spectatorRollInProgress else { return }
+        guard !mc.isGameOver, !spectatorRollInProgress else { return }
         let scoresAfter = mc.playerScores
         for (playerIndex, after) in scoresAfter.enumerated() {
             guard playerIndex < scoresBefore.count else { continue }
             let before = scoresBefore[playerIndex]
             for (cat, val) in after where before[cat] == nil {
-                announce(playerIndex, cat, val)
+                onOpponentScored?(playerIndex, cat, val)
                 return
             }
         }

@@ -8,7 +8,6 @@ extension UserDefaults {
     enum Key {
         static let acknowledgedUpdateVersion    = "syfive.update.acknowledgedVersion"
         static let deviceID                     = "syfive.deviceID"
-        static let theaterAudioEnabled          = "syfive.dice.theaterAudio"
         static let commentaryVoiceID            = "syfive.commentary.voiceID"
 
         // Game Night — keyed per-session or per-match UUID.

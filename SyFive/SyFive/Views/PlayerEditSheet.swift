@@ -17,6 +17,10 @@ struct PlayerEditSheet: View {
     let mode: Mode
     @Bindable var matchModel: MatchController
     var onSave: (() -> Void)? = nil
+    /// When set for `.create` mode, receives the new `PlayerModel` instead of adding it
+    /// to `matchModel`. Use this when the caller needs to act on the new player directly
+    /// (e.g. game night seat claim) without touching the local match state.
+    var onCreated: ((PlayerModel) -> Void)? = nil
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -30,10 +34,11 @@ struct PlayerEditSheet: View {
     @State private var initials: String
     @State private var themeType: Theme.ThemeType
 
-    init(mode: Mode, matchModel: MatchController, onSave: (() -> Void)? = nil) {
+    init(mode: Mode, matchModel: MatchController, onSave: (() -> Void)? = nil, onCreated: ((PlayerModel) -> Void)? = nil) {
         self.mode = mode
         self.matchModel = matchModel
         self.onSave = onSave
+        self.onCreated = onCreated
         switch mode {
         case .create:
             _name = State(initialValue: "")
@@ -157,7 +162,11 @@ struct PlayerEditSheet: View {
             pm.initials = finalInitials
             pm.themeID = themeType.rawValue
             context.insert(pm)
-            matchModel.addPlayer(from: pm.toDomain())
+            if let onCreated {
+                onCreated(pm)
+            } else {
+                matchModel.addPlayer(from: pm.toDomain())
+            }
 
         case .edit(let pm, let matchSlot):
             pm.name = trimmedName

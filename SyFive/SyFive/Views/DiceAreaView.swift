@@ -14,7 +14,6 @@ struct DiceAreaView: View {
     @Environment(CelebrationCoordinator.self) private var celebrationCoordinator
     @Environment(GameNightController.self) private var gameNight
     @Environment(\.colorScheme) private var colorScheme
-    @AppStorage(UserDefaults.Key.theaterAudioEnabled) private var theaterAudioEnabled: Bool = false
     private let rollControlHeight: CGFloat = 24
 
     var body: some View {
@@ -34,7 +33,6 @@ struct DiceAreaView: View {
         .onAppear {
             if feelAdapter == nil {
                 let adapter = DiceFeelAdapter(director: director)
-                adapter.theaterAudioEnabled = theaterAudioEnabled
                 feelAdapter = adapter
                 diceRoller.audioController = adapter
             }
@@ -47,9 +45,6 @@ struct DiceAreaView: View {
         }
         .onChange(of: gameNight.isSessionActive) { _, active in
             if active { wireGameNightHooks() }
-        }
-        .onChange(of: theaterAudioEnabled) { _, enabled in
-            feelAdapter?.theaterAudioEnabled = enabled
         }
         .onChange(of: model.currentPlayerIndex) { _, _ in
             if suppressNextPlayerChangeDiceClear {
@@ -255,6 +250,8 @@ struct DiceAreaView: View {
         let dr = diceRoller
         let mc = model
         let cc = celebrationCoordinator
+        let fa = feelAdapter
+        let dir = director
 
         // When a roll begins, keep held dice visible in the far-wall row and
         // hide the non-held dice. They reappear in pip-pattern when the result arrives.
@@ -269,10 +266,12 @@ struct DiceAreaView: View {
             // so clear here too. Idempotent if onRollBegan already cleared it.
             cc.clearAll()
             dr.displaySpectatorResult(values: values, held: dr.currentHeld)
+            fa?.onAllDiceSettled(values: values)
             let isYatzy = !values.isEmpty && values.dropFirst().allSatisfy { $0 == values[0] }
             guard isYatzy else { return }
             let yahtzeeBox = mc.scores(for: mc.currentPlayerIndex)[.yahtzee]
             guard yahtzeeBox == nil || yahtzeeBox == 50 else { return }
+            dir.yatzyMoment()
             cc.triggerYatzy(playerIndex: mc.currentPlayerIndex)
         }
         gn.onHoldToggled = { dieIndex, isHeld in
