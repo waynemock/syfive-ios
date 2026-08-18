@@ -72,6 +72,7 @@ struct HouseRecords {
 
         for match in sorted {
             guard let date = match.completedAt else { continue }
+
             for p in match.participants {
                 let count = yatzyCount(for: p)
                 guard count > 0 else { continue }
@@ -329,9 +330,27 @@ struct HouseRecords {
     }
 
     /// Yatzy count per §4.2: base (scored 50) plus bonus rolls.
+    /// Falls back to inferring yatzyBonus from the finalScore gap for any records
+    /// not yet repaired by LegacyYahtzeeRepair.
     private static func yatzyCount(for p: Participant) -> Int {
-        let base = p.scoreEntries.first(where: { $0.slotKey == YatzyCategory.yatzy.slotKey })?.value == 50 ? 1 : 0
-        return base + (p.yatzyBonus / 100)
+        let entry = p.scoreEntries.first(where: { $0.slotKey == "yatzy" })
+        let base = entry?.value == 50 ? 1 : 0
+
+        let effectiveBonus: Int
+        if p.yatzyBonus > 0 {
+            effectiveBonus = p.yatzyBonus
+        } else {
+            let cardSum = p.scoreEntries.compactMap { $0.value }.reduce(Decimal(0), +)
+            let upperSum = p.scoreEntries
+                .filter { YatzyCategory(rawValue: $0.slotKey)?.isUpperSection == true }
+                .compactMap { $0.value }
+                .reduce(Decimal(0), +)
+            let upperBonusPts: Decimal = upperSum >= 63 ? 35 : 0
+            let gap = NSDecimalNumber(decimal: p.finalScore - cardSum - upperBonusPts).intValue
+            effectiveBonus = (gap > 0 && gap % 100 == 0) ? gap : 0
+        }
+
+        return base + effectiveBonus / 100
     }
 
     /// Sum of Ones–Sixes, excluding the +35 bonus (which is not a ScoreEntry).

@@ -209,7 +209,6 @@ struct ContentView: View {
             await director.warmUp()
         }
         .onAppear {
-            SlotKeyMigration.runIfNeeded(in: modelContext)
             seedSettingsIfNeeded()
             seedYatzyGameIfNeeded()
             #if DEBUG
@@ -348,7 +347,9 @@ struct ContentView: View {
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .background: director.stopAudioForBackground()
-            case .active:     director.handleForeground()
+            case .active:
+                director.handleForeground()
+                LegacyYahtzeeRepair.run(in: modelContext)
             default: break
             }
         }
