@@ -7,7 +7,7 @@ extension ParticipantModel {
             seat: seat,
             finalScore: finalScore,
             rank: rank,
-            yahtzeeBonus: yahtzeeBonus,
+            yatzyBonus: yatzyBonus,
             playerID: playerID,
             teamID: teamID,
             displayName: displayName,
@@ -22,7 +22,7 @@ extension ParticipantModel {
         seat = participant.seat
         finalScore = participant.finalScore
         rank = participant.rank
-        yahtzeeBonus = participant.yahtzeeBonus
+        yatzyBonus = participant.yatzyBonus
         playerID = participant.playerID
         teamID = participant.teamID
         displayName = participant.displayName

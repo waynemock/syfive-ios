@@ -174,7 +174,7 @@ enum StatsFixtures {
         seat: Int,
         finalScore: Decimal,
         rank: Int,
-        yahtzeeBonus: Int = 0,
+        yatzyBonus: Int = 0,
         scoreEntries: [ScoreEntry] = []
     ) -> Participant {
         let label = [0: "A", 1: "B", 2: "C"][seat] ?? "?"
@@ -183,7 +183,7 @@ enum StatsFixtures {
             seat: seat,
             finalScore: finalScore,
             rank: rank,
-            yahtzeeBonus: yahtzeeBonus,
+            yatzyBonus: yatzyBonus,
             playerID: playerID,
             teamID: nil,
             displayName: "Player \(label)",
@@ -224,7 +224,7 @@ enum StatsFixtures {
         entry(.fullHouse,     25, minutesIn: 18),
         entry(.smallStraight, 30, minutesIn: 20),
         entry(.largeStraight, 40, minutesIn: 22),
-        entry(.yahtzee,       50, minutesIn: 24),
+        entry(.yatzy,       50, minutesIn: 24),
         entry(.chance,        26, minutesIn: 26),
     ]
 
@@ -241,7 +241,7 @@ enum StatsFixtures {
         entry(.fullHouse,     0,  minutesIn: 19),  // scratch
         entry(.smallStraight, 30, minutesIn: 21),
         entry(.largeStraight, 0,  minutesIn: 23),  // scratch
-        entry(.yahtzee,       50, minutesIn: 25),
+        entry(.yatzy,       50, minutesIn: 25),
         entry(.chance,        22, minutesIn: 27),
     ]
 }

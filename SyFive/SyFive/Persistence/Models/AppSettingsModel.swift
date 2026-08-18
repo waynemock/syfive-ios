@@ -63,6 +63,7 @@ enum AppSoundMode: String, CaseIterable, Codable {
     var commentaryLevelRaw: String = CommentaryLevel.celebrations.rawValue
     var commentaryPersonalityID: String = CommentaryPersonality.zen.id
     var soundModeRaw: String = AppSoundMode.mix.rawValue
+    var helpDismissed: Bool = false
 
     init() {}
 

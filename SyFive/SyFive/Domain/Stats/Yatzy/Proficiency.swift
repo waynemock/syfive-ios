@@ -50,7 +50,7 @@ private func maxCategoryValue(_ c: YatzyCategory) -> Decimal {
     case .fullHouse:     return 25
     case .smallStraight: return 30
     case .largeStraight: return 40
-    case .yahtzee:       return 50
+    case .yatzy:       return 50
     case .chance:        return 30
     }
 }

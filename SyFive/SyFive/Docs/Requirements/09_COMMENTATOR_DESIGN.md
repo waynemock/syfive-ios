@@ -73,7 +73,7 @@ App/
 
 The commentator, the score audio, and the score haptics are all **observers of the same
 turn-boundary event stream.** The events are computed by the code in `MatchController` that
-*already* knows these things happened — the branch that awards the Yahtzee bonus already
+*already* knows these things happened — the branch that awards the Yatzy bonus already
 knows a bonus occurred; the completion path already resolves the winner and margin. Those
 call sites emit a `CommentaryEvent`; they do not compute anything new for the commentator's
 sake.
@@ -169,7 +169,7 @@ event when `event.tier ≤ userLevel`.
 | Event kind | Tier | Fires when | Tokens exposed |
 |---|---|---|---|
 | `yatzyRolled` | Celebration | first five-of-a-kind scored as Yatzy (50) | `{player}` |
-| `yahtzeeBonusEarned` | Celebration | each additional five-of-a-kind while Yatzy box holds a live 50 (+100) | `{player}` |
+| `yatzyBonusEarned` | Celebration | each additional five-of-a-kind while Yatzy box holds a live 50 (+100) | `{player}` |
 | `winnerDeclared` | Celebration | match completes with a single winner | `{winner}`, `{runnerUp}`, `{score}`, `{margin}` |
 | `winnerTie` | Celebration | match completes tied at the top | `{winner}` (comma list), `{score}` |
 | `upperBonusEarned` | Highlight | a player's upper section reaches 63 (+35) | `{player}` |
@@ -457,7 +457,7 @@ The copy is presented as reference lists; in code each becomes an entry in the p
 
 ---
 
-### 10.2 `yahtzeeBonusEarned` — additional five of a kind, +100 *(Celebration)*
+### 10.2 `yatzyBonusEarned` — additional five of a kind, +100 *(Celebration)*
 
 **Sports**
 1. Another one?! {player} with the bonus Yatzy, plus a hundred!

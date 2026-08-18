@@ -45,12 +45,12 @@ struct YatzyScoringTests {
         #expect(faceValue(of: .largeStraight, dice: [1, 2, 3, 4, 6]) == 0)
     }
 
-    @Test func yahtzee_scores50_forFiveOfAKind() {
-        #expect(faceValue(of: .yahtzee, dice: [5, 5, 5, 5, 5]) == 50)
+    @Test func yatzy_scores50_forFiveOfAKind() {
+        #expect(faceValue(of: .yatzy, dice: [5, 5, 5, 5, 5]) == 50)
     }
 
-    @Test func yahtzee_scoresZero_forNonFiveOfAKind() {
-        #expect(faceValue(of: .yahtzee, dice: [5, 5, 5, 5, 4]) == 0)
+    @Test func yatzy_scoresZero_forNonFiveOfAKind() {
+        #expect(faceValue(of: .yatzy, dice: [5, 5, 5, 5, 4]) == 0)
     }
 
     @Test func chance_scoresSum() {
@@ -96,16 +96,16 @@ struct YatzyScoringTests {
 
     // MARK: - Poison rule regression (§4.3 — the key fix)
 
-    @Test("Scratched Yahtzee (0) disables joker placement and +100 bonus")
-    func poison_scratchedYahtzeeDisablesJoker() {
+    @Test("Scratched Yatzy (0) disables joker placement and +100 bonus")
+    func poison_scratchedYatzyDisablesJoker() {
         let dice = [6, 6, 6, 6, 6]
-        let scorecard: YatzyScorecard = [.yahtzee: 0]   // scratched to zero
+        let scorecard: YatzyScorecard = [.yatzy: 0]   // scratched to zero
 
         // Joker must NOT fire
         #expect(!isJokerRoll(dice: dice, scorecard: scorecard))
 
         // +100 bonus must NOT qualify
-        #expect(!qualifiesForExtraYahtzeeBonus(dice: dice, scorecard: scorecard))
+        #expect(!qualifiesForExtraYatzyBonus(dice: dice, scorecard: scorecard))
 
         // All open categories freely available — no forced upper placement
         let legal = legalCategories(dice: dice, scorecard: scorecard)
@@ -113,16 +113,16 @@ struct YatzyScoringTests {
         #expect(Set(legal) == Set(open))
     }
 
-    @Test("Live Yahtzee (50) enables joker placement and +100 bonus")
-    func poison_liveYahtzeeEnablesJoker() {
+    @Test("Live Yatzy (50) enables joker placement and +100 bonus")
+    func poison_liveYatzyEnablesJoker() {
         let dice = [6, 6, 6, 6, 6]
-        let scorecard: YatzyScorecard = [.yahtzee: 50, .sixes: 36]
+        let scorecard: YatzyScorecard = [.yatzy: 50, .sixes: 36]
 
         // Joker MUST fire
         #expect(isJokerRoll(dice: dice, scorecard: scorecard))
 
         // +100 bonus MUST qualify
-        #expect(qualifiesForExtraYahtzeeBonus(dice: dice, scorecard: scorecard))
+        #expect(qualifiesForExtraYatzyBonus(dice: dice, scorecard: scorecard))
 
         // Sixes already used → must be forced to open lower categories
         let legal = legalCategories(dice: dice, scorecard: scorecard)
@@ -135,14 +135,14 @@ struct YatzyScoringTests {
     @Test("Joker forces matching upper box when open")
     func joker_forcesMatchingUpperWhenOpen() {
         let dice = [4, 4, 4, 4, 4]
-        let scorecard: YatzyScorecard = [.yahtzee: 50]
+        let scorecard: YatzyScorecard = [.yatzy: 50]
         #expect(legalCategories(dice: dice, scorecard: scorecard) == [.fours])
     }
 
     @Test("Joker allows open lower categories when matching upper is taken")
     func joker_allowsLowerWhenUpperTaken() {
         let dice = [4, 4, 4, 4, 4]
-        let scorecard: YatzyScorecard = [.yahtzee: 50, .fours: 20]
+        let scorecard: YatzyScorecard = [.yatzy: 50, .fours: 20]
         let legal = legalCategories(dice: dice, scorecard: scorecard)
         #expect(!legal.isEmpty)
         #expect(legal.allSatisfy { !$0.isUpperSection })
@@ -150,14 +150,14 @@ struct YatzyScoringTests {
 
     // MARK: - Grand total
 
-    @Test func grandTotal_includesUpperBonusAndYahtzeeBonus() {
+    @Test func grandTotal_includesUpperBonusAndYatzyBonus() {
         // Upper section summing to exactly 63 → earns +35
         let scorecard: YatzyScorecard = [
             .ones: 3, .twos: 6, .threes: 9, .fours: 12, .fives: 15, .sixes: 18,
             .fullHouse: 25
         ]
-        // base = 88, upperBonus = 35, yahtzeeBonus = 100 → 223
-        #expect(grandTotal(scorecard: scorecard, yahtzeeBonus: 100) == 223)
+        // base = 88, upperBonus = 35, yatzyBonus = 100 → 223
+        #expect(grandTotal(scorecard: scorecard, yatzyBonus: 100) == 223)
     }
 
     // MARK: - deriveInitials

@@ -1151,7 +1151,7 @@ final class GameNightController {
                 seat: index,
                 finalScore: 0,
                 rank: 0,
-                yahtzeeBonus: 0,
+                yatzyBonus: 0,
                 playerID: seat.playerID,
                 teamID: nil,
                 displayName: seat.displayName,

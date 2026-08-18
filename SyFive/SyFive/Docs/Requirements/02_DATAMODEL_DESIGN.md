@@ -250,7 +250,7 @@ struct Participant: Codable, Hashable, Sendable, Identifiable {
     var seat: Int                  // turn order within THIS match, 0-based
     var finalScore: Decimal        // denormalized cached total (for cheap ranking/stats)
     var rank: Int                  // resolved at completion; 1 = winner; ties share rank
-    var yahtzeeBonus: Int          // running +100-per-extra-Yahtzee tally (see §4)
+    var yatzyBonus: Int          // running +100-per-extra-Yatzy tally (see §4)
 
     // identity — EXACTLY ONE of these is non-nil (enforced in code, not schema)
     var playerID: UUID?
@@ -272,8 +272,8 @@ struct Participant: Codable, Hashable, Sendable, Identifiable {
   played and in what color. The `playerID`/`teamID` refs remain for **stats aggregation**
   ("all of Xander's matches") but **rendering never depends on them.** A deleted player
   leaves a fully intact match behind.
-- **`yahtzeeBonus` is a field, not a ScoreEntry.** This mirrors today's
-  `playerYahtzeeBonuses[i]` and keeps `metadata` dormant in 1.0. Confirmed decision.
+- **`yatzyBonus` is a field, not a ScoreEntry.** This mirrors today's
+  `playerYatzyBonuses[i]` and keeps `metadata` dormant in 1.0. Confirmed decision.
 - **Exactly-one-of invariant** (`playerID` xor `teamID`) is a domain-layer rule (CloudKit
   can't express it — both must be optional). Enforce via factory initializers
   `Participant(individual:)` / `Participant(team:)` and a `validate()` function. SyFive
@@ -352,7 +352,7 @@ What this buys, and how to implement it:
   `rollsRemaining`, `isRolling` — **never persists.**
 - **Persist only at boundaries.** Flush to SwiftData on two events:
   1. **Category scored** — upsert the current participant's newly-scored `ScoreEntry`
-     (+ updated `yahtzeeBonus`, + advanced turn/seat state on the match).
+     (+ updated `yatzyBonus`, + advanced turn/seat state on the match).
   2. **Match completed** — set `status = .completed`, `completedAt`, resolve
      `finalScore` + `rank` for all participants.
   These map directly onto the existing `score(category:)` turn boundary. The hot write
@@ -372,7 +372,7 @@ What this buys, and how to implement it:
 ## 4. Scoring engine (Layer 1) — relocation, not reimplementation
 
 The current `GameModel` already implements **Classic Hasbro rules correctly**, including
-the Yahtzee bonus and joker forced-scoring. This work **moves the scoring math down into
+the Yatzy bonus and joker forced-scoring. This work **moves the scoring math down into
 Layer 1 as pure functions** and leaves orchestration in `MatchController`. It is a
 refactor-with-relocation of proven logic, plus **one deliberate behavior change** (§4.3).
 
@@ -387,7 +387,7 @@ Rules (identical to current `scoreValue` switch): Ones–Sixes = face × count; 
 of a Kind = sum of all five if ≥3/≥4 alike else 0; Full House = 25 (strict 3+2) else 0;
 Small Straight = 30; Large Straight = 40; Yatzy = 50 if five alike else 0; Chance = sum.
 
-**Tier 2 — contextual (needs scorecard state).** Upper bonus, Yahtzee bonus, joker
+**Tier 2 — contextual (needs scorecard state).** Upper bonus, Yatzy bonus, joker
 resolution, completeness, grand total, winner direction, validation. See §4.2–4.4.
 
 Keep `faceValue` **honest and separate** from joker overrides. Joker values (which pay
@@ -397,17 +397,17 @@ on top, never folded into `faceValue`.
 ### 4.2 Classic Hasbro Tier 2 (port existing logic)
 
 - **Upper bonus:** sum of filled upper categories ≥ 63 → +35. (Current `upperBonus`.)
-- **Yahtzee bonus:** +100 per additional five-of-a-kind **while the Yatzy box holds a
-  live 50**, accumulated on `Participant.yahtzeeBonus`. (Current
-  `qualifiesForExtraYahtzeeBonus` + `playerYahtzeeBonuses`.)
+- **Yatzy bonus:** +100 per additional five-of-a-kind **while the Yatzy box holds a
+  live 50**, accumulated on `Participant.yatzyBonus`. (Current
+  `qualifiesForExtraYatzyBonus` + `playerYatzyBonuses`.)
 - **Joker forced-scoring priority** (current `legalScoreCategories` + `jokerScoreValue`):
   1. matching upper box open → **forced** there (five 6s → Sixes = 30);
   2. else any open **lower** category, with FH/SS/LS paying fixed **25/30/40** despite
      shape, and 3/4-of-a-kind/Chance paying sum;
   3. else forced into a remaining box (often 0).
-- **Completeness:** all 13 categories non-nil. The `yahtzeeBonus` tally is **not** a
+- **Completeness:** all 13 categories non-nil. The `yatzyBonus` tally is **not** a
   category and does not gate completion.
-- **Grand total:** Σ filled categories + upper bonus + `yahtzeeBonus`.
+- **Grand total:** Σ filled categories + upper bonus + `yatzyBonus`.
 - **Winner direction:** `.highest`, declared (not stored).
 
 ### 4.3 REQUIRED BEHAVIOR CHANGE — strict-Hasbro poison rule
@@ -419,10 +419,10 @@ five-of-a-kind is an ordinary roll — **no +100 bonus AND no joker forced-scori
 placed anywhere open and scored by normal face value.
 
 - Current code gets the **bonus** half right (gated on `== 50`).
-- Current code gets the **joker** half wrong: `isJokerRoll` fires on `scores[.yahtzee] != nil`,
+- Current code gets the **joker** half wrong: `isJokerRoll` fires on `scores[.yatzy] != nil`,
   which includes the scratched-0 case, so a poisoned box still triggers forced-scoring.
 
-**Fix:** gate `isJokerRoll` on `scores[.yahtzee] == 50` (not `!= nil`). Because both
+**Fix:** gate `isJokerRoll` on `scores[.yatzy] == 50` (not `!= nil`). Because both
 `legalScoreCategories` and `jokerScoreValue` call `isJokerRoll`, this single-predicate
 change corrects placement **and** scoring together. No other edits needed for the poison
 rule.
@@ -439,7 +439,7 @@ Pure function, the seam that becomes a `ScoringSystem` protocol method at Step 2
 For Yatzy: `slotKey` is a valid `YatzyCategory`; `value` is `nil` or a non-negative Int
 within that category's achievable range (Chance ≤ 30, Full House ∈ {0,25}, Yatzy ∈ {0,50},
 etc.); and **`metadata` must be nil** — Classic Yatzy declares it uses no structured
-extras (the `yahtzeeBonus` tally lives on Participant, not in metadata). The validator
+extras (the `yatzyBonus` tally lives on Participant, not in metadata). The validator
 encodes the ruleset's schema; that's its whole point.
 
 ### 4.5 Do NOT build the `ScoringSystem` protocol/registry yet
@@ -471,7 +471,7 @@ Blast radius is small and mechanical:
 - **Move to Layer 1 (Domain/Scoring):** the pure scoring math — `scoreValue`/`faceValue`,
   `countByFace`, `hasKind`, `isFullHouse`, straight checks, `matchingUpperCategory`,
   `jokerScoreValue`, `jokerLowerSectionScore`, `legalScoreCategories`, upper-bonus and
-  Yahtzee-bonus rules, `isGameOver`/completeness, winner direction, validation. Also move
+  Yatzy-bonus rules, `isGameOver`/completeness, winner direction, validation. Also move
   the `ScoreCategory` enum → `YatzyCategory` in Domain/Enums (keep the `yatzy` case name
   and `"Yatzy"` display; the rules it obeys are Hasbro Classic).
 - **Stays in `MatchController` (App):** *live session state and orchestration* — the

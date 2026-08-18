@@ -26,7 +26,7 @@ protocol MatchPresenting: AnyObject {
     func totalScore(for playerIndex: Int) -> Int
     func upperSubtotal(for playerIndex: Int) -> Int
     func upperBonus(for playerIndex: Int) -> Int
-    func yahtzeeBonus(for playerIndex: Int) -> Int
+    func yatzyBonus(for playerIndex: Int) -> Int
     func isWinner(_ playerIndex: Int) -> Bool
     func canScore(category: YatzyCategory, for playerIndex: Int) -> Bool
     func suggestedCategory(for playerIndex: Int) -> YatzyCategory?

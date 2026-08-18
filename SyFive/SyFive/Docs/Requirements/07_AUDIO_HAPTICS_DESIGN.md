@@ -480,7 +480,7 @@ The celebration fires **at settle** (dossier canon), app-side, because only
 
 ```swift
 let fresh = values.dropFirst().allSatisfy { $0 == values[0] }
-let box   = model.scores(for: model.currentPlayerIndex)[.yahtzee]
+let box   = model.scores(for: model.currentPlayerIndex)[.yatzy]
 if fresh && (box == nil || box == 50) { director.yatzyMoment() }
 ```
 

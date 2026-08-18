@@ -148,7 +148,7 @@ theater plus the authoritative values (§6.2). The dice engine itself changes on
 ### 3.2 Host authority — match state
 
 The host device owns the live `Match`: seat order, turn index, score entries,
-`yahtzeeBonus` tallies, status. Guests **propose** (their roll results, hold toggles,
+`yatzyBonus` tallies, status. Guests **propose** (their roll results, hold toggles,
 category choices); the host **validates, applies, and broadcasts**.
 
 Validation is free: the Layer 1 scoring functions are pure and identical on every

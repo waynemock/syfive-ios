@@ -21,6 +21,7 @@ struct ContentView: View {
     @State var showsCancelGameNightAlert = false
     @State var showsGameNightPendingSheet = false
     @State var showsGameNightHelp = false
+    @State var showsHowToPlay = false
     /// Set when the reconnect alert's "Restart as Host" is tapped, so isSessionActive handler
     /// can skip the seating sheet and jump straight to the in-progress match.
     @State var pendingResumeMatchID: UUID? = nil
@@ -73,8 +74,20 @@ struct ContentView: View {
                         .accessibilityLabel("Game Night Help")
                     }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    if !(appSettings?.helpDismissed ?? false) {
+                        Button { showsHowToPlay = true } label: {
+                            Image(systemName: "questionmark.circle")
+                        }
+                        .accessibilityLabel("How to Play")
+                    }
                     Menu {
+                        if !(appSettings?.helpDismissed ?? false) {
+                            Button { showsHowToPlay = true } label: {
+                                Label("How to Play", systemImage: "questionmark.circle")
+                            }
+                            Divider()
+                        }
                         if isUpdateAvailable {
                             Button { openAppStore() } label: {
                                 Label("Update Available", systemImage: "arrow.down.circle")
@@ -102,6 +115,11 @@ struct ContentView: View {
                             Label("Dice Fairness", systemImage: "die.face.5")
                         }
                         Divider()
+                        if appSettings?.helpDismissed ?? false {
+                            Button { showsHowToPlay = true } label: {
+                                Label("How to Play", systemImage: "questionmark.circle")
+                            }
+                        }
                         Button { showsAbout = true } label: {
                             Label("About", systemImage: "info.circle")
                         }
@@ -191,6 +209,7 @@ struct ContentView: View {
             await director.warmUp()
         }
         .onAppear {
+            SlotKeyMigration.runIfNeeded(in: modelContext)
             seedSettingsIfNeeded()
             seedYatzyGameIfNeeded()
             #if DEBUG
@@ -417,6 +436,10 @@ struct ContentView: View {
                 isEligibleForGroupSession: gameNight.isEligibleForGroupSession
             )
             .environment(\.theme, theme)
+        }
+        .sheet(isPresented: $showsHowToPlay) {
+            HowToPlayView(settings: appSettings)
+                .environment(\.theme, theme)
         }
     }
 

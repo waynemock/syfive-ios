@@ -128,7 +128,7 @@ reasoning (short games, one device in practice). The validation matrix confirms 
 correctly," because there is no merge.
 
 **Undo interacts cleanly:** the existing one-level undo emits a compensating checkpoint
-write (entry back to `nil`, `yahtzeeBonus`/turn state restored). To sync it is just
+write (entry back to `nil`, `yatzyBonus`/turn state restored). To sync it is just
 another LWW write. No special handling.
 
 ---

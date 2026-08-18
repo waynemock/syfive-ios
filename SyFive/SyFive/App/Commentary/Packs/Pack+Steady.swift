@@ -31,7 +31,7 @@ extension CommentaryPersonality {
                 "{player} rolls a Yatzy. On the board.",
                 "There's the fifty. Well rolled, {player}."
             ],
-            .yahtzeeBonusEarned: [
+            .yatzyBonusEarned: [
                 "Another Yatzy for {player}. Hundred-point bonus.",
                 "{player} rolls a second five of a kind. Plus one hundred.",
                 "Bonus Yatzy, {player}. That's a hundred.",

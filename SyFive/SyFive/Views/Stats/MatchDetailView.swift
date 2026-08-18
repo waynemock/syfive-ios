@@ -217,7 +217,7 @@ private struct HistoryScorecardWidthKey: PreferenceKey {
 
     // Wayne — winner, 296 pts (upper bonus achieved: 70 upper + 35 bonus + 191 lower)
     let p1 = ParticipantModel()
-    p1.seat = 0; p1.rank = 1; p1.finalScore = 296; p1.yahtzeeBonus = 0
+    p1.seat = 0; p1.rank = 1; p1.finalScore = 296; p1.yatzyBonus = 0
     p1.displayName = "Wayne"; p1.displayInitials = "WM"
     p1.displayThemeID = Theme.ThemeType.midnight.rawValue
     p1.scoreEntries = [
@@ -226,7 +226,7 @@ private struct HistoryScorecardWidthKey: PreferenceKey {
         entry(.fives, 20, minutesAgo: 102),       entry(.sixes, 18, minutesAgo: 100),
         entry(.threeOfAKind, 20, minutesAgo: 96), entry(.fourOfAKind, 0, minutesAgo: 92),
         entry(.fullHouse, 25, minutesAgo: 88),    entry(.smallStraight, 30, minutesAgo: 84),
-        entry(.largeStraight, 40, minutesAgo: 80), entry(.yahtzee, 50, minutesAgo: 76),
+        entry(.largeStraight, 40, minutesAgo: 80), entry(.yatzy, 50, minutesAgo: 76),
         entry(.chance, 26, minutesAgo: 72),
     ]
     p1.match = match
@@ -234,7 +234,7 @@ private struct HistoryScorecardWidthKey: PreferenceKey {
 
     // Sherida — runner-up, 164 pts (three scratches, no upper bonus)
     let p2 = ParticipantModel()
-    p2.seat = 1; p2.rank = 2; p2.finalScore = 164; p2.yahtzeeBonus = 0
+    p2.seat = 1; p2.rank = 2; p2.finalScore = 164; p2.yatzyBonus = 0
     p2.displayName = "Sherida"; p2.displayInitials = "SM"
     p2.displayThemeID = Theme.ThemeType.forest.rawValue
     p2.scoreEntries = [
@@ -243,7 +243,7 @@ private struct HistoryScorecardWidthKey: PreferenceKey {
         entry(.fives, 10, minutesAgo: 101),        entry(.sixes, 12, minutesAgo: 99),
         entry(.threeOfAKind, 18, minutesAgo: 95),  entry(.fourOfAKind, 0, minutesAgo: 91),
         entry(.fullHouse, 0, minutesAgo: 87),      entry(.smallStraight, 30, minutesAgo: 83),
-        entry(.largeStraight, 0, minutesAgo: 79),  entry(.yahtzee, 50, minutesAgo: 75),
+        entry(.largeStraight, 0, minutesAgo: 79),  entry(.yatzy, 50, minutesAgo: 75),
         entry(.chance, 22, minutesAgo: 71),
     ]
     p2.match = match

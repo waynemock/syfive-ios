@@ -15,7 +15,7 @@ final class MatchController {
         let held: [Bool]
         let rollsRemaining: Int
         let playerScores: [[YatzyCategory: Int]]
-        let playerYahtzeeBonuses: [Int]
+        let playerYatzyBonuses: [Int]
         let playerScoreTimestamps: [[YatzyCategory: Date]]
         let currentPlayerIndex: Int
         let isRolling: Bool
@@ -31,7 +31,7 @@ final class MatchController {
     private(set) var rollsRemaining: Int
     private(set) var playerScores: [[YatzyCategory: Int]]
     private var playerScoreTimestamps: [[YatzyCategory: Date]]
-    private(set) var playerYahtzeeBonuses: [Int]
+    private(set) var playerYatzyBonuses: [Int]
     private(set) var playerThemes: [Theme.ThemeType]
     private(set) var playerDisplayNames: [String]
     private(set) var playerDisplayInitials: [String]
@@ -60,7 +60,7 @@ final class MatchController {
         rollsRemaining = rollsPerTurn
         playerScores = []
         playerScoreTimestamps = []
-        playerYahtzeeBonuses = []
+        playerYatzyBonuses = []
         playerThemes = []
         playerDisplayNames = []
         playerDisplayInitials = []
@@ -186,7 +186,7 @@ final class MatchController {
     }
 
     func totalScore(for playerIndex: Int) -> Int {
-        grandTotal(scorecard: yatzyScorecard(for: playerIndex), yahtzeeBonus: yahtzeeBonus(for: playerIndex))
+        grandTotal(scorecard: yatzyScorecard(for: playerIndex), yatzyBonus: yatzyBonus(for: playerIndex))
     }
 
     func isWinner(_ playerIndex: Int) -> Bool { winnerIndices.contains(playerIndex) }
@@ -199,7 +199,7 @@ final class MatchController {
         let theme = Theme.ThemeType(rawValue: player.themeID) ?? Self.defaultTheme(for: newIndex)
         playerScores.append([:])
         playerScoreTimestamps.append([:])
-        playerYahtzeeBonuses.append(0)
+        playerYatzyBonuses.append(0)
         playerThemes.append(theme)
         playerDisplayNames.append(player.name)
         playerDisplayInitials.append(player.initials)
@@ -216,7 +216,7 @@ final class MatchController {
         let n = newIndex + 1
         playerScores.append([:])
         playerScoreTimestamps.append([:])
-        playerYahtzeeBonuses.append(0)
+        playerYatzyBonuses.append(0)
         playerThemes.append(Self.defaultTheme(for: newIndex))
         playerDisplayNames.append("Player \(n)")
         playerDisplayInitials.append("P\(n)")
@@ -230,7 +230,7 @@ final class MatchController {
         clearUndoState()
         playerScores.remove(at: index)
         if playerScoreTimestamps.indices.contains(index) { playerScoreTimestamps.remove(at: index) }
-        playerYahtzeeBonuses.remove(at: index)
+        playerYatzyBonuses.remove(at: index)
         playerDisplayNames.remove(at: index)
         playerDisplayInitials.remove(at: index)
         playerIDs.remove(at: index)
@@ -253,7 +253,7 @@ final class MatchController {
 
         reorder(in: &playerScores)
         reorder(in: &playerScoreTimestamps)
-        reorder(in: &playerYahtzeeBonuses)
+        reorder(in: &playerYatzyBonuses)
         reorder(in: &playerThemes)
         reorder(in: &playerDisplayNames)
         reorder(in: &playerDisplayInitials)
@@ -269,7 +269,7 @@ final class MatchController {
         rollsRemaining = rollsPerTurn
         playerScores = Array(repeating: [:], count: playerCount)
         playerScoreTimestamps = Array(repeating: [:], count: playerCount)
-        playerYahtzeeBonuses = Array(repeating: 0, count: playerCount)
+        playerYatzyBonuses = Array(repeating: 0, count: playerCount)
         currentPlayerIndex = 0
         isRolling = false
         // Fresh participant IDs so the new game doesn't collide with the previous one.
@@ -298,7 +298,7 @@ final class MatchController {
         let themeType = Theme.ThemeType(rawValue: themeID) ?? Self.defaultTheme(for: playerScores.count)
         playerScores.append([:])
         playerScoreTimestamps.append([:])
-        playerYahtzeeBonuses.append(0)
+        playerYatzyBonuses.append(0)
         playerThemes.append(themeType)
         playerDisplayNames.append(displayName)
         playerDisplayInitials.append(displayInitials)
@@ -353,7 +353,7 @@ final class MatchController {
     func load(from matchModel: MatchModel) {
         playerScores = []
         playerScoreTimestamps = []
-        playerYahtzeeBonuses = []
+        playerYatzyBonuses = []
         playerThemes = []
         playerDisplayNames = []
         playerDisplayInitials = []
@@ -376,7 +376,7 @@ final class MatchController {
                 }
             )
             playerScores.append(scores)
-            playerYahtzeeBonuses.append(p.yahtzeeBonus)
+            playerYatzyBonuses.append(p.yatzyBonus)
             playerThemes.append(themeType)
             playerDisplayNames.append(p.displayName)
             playerDisplayInitials.append(p.displayInitials)
@@ -472,7 +472,7 @@ final class MatchController {
             held: held,
             rollsRemaining: rollsRemaining,
             playerScores: playerScores,
-            playerYahtzeeBonuses: playerYahtzeeBonuses,
+            playerYatzyBonuses: playerYatzyBonuses,
             playerScoreTimestamps: playerScoreTimestamps,
             currentPlayerIndex: currentPlayerIndex,
             isRolling: isRolling
@@ -481,9 +481,9 @@ final class MatchController {
         let scoringPlayerIndex = currentPlayerIndex
         let previousLeaderIndices = leaderIndices
         let hadUpperBonus = upperBonus(for: currentPlayerIndex) > 0
-        let earnedBonus = qualifiesForExtraYahtzeeBonus(dice: diceValues, scorecard: yatzyScorecard(for: currentPlayerIndex))
+        let earnedBonus = qualifiesForExtraYatzyBonus(dice: diceValues, scorecard: yatzyScorecard(for: currentPlayerIndex))
         if earnedBonus {
-            playerYahtzeeBonuses[currentPlayerIndex] += 100
+            playerYatzyBonuses[currentPlayerIndex] += 100
         }
         let scoreVal = scoreValue(for: category, playerIndex: currentPlayerIndex)
         let capturedDice = diceValues
@@ -516,7 +516,7 @@ final class MatchController {
         held = snapshot.held
         rollsRemaining = snapshot.rollsRemaining
         playerScores = snapshot.playerScores
-        playerYahtzeeBonuses = snapshot.playerYahtzeeBonuses
+        playerYatzyBonuses = snapshot.playerYatzyBonuses
         playerScoreTimestamps = snapshot.playerScoreTimestamps
         currentPlayerIndex = snapshot.currentPlayerIndex
         isRolling = snapshot.isRolling
@@ -553,9 +553,9 @@ final class MatchController {
         return best.key
     }
 
-    func yahtzeeBonus(for playerIndex: Int) -> Int {
-        guard playerYahtzeeBonuses.indices.contains(playerIndex) else { return 0 }
-        return playerYahtzeeBonuses[playerIndex]
+    func yatzyBonus(for playerIndex: Int) -> Int {
+        guard playerYatzyBonuses.indices.contains(playerIndex) else { return 0 }
+        return playerYatzyBonuses[playerIndex]
     }
 
     // MARK: - Private
@@ -571,7 +571,7 @@ final class MatchController {
                 seat: i,
                 finalScore: Decimal(totalScore(for: i)),
                 rank: isGameOver ? computeRank(for: i) : 0,
-                yahtzeeBonus: playerYahtzeeBonuses[i],
+                yatzyBonus: playerYatzyBonuses[i],
                 playerID: playerIDs[i],
                 teamID: nil,
                 displayName: playerDisplayNames[i],
@@ -646,10 +646,10 @@ final class MatchController {
         }
         // Primary event for this scoring action
         if earnedBonus {
-            sink(CommentaryEvent(kind: .yahtzeeBonusEarned, player: scoringPlayerName))
-        } else if category == .yahtzee && scoreVal == 50 {
+            sink(CommentaryEvent(kind: .yatzyBonusEarned, player: scoringPlayerName))
+        } else if category == .yatzy && scoreVal == 50 {
             sink(CommentaryEvent(kind: .yatzyRolled, player: scoringPlayerName))
-        } else if category == .yahtzee && scoreVal == 0 {
+        } else if category == .yatzy && scoreVal == 0 {
             sink(CommentaryEvent(kind: .yatzyScratched, player: scoringPlayerName))
         } else if scoreVal == 0 {
             sink(CommentaryEvent(kind: .categoryScratched, player: scoringPlayerName, category: category.displayName))
@@ -723,7 +723,7 @@ final class MatchController {
             })
         }
         playerScoreTimestamps = sorted.map { _ in [:] }
-        playerYahtzeeBonuses = sorted.map { $0.yahtzeeBonus }
+        playerYatzyBonuses = sorted.map { $0.yatzyBonus }
         playerThemes = sorted.map { Theme.ThemeType(rawValue: $0.displayThemeID) ?? .midnight }
         playerDisplayNames = sorted.map { $0.displayName }
         playerDisplayInitials = sorted.map { $0.displayInitials }
@@ -766,7 +766,7 @@ final class MatchController {
 
     /// Host-side: apply a guest's score using their reported dice values.
     /// Temporarily loads the remote dice so Layer 1's pure scoring functions
-    /// (`legalScoreCategories`, `scoreValue`, `qualifiesForExtraYahtzeeBonus`)
+    /// (`legalScoreCategories`, `scoreValue`, `qualifiesForExtraYatzyBonus`)
     /// all see the correct state. Fires `onScoreApplied` on success.
     func applyRemoteScore(category: YatzyCategory, remoteValues: [Int], forParticipantID participantID: UUID) {
         guard let index = participantIDs.firstIndex(of: participantID),

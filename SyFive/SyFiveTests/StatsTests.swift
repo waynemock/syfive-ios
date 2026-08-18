@@ -85,13 +85,13 @@ struct StatsTests {
     // Verify the hand-authored grand totals match the scoring functions.
     @Test func aFinalScoreMatchesScoringFunctions() throws {
         let scorecard = scorecardFromEntries(StatsFixtures.aScorecard)
-        let computed = grandTotal(scorecard: scorecard, yahtzeeBonus: 0)
+        let computed = grandTotal(scorecard: scorecard, yatzyBonus: 0)
         #expect(computed == 296, "A's computed grand total should be 296")
     }
 
     @Test func bFinalScoreMatchesScoringFunctions() throws {
         let scorecard = scorecardFromEntries(StatsFixtures.bScorecard)
-        let computed = grandTotal(scorecard: scorecard, yahtzeeBonus: 0)
+        let computed = grandTotal(scorecard: scorecard, yatzyBonus: 0)
         #expect(computed == 164, "B's computed grand total should be 164")
     }
 
@@ -324,8 +324,8 @@ struct StatsTests {
     // MARK: - Stage 3: CategoryStats
     //
     // Fixtures used: StatsFixtures.withScorecards (scorecardMatch only)
-    // Player A: fourOfAKind=0(scratch), fullHouse=25, yahtzee=50, chance=26
-    // Player B: fullHouse=0(scratch), largeStraight=0(scratch), yahtzee=50, chance=22
+    // Player A: fourOfAKind=0(scratch), fullHouse=25, yatzy=50, chance=26
+    // Player B: fullHouse=0(scratch), largeStraight=0(scratch), yatzy=50, chance=22
 
     @Test func categoryStats_scratchCountsAsZeroNotNil() {
         // fourOfAKind is scratched (value=0). Must appear in timesFilled, not be dropped.
@@ -348,8 +348,8 @@ struct StatsTests {
         #expect(stats?.bestValue    == 25)
     }
 
-    @Test func categoryStats_yahtzeeA() {
-        let stats = categoryStats(category: .yahtzee, playerID: FixtureID.playerA,
+    @Test func categoryStats_yatzyA() {
+        let stats = categoryStats(category: .yatzy, playerID: FixtureID.playerA,
                                   matches: StatsFixtures.withScorecards)
         #expect(stats?.scratchRate  == 0.0)
         #expect(stats?.bestValue    == 50)
@@ -370,15 +370,15 @@ struct StatsTests {
         #expect(stats?.scratchRate == 1.0)
     }
 
-    @Test func categoryStats_bYahtzeeNotScratched() {
-        let stats = categoryStats(category: .yahtzee, playerID: FixtureID.playerB,
+    @Test func categoryStats_bYatzyNotScratched() {
+        let stats = categoryStats(category: .yatzy, playerID: FixtureID.playerB,
                                   matches: StatsFixtures.withScorecards)
         #expect(stats?.scratchRate == 0.0)
         #expect(stats?.bestValue   == 50)
     }
 
     @Test func categoryStats_returnsNilForUnknownPlayer() {
-        let stats = categoryStats(category: .yahtzee, playerID: UUID(),
+        let stats = categoryStats(category: .yatzy, playerID: UUID(),
                                   matches: StatsFixtures.withScorecards)
         #expect(stats == nil)
     }
@@ -417,7 +417,7 @@ struct StatsTests {
 
     // MARK: - Stage 3: YatzyStats
     //
-    // Both A and B scored Yahtzee=50 in scorecardMatch, yahtzeeBonus=0 each.
+    // Both A and B scored Yatzy=50 in scorecardMatch, yatzyBonus=0 each.
     // A: chance=26, B: chance=22
 
     @Test func yatzyStats_aHitRate() {
@@ -446,7 +446,7 @@ struct StatsTests {
     // MARK: - Stage 4: MatchProgression
     //
     // scorecardMatch timestamps: A scores at min2,4,6...26 / B at min3,5,7...27.
-    // A leads wire-to-wire. Largest lead at min24 (A scores Yahtzee):
+    // A leads wire-to-wire. Largest lead at min24 (A scores Yatzy):
     //   currentTotals: A=270, B=92 → margin=178.
     // Final: A=296, B=164.
 
@@ -454,7 +454,7 @@ struct StatsTests {
         let entry = ScoreEntry(slotKey: YatzyCategory.chance.slotKey, value: Decimal(26),
                                metadata: nil, recordedAt: nil)
         let participant = Participant(
-            id: UUID(), seat: 0, finalScore: 26, rank: 1, yahtzeeBonus: 0,
+            id: UUID(), seat: 0, finalScore: 26, rank: 1, yatzyBonus: 0,
             playerID: FixtureID.playerA, teamID: nil,
             displayName: "A", displayInitials: "A", displayThemeID: "midnight",
             scoreEntries: [entry]

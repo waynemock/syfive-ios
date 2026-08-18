@@ -62,7 +62,7 @@ struct MatchHistoryRow: View {
                 Participant(
                     id: UUID(), seat: i,
                     finalScore: Decimal(p.score), rank: p.rank,
-                    yahtzeeBonus: 0, playerID: nil, teamID: nil,
+                    yatzyBonus: 0, playerID: nil, teamID: nil,
                     displayName: p.name,
                     displayInitials: String(p.name.prefix(1)),
                     displayThemeID: p.theme,

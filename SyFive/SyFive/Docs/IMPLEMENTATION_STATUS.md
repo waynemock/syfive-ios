@@ -22,8 +22,8 @@ The core game loop, dice system, scorecard UX, persistence, stats, feel system (
 | Category locks after use | ✅ Done | |
 | Upper section: Ones–Sixes | ✅ Done | |
 | Upper bonus (63 threshold, +35) | ✅ Done | |
-| Lower section: 3oaK, 4oaK, FH, SS, LS, Yahtzee, Chance | ✅ Done | All scoring correct |
-| Yahtzee bonus (+100 per extra Yatzy) | ✅ Done | |
+| Lower section: 3oaK, 4oaK, FH, SS, LS, Yatzy, Chance | ✅ Done | All scoring correct |
+| Yatzy bonus (+100 per extra Yatzy) | ✅ Done | |
 | Joker rules (forced scoring on second Yatzy) | ✅ Done | Full joker logic in `GameModel` |
 | Undo last score | ✅ Done | One level of undo via `LastScoreSnapshot` |
 | Winner detection + end-of-game state | ✅ Done | Tie support included |

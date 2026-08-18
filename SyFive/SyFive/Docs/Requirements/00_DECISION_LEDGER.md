@@ -38,7 +38,7 @@ file is HEAD.*
 | ID | Current ruling | Source → chain |
 |---|---|---|
 | D-002 | Brand is **SyFive**; the game is called **Yatzy**; standard category vocabulary (Ones–Sixes, Full House, etc.). The brand owns the experience, not the rulebook. | `SyFive.md §2` |
-| D-003 | Ruleset is **Classic Hasbro** — Yahtzee 50, +100 per extra while the box holds a live 50, joker forced-scoring. *Not* European Yatzy. | `SyFive.md §5` (recommended European ⭐) → superseded by implementation + `02 §4` |
+| D-003 | Ruleset is **Classic Hasbro** — Yatzy 50, +100 per extra while the box holds a live 50, joker forced-scoring. *Not* European Yatzy. | `SyFive.md §5` (recommended European ⭐) → superseded by implementation + `02 §4` |
 | D-004 | Upper bonus: sum of upper section ≥ **63 → +35**. | implemented · confirmed `02 §4.2` |
 | D-005 | **Strict-Hasbro poison rule:** a Yatzy box scratched to 0 disables *both* the +100 bonus *and* joker forced-scoring. `isJokerRoll` gates on `== 50`, not `!= nil`. | `02 §4.3` |
 | D-006 | The calm ethos is a **product filter**, not an aesthetic: no ads, no casino noise, no dark patterns, no fake currency. It decides scope, monetization, and features. | `SyFive.md §1, §14` |
@@ -61,7 +61,7 @@ file is HEAD.*
 |---|---|---|
 | D-014 | `ScoreEntry` shape is **frozen**. `value: Decimal?` — `nil` = unscored, `0` = deliberately scratched. Completeness tests non-nil, never `> 0`. | `02 §2.2` |
 | D-015 | `metadata: [String: ScoreValue]?` is typed and **dormant** — `nil` everywhere in SyFive 1.0; activates in ScoreIt v2. | `02 §2.2` |
-| D-016 | `yahtzeeBonus` is a field on `Participant`, not a `ScoreEntry` and not metadata. | `02 §2.7` |
+| D-016 | `yatzyBonus` is a field on `Participant`, not a `ScoreEntry` and not metadata. | `02 §2.7` |
 | D-017 | Winner direction is **declared by the scoring system**, never stored. | `02 §2.5` |
 | D-018 | `Participant` carries a display snapshot (`displayName/Initials/ThemeID`); rendering never depends on roster refs. `playerID` xor `teamID` enforced in code, not schema. | `02 §2.7` |
 | D-019 | `Team` ships as frozen schema, never instantiated in SyFive 1.0. | `02 §2.4` |

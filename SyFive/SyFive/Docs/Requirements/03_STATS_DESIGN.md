@@ -141,7 +141,7 @@ shared contract even in principle.
 ### 3.1 The one derivable-count / non-derivable-detail split
 
 Joker placements are the lone subtlety. **Joker *count* is derivable** —
-`Participant.yahtzeeBonus / 100` gives the number of bonus Yahtzees. But ***which category*
+`Participant.yatzyBonus / 100` gives the number of bonus Yatzys. But ***which category*
 a joker was placed into is not** recoverable: a joker Full House scored 25 is
 indistinguishable in the completed scorecard from an earned Full House. That detail is not
 worth capturing for 1.0; the count is enough. Noted so no one later mistakes the gap for a
@@ -273,7 +273,7 @@ struct RecordsBoard: Sendable {
 ```
 
 All generic (rank + finalScore). "Most Yatzies in one match" is Tier 2 (§6.3) because it
-reads `yahtzeeBonus`, so it lives in the Yatzy records extension, not here.
+reads `yatzyBonus`, so it lives in the Yatzy records extension, not here.
 
 ### 5.5 Ordered-history helpers
 
@@ -327,13 +327,13 @@ spirit, like the suggested-move highlight.
 struct YatzyStats: Sendable {
     var yatzyHitRate: Double               // matches with Yatzy box == 50 / matches
     var careerYatzyCount: Int              // scored-50 boxes + bonus Yatzies
-    var multiYatzyMatches: Int             // matches where yahtzeeBonus > 0
-    var mostYatziesInOneMatch: Int         // 1 + max(yahtzeeBonus / 100) over matches
+    var multiYatzyMatches: Int             // matches where yatzyBonus > 0
+    var mostYatziesInOneMatch: Int         // 1 + max(yatzyBonus / 100) over matches
     var averageChance: Decimal             // sneaky dice-quality proxy — Chance is the raw sum
 }
 ```
 
-Bonus counts come straight off `Participant.yahtzeeBonus` (`/ 100` per extra) — no scoring
+Bonus counts come straight off `Participant.yatzyBonus` (`/ 100` per extra) — no scoring
 re-run. `mostYatziesInOneMatch` is the Tier-2 record that belongs with these, not on the
 generic `RecordsBoard`.
 
@@ -342,7 +342,7 @@ generic `RecordsBoard`.
 `recordedAt` on every `ScoreEntry` (hardened per §7) means a completed match can be
 **replayed**: sort all participants' entries by timestamp, and at each step run the
 **existing pure Tier-2 contextual scoring** over the partial scorecard to get running
-totals (upper bonus and Yahtzee bonus fold in correctly because the functions take
+totals (upper bonus and Yatzy bonus fold in correctly because the functions take
 scorecard state, not just a cell).
 
 ```
@@ -378,7 +378,7 @@ Swift Charts line series via §4.
 category-scored boundary, data model §3.4). It is no longer best-effort.
 
 - On every category score, stamp the new `ScoreEntry.recordedAt = Date()` as part of the
-  same narrow upsert that already persists the entry, `yahtzeeBonus`, and advanced turn
+  same narrow upsert that already persists the entry, `yatzyBonus`, and advanced turn
   state.
 - **`nil` now means "legacy data only"** — a match created before this hardening. §6.4
   progression treats a `nil`-timestamp match as un-replayable and falls back to showing
@@ -463,7 +463,7 @@ completed matches with known ranks/scores/scorecards) and assert exact numbers.
    pairwise-ahead, streaks, and records against fixtures.*
 3. **Tier-2 Yatzy stats.** `CategoryStats`, `UpperSectionStats`, `YatzyStats`, reusing the
    Domain scoring functions. *Check: scratch rate distinguishes `0` from `nil`; bonus
-   counts match `yahtzeeBonus`.*
+   counts match `yatzyBonus`.*
 4. **`recordedAt` hardening + progression replay.** Make the checkpoint flush stamp
    `recordedAt` unconditionally (§7); build `MatchProgression` via prefix replay. *Check:
    a freshly played, persisted match replays to a monotonic per-player series with correct

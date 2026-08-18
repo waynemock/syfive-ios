@@ -330,8 +330,8 @@ struct HouseRecords {
 
     /// Yatzy count per §4.2: base (scored 50) plus bonus rolls.
     private static func yatzyCount(for p: Participant) -> Int {
-        let base = p.scoreEntries.first(where: { $0.slotKey == "yahtzee" })?.value == 50 ? 1 : 0
-        return base + (p.yahtzeeBonus / 100)
+        let base = p.scoreEntries.first(where: { $0.slotKey == YatzyCategory.yatzy.slotKey })?.value == 50 ? 1 : 0
+        return base + (p.yatzyBonus / 100)
     }
 
     /// Sum of Ones–Sixes, excluding the +35 bonus (which is not a ScoreEntry).

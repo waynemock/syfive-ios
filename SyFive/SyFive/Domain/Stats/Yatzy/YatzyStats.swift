@@ -1,17 +1,17 @@
 import Foundation
 
-// Yahtzee and bonus statistics for one player across completed matches.
-// Reads yahtzeeBonus (denormalized on Participant) and the Yahtzee category entry.
+// Yatzy and bonus statistics for one player across completed matches.
+// Reads yatzyBonus (denormalized on Participant) and the Yatzy category entry.
 
 struct YatzyStats: Sendable {
-    var yatzyHitRate: Double        // matches where Yahtzee box == 50 / total matches
-    var careerYatzyCount: Int       // sum of (box-50 hits) + (yahtzeeBonus / 100) over career
-    var multiYatzyMatches: Int      // matches where yahtzeeBonus > 0 (at least one bonus Yatzy)
-    var mostYatziesInOneMatch: Int  // max(boxHit + yahtzeeBonus/100) in any single match
+    var yatzyHitRate: Double        // matches where Yatzy box == 50 / total matches
+    var careerYatzyCount: Int       // sum of (box-50 hits) + (yatzyBonus / 100) over career
+    var multiYatzyMatches: Int      // matches where yatzyBonus > 0 (at least one bonus Yatzy)
+    var mostYatziesInOneMatch: Int  // max(boxHit + yatzyBonus/100) in any single match
     var averageChance: Decimal      // avg Chance score — a raw dice-quality proxy
 }
 
-// Computes Yahtzee-specific stats for playerID across the provided matches.
+// Computes Yatzy-specific stats for playerID across the provided matches.
 // Returns nil if the player appears in none of the matches.
 func yatzyStats(playerID: UUID, matches: [Match]) -> YatzyStats? {
     let participants = matches.compactMap { match in
@@ -27,10 +27,10 @@ func yatzyStats(playerID: UUID, matches: [Match]) -> YatzyStats? {
     var chanceCount    = 0
 
     for p in participants {
-        // Yahtzee box: scored 50 = hit, 0 = scratch, nil = shouldn't exist in completed match.
-        let yahtzeeValue = p.scoreEntries.first { $0.slotKey == YatzyCategory.yahtzee.slotKey }?.value
-        let boxHit       = yahtzeeValue == Decimal(50) ? 1 : 0
-        let bonusHits    = p.yahtzeeBonus / 100
+        // Yatzy box: scored 50 = hit, 0 = scratch, nil = shouldn't exist in completed match.
+        let yatzyValue = p.scoreEntries.first { $0.slotKey == YatzyCategory.yatzy.slotKey }?.value
+        let boxHit       = yatzyValue == Decimal(50) ? 1 : 0
+        let bonusHits    = p.yatzyBonus / 100
 
         yatzyHits   += boxHit
         careerCount += boxHit + bonusHits

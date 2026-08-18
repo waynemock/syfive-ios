@@ -226,7 +226,7 @@ are read as-is; nothing further is stored.
 ### 4.2 Deriving a participant's Yatzy count for a match
 
 ```
-yatzyCount = (scoreEntries["yatzy"].value == 50 ? 1 : 0) + (yahtzeeBonus / 100)
+yatzyCount = (scoreEntries["yatzy"].value == 50 ? 1 : 0) + (yatzyBonus / 100)
 ```
 
 This is correct under the strict-Hasbro poison rule (`02_` §4.3): a scratched Yatzy

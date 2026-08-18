@@ -31,7 +31,7 @@ extension CommentaryPersonality {
                 "Well rolled, {player}. Nobody's jealous. Everyone's jealous.",
                 "A Yatzy for {player}. The dice have chosen a favorite and it isn't you, reader."
             ],
-            .yahtzeeBonusEarned: [
+            .yatzyBonusEarned: [
                 "Another Yatzy. {player} is just showing off now.",
                 "A second five of a kind. {player}, leave some for the class.",
                 "Oh, a bonus Yatzy. {player} definitely needed the extra hundred.",

@@ -12,7 +12,7 @@ enum YatzyCategory: String, CaseIterable, Codable, Hashable, Sendable, Identifia
     case fullHouse
     case smallStraight
     case largeStraight
-    case yahtzee
+    case yatzy
     case chance
 
     var id: String { rawValue }
@@ -38,7 +38,7 @@ enum YatzyCategory: String, CaseIterable, Codable, Hashable, Sendable, Identifia
         case .fullHouse:    return "Full House"
         case .smallStraight: return "Small Straight"
         case .largeStraight: return "Large Straight"
-        case .yahtzee:      return "Yatzy"
+        case .yatzy:      return "Yatzy"
         case .chance:       return "Chance"
         }
     }

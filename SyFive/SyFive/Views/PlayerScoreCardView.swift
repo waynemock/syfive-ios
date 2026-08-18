@@ -274,7 +274,7 @@ struct PlayerScoreCardView: View {
                     summaryRow(title: "Total", value: upperSectionTotal)
                 } else {
                     summaryRow(title: "Subtotal", value: lowerSectionSubtotal)
-                    summaryRow(title: "Yatzy Bonus", value: model.yahtzeeBonus(for: playerIndex))
+                    summaryRow(title: "Yatzy Bonus", value: model.yatzyBonus(for: playerIndex))
                     summaryRow(title: "Total", value: lowerSectionTotal)
                 }
             }
@@ -336,7 +336,7 @@ struct PlayerScoreCardView: View {
     }
 
     private var lowerSectionTotal: Int {
-        lowerSectionSubtotal + model.yahtzeeBonus(for: playerIndex)
+        lowerSectionSubtotal + model.yatzyBonus(for: playerIndex)
     }
 
     private var bestSuggestedCategory: YatzyCategory? {

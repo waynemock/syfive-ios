@@ -18,7 +18,15 @@ struct DiceAreaView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            trayView
+            ZStack(alignment: .top) {
+                trayView
+                Text("Tap dice to hold")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 8)
+                    .opacity(showHoldHint ? 1 : 0)
+                    .animation(.easeInOut(duration: 0.25), value: showHoldHint)
+            }
             rollControls
             #if DEBUG
             if AppConfig.DebugDice.showPhysicsSliders {
@@ -126,8 +134,8 @@ struct DiceAreaView: View {
                             }
                             // Yatzy-moment predicate (D-052): all-same values + box nil or 50.
                             let isYatzy = !values.isEmpty && values.dropFirst().allSatisfy { $0 == values[0] }
-                            let yahtzeeBox = model.scores(for: model.currentPlayerIndex)[.yahtzee]
-                            if isYatzy && (yahtzeeBox == nil || yahtzeeBox == 50) {
+                            let yatzyBox = model.scores(for: model.currentPlayerIndex)[.yatzy]
+                            if isYatzy && (yatzyBox == nil || yatzyBox == 50) {
                                 director.yatzyMoment()
                                 celebrationCoordinator.triggerYatzy(playerIndex: model.currentPlayerIndex)
                             }
@@ -269,8 +277,8 @@ struct DiceAreaView: View {
             fa?.onAllDiceSettled(values: values)
             let isYatzy = !values.isEmpty && values.dropFirst().allSatisfy { $0 == values[0] }
             guard isYatzy else { return }
-            let yahtzeeBox = mc.scores(for: mc.currentPlayerIndex)[.yahtzee]
-            guard yahtzeeBox == nil || yahtzeeBox == 50 else { return }
+            let yatzyBox = mc.scores(for: mc.currentPlayerIndex)[.yatzy]
+            guard yatzyBox == nil || yatzyBox == 50 else { return }
             dir.yatzyMoment()
             cc.triggerYatzy(playerIndex: mc.currentPlayerIndex)
         }
@@ -319,6 +327,12 @@ struct DiceAreaView: View {
 
     private var allDiceHeld: Bool {
         model.canScore && !model.held.isEmpty && model.held.allSatisfy { $0 }
+    }
+
+    private var showHoldHint: Bool {
+        model.rollsRemaining < 3
+            && model.rollsRemaining > 0
+            && model.held.filter { $0 }.count < 5
     }
 
     private var isPlayAgainButton: Bool {
@@ -439,4 +453,7 @@ struct DiceAreaView: View {
 
 #Preview {
     DiceAreaView(model: MatchController())
+        .environment(FeelDirector())
+        .environment(CelebrationCoordinator())
+        .environment(GameNightController())
 }

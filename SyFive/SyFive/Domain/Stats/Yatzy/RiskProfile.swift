@@ -3,7 +3,7 @@ import Foundation
 struct RiskProfile: Sendable {
     var totalScratchRate:    Double          // zeros / total fills across all matches
     var earlyZeroRate:       Double          // zeros in first 7 turns / all zeros (timestamp matches only)
-    var yatzyZeroRate:       Double          // fraction of Yahtzee fills that were scratched
+    var yatzyZeroRate:       Double          // fraction of Yatzy fills that were scratched
     var yatzyEverZeroed:     Bool
     var mostScratchedCategory: YatzyCategory?
     var matchesWithTimestamps: Int
@@ -34,7 +34,7 @@ func riskProfile(playerID: UUID, matches: [Match]) -> RiskProfile? {
                     scratchCount[cat, default: 0] += 1
                 }
             }
-            if entry.slotKey == YatzyCategory.yahtzee.slotKey {
+            if entry.slotKey == YatzyCategory.yatzy.slotKey {
                 yatzyFills += 1
                 if value == 0 { yatzyZeros += 1 }
             }

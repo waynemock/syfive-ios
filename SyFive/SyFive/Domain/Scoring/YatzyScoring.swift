@@ -25,7 +25,7 @@ func faceValue(of category: YatzyCategory, dice: [Int]) -> Int {
     case .fullHouse:     return isFullHouse(dice) ? 25 : 0
     case .smallStraight: return isSmallStraight(dice) ? 30 : 0
     case .largeStraight: return isLargeStraight(dice) ? 40 : 0
-    case .yahtzee:       return hasKind(of: 5, in: dice) ? 50 : 0
+    case .yatzy:       return hasKind(of: 5, in: dice) ? 50 : 0
     case .chance:        return sum
     }
 }
@@ -88,15 +88,15 @@ func upperBonus(scorecard: YatzyScorecard) -> Int {
     upperSubtotal(scorecard: scorecard) >= 63 ? 35 : 0
 }
 
-// True when this roll qualifies for the +100 Yahtzee bonus:
-// five of a kind AND the Yahtzee box holds a live 50 (not scratched 0).
-func qualifiesForExtraYahtzeeBonus(dice: [Int], scorecard: YatzyScorecard) -> Bool {
-    isYatzyRoll(dice) && scorecard[.yahtzee] == 50
+// True when this roll qualifies for the +100 Yatzy bonus:
+// five of a kind AND the Yatzy box holds a live 50 (not scratched 0).
+func qualifiesForExtraYatzyBonus(dice: [Int], scorecard: YatzyScorecard) -> Bool {
+    isYatzyRoll(dice) && scorecard[.yatzy] == 50
 }
 
-func grandTotal(scorecard: YatzyScorecard, yahtzeeBonus: Int) -> Int {
+func grandTotal(scorecard: YatzyScorecard, yatzyBonus: Int) -> Int {
     let base = scorecard.values.reduce(0) { $0 + NSDecimalNumber(decimal: $1).intValue }
-    return base + upperBonus(scorecard: scorecard) + yahtzeeBonus
+    return base + upperBonus(scorecard: scorecard) + yatzyBonus
 }
 
 // A scorecard is complete when all 13 categories carry a non-nil value.
@@ -148,11 +148,11 @@ func matchingUpperCategory(for dice: [Int]) -> YatzyCategory? {
 }
 
 // POISON FIX (§4.3 — DATAMODEL_DESIGN.md):
-// The previous GameModel checked `scores[.yahtzee] != nil`, which incorrectly
-// treated a scratched-0 Yahtzee as a "live" one and fired both joker placement
+// The previous GameModel checked `scores[.yatzy] != nil`, which incorrectly
+// treated a scratched-0 Yatzy as a "live" one and fired both joker placement
 // and the +100 bonus. Only a live 50 enables either. This predicate is the fix.
 func isJokerRoll(dice: [Int], scorecard: YatzyScorecard) -> Bool {
-    isYatzyRoll(dice) && scorecard[.yahtzee] == 50
+    isYatzyRoll(dice) && scorecard[.yatzy] == 50
 }
 
 // MARK: - Private
@@ -164,7 +164,7 @@ fileprivate func jokerLowerValue(of category: YatzyCategory, dice: [Int]) -> Int
     case .fullHouse:     return 25
     case .smallStraight: return 30
     case .largeStraight: return 40
-    case .yahtzee:       return 50
+    case .yatzy:       return 50
     default:             return 0
     }
 }

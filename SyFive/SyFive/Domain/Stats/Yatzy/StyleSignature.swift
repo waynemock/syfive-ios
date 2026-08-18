@@ -24,7 +24,7 @@ func styleSignature(playerID: UUID, matches: [Match]) -> StyleSignature? {
 
     struct FillData {
         var order:      [YatzyCategory]   // 13 categories in fill order
-        var yatzyIndex: Int?              // 0-indexed position of non-zero Yahtzee
+        var yatzyIndex: Int?              // 0-indexed position of non-zero Yatzy
     }
 
     var dataPoints: [FillData] = []
@@ -44,10 +44,10 @@ func styleSignature(playerID: UUID, matches: [Match]) -> StyleSignature? {
         guard sorted.count == 13 else { continue }
 
         var yatzyIdx: Int? = nil
-        if let idx = sorted.firstIndex(of: .yahtzee) {
-            let yahtzeeValue = p.scoreEntries
-                .first { $0.slotKey == YatzyCategory.yahtzee.slotKey }?.value
-            if let v = yahtzeeValue, v != Decimal(0) {
+        if let idx = sorted.firstIndex(of: .yatzy) {
+            let yatzyValue = p.scoreEntries
+                .first { $0.slotKey == YatzyCategory.yatzy.slotKey }?.value
+            if let v = yatzyValue, v != Decimal(0) {
                 yatzyIdx = idx
             }
         }
@@ -77,7 +77,7 @@ func styleSignature(playerID: UUID, matches: [Match]) -> StyleSignature? {
                                      : avgUpperPos > 7.5  ? .neglect
                                      : .backfill
 
-    // Average Yahtzee turn (1-indexed) across non-zero fills.
+    // Average Yatzy turn (1-indexed) across non-zero fills.
     let yatzyTurns = dataPoints.compactMap { $0.yatzyIndex.map { Double($0 + 1) } }
     let averageYatzyTurn: Double? = yatzyTurns.isEmpty ? nil
         : yatzyTurns.reduce(0, +) / Double(yatzyTurns.count)

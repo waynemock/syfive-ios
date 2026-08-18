@@ -214,7 +214,7 @@ private struct UnfinishedScorecardWidthKey: PreferenceKey {
     }
 
     let p1 = ParticipantModel()
-    p1.seat = 0; p1.rank = 0; p1.finalScore = 0; p1.yahtzeeBonus = 0
+    p1.seat = 0; p1.rank = 0; p1.finalScore = 0; p1.yatzyBonus = 0
     p1.displayName = "Wayne"; p1.displayInitials = "WM"
     p1.displayThemeID = Theme.ThemeType.midnight.rawValue
     p1.scoreEntries = [
@@ -227,7 +227,7 @@ private struct UnfinishedScorecardWidthKey: PreferenceKey {
     ctx.insert(p1)
 
     let p2 = ParticipantModel()
-    p2.seat = 1; p2.rank = 0; p2.finalScore = 0; p2.yahtzeeBonus = 0
+    p2.seat = 1; p2.rank = 0; p2.finalScore = 0; p2.yatzyBonus = 0
     p2.displayName = "Sherida"; p2.displayInitials = "SM"
     p2.displayThemeID = Theme.ThemeType.forest.rawValue
     p2.scoreEntries = [

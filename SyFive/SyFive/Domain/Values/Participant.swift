@@ -10,7 +10,7 @@ struct Participant: Codable, Hashable, Sendable, Identifiable {
     var seat: Int
     var finalScore: Decimal        // denormalized; resolved at completion
     var rank: Int                  // 1 = winner; ties share rank; 0 = unresolved
-    var yahtzeeBonus: Int          // cumulative +100 per extra Yahtzee beyond first
+    var yatzyBonus: Int          // cumulative +100 per extra Yatzy beyond first
 
     // Exactly one must be non-nil — enforced by factory inits and validate().
     var playerID: UUID?
@@ -38,7 +38,7 @@ struct Participant: Codable, Hashable, Sendable, Identifiable {
             seat: seat,
             finalScore: 0,
             rank: 0,
-            yahtzeeBonus: 0,
+            yatzyBonus: 0,
             playerID: playerID,
             teamID: nil,
             displayName: displayName,
@@ -61,7 +61,7 @@ struct Participant: Codable, Hashable, Sendable, Identifiable {
             seat: seat,
             finalScore: 0,
             rank: 0,
-            yahtzeeBonus: 0,
+            yatzyBonus: 0,
             playerID: nil,
             teamID: teamID,
             displayName: displayName,

@@ -1,6 +1,6 @@
-# Requirements — “Sydoku-quality” Yahtzee App (Working Spec)
+# Requirements — “Sydoku-quality” Yatzy App (Working Spec)
 
-This document captures the current product + technical direction for a Yahtzee/Yatzy-style dice game that feels “from the makers of Sydoku”: premium, calm, zero clutter, and tactile.
+This document captures the current product + technical direction for a Yatzy-style dice game that feels “from the makers of Sydoku”: premium, calm, zero clutter, and tactile.
 
 ---
 
@@ -17,7 +17,7 @@ This document captures the current product + technical direction for a Yahtzee/Y
 ## 1.0 Feature Set
 
 ### Core Gameplay
-- Classic Yahtzee/Yatzy mechanics:
+- Classic Yatzy mechanics:
   - 5 dice
   - Up to 3 rolls per turn
   - Player may **hold** any subset of dice between rolls
@@ -26,9 +26,9 @@ This document captures the current product + technical direction for a Yahtzee/Y
 - Standard scorecard structure:
   - Upper section: Ones–Sixes
   - Upper bonus: standard threshold + bonus value (configurable later)
-  - Lower section: 3/4 of a kind, Full House, Small/Large Straight, Yahtzee, Chance
+  - Lower section: 3/4 of a kind, Full House, Small/Large Straight, Yatzy, Chance
 - Optional rules (defer unless you want them for 1.0):
-  - Yahtzee bonus
+  - Yatzy bonus
   - Joker rules / forced scoring variants
 
 ### “Feels like Sydoku” UX
@@ -202,7 +202,7 @@ Suggested bridge:
 ## Open Questions
 
 - Naming: Yahtzee vs Yatzy (branding + legal considerations).
-- Default ruleset specifics (bonus threshold, Yahtzee bonus/joker rules).
+- Default ruleset specifics (bonus threshold, Yatzy bonus/joker rules).
 - Optional helper:
   - “suggest best score” (default OFF; keep calm)
 - Multiplayer/pass-and-play:

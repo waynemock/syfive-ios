@@ -31,7 +31,7 @@ extension CommentaryPersonality {
                 "{player} did nothing extra, and everything worked. Yatzy.",
                 "A small miracle on the table. {player}, five of a kind."
             ],
-            .yahtzeeBonusEarned: [
+            .yatzyBonusEarned: [
                 "Again, the dice align for {player}. A hundred more, received quietly.",
                 "The flow continues. {player} finds another five of a kind.",
                 "What began, continues. {player} takes the bonus.",

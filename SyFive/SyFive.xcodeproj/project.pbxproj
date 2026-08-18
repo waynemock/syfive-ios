@@ -55,6 +55,9 @@
 				Docs/Requirements/10_GAMENIGHT_COMMENTARY.md,
 				Docs/Requirements/11_GAMENIGHT_THEATER_FEEL.md,
 				Docs/Requirements/12_HOUSE_RECORDS_DESIGN.md,
+				Docs/Requirements/13_HOLD_HINT_DESIGN.md,
+				Docs/Requirements/14_APPSTORE_COPY.md,
+				Docs/Requirements/15_HELP_SCREEN.md,
 				Info.plist,
 				Utilities/analyze_dice_fairness.py,
 			);

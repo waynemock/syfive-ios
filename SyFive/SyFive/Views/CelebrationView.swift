@@ -775,7 +775,7 @@ private func makeFallParticles(winnerThemes: [Theme]) -> [Mote] {
         model.seedScoresForPreview([.ones: 3, .twos: 6, .fullHouse: 25], forPlayerIndex: 1)
         coordinator.triggerYatzy(playerIndex: 0)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            coordinator.triggerScoreAnnouncement(playerIndex: 0, category: .yahtzee, value: 50)
+            coordinator.triggerScoreAnnouncement(playerIndex: 0, category: .yatzy, value: 50)
         }
     }
 }

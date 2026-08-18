@@ -51,10 +51,10 @@ func matchProgression(from match: Match) -> MatchProgression? {
 
         for (cat, val, at) in sortedEntries {
             partialScorecard[cat] = val
-            // Attribute the entire yahtzeeBonus from the moment the Yahtzee box is filled —
+            // Attribute the entire yatzyBonus from the moment the Yatzy box is filled —
             // the earliest we can credit it without per-bonus timestamps.
-            let bonus = partialScorecard[.yahtzee] != nil ? p.yahtzeeBonus : 0
-            let total = Decimal(grandTotal(scorecard: partialScorecard, yahtzeeBonus: bonus))
+            let bonus = partialScorecard[.yatzy] != nil ? p.yatzyBonus : 0
+            let total = Decimal(grandTotal(scorecard: partialScorecard, yatzyBonus: bonus))
             steps.append(ProgressionStep(at: at, category: cat, runningTotal: total))
         }
 

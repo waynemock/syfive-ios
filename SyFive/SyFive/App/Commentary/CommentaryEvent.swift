@@ -2,7 +2,7 @@ import Foundation
 
 enum CommentaryEventKind: Hashable {
     case yatzyRolled
-    case yahtzeeBonusEarned
+    case yatzyBonusEarned
     case winnerDeclared
     case winnerTie
     case upperBonusEarned
@@ -15,7 +15,7 @@ enum CommentaryEventKind: Hashable {
 
     var tier: CommentaryEventTier {
         switch self {
-        case .yatzyRolled, .yahtzeeBonusEarned, .winnerDeclared, .winnerTie:
+        case .yatzyRolled, .yatzyBonusEarned, .winnerDeclared, .winnerTie:
             return .celebration
         case .upperBonusEarned, .yatzyScratched, .bigTurn, .leadChange:
             return .highlight

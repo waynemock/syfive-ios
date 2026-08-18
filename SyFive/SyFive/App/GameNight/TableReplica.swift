@@ -28,7 +28,7 @@ final class TableReplica: MatchPresenting {
     private var totalScoresStore: [Int] = []
     private var upperSubtotalsStore: [Int] = []
     private var upperBonusesStore: [Int] = []
-    private var yahtzeeBonusesStore: [Int] = []
+    private var yatzyBonusesStore: [Int] = []
     private var winnerSet: Set<Int> = []
 
     func playerInitials(for playerIndex: Int) -> String {
@@ -49,8 +49,8 @@ final class TableReplica: MatchPresenting {
     func upperBonus(for playerIndex: Int) -> Int {
         upperBonusesStore.indices.contains(playerIndex) ? upperBonusesStore[playerIndex] : 0
     }
-    func yahtzeeBonus(for playerIndex: Int) -> Int {
-        yahtzeeBonusesStore.indices.contains(playerIndex) ? yahtzeeBonusesStore[playerIndex] : 0
+    func yatzyBonus(for playerIndex: Int) -> Int {
+        yatzyBonusesStore.indices.contains(playerIndex) ? yatzyBonusesStore[playerIndex] : 0
     }
     func isWinner(_ playerIndex: Int) -> Bool { winnerSet.contains(playerIndex) }
     func canScore(category: YatzyCategory, for playerIndex: Int) -> Bool { false }
