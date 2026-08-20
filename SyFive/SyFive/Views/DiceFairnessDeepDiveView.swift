@@ -101,35 +101,29 @@ struct DiceFairnessDeepDiveView: View {
     private var faceTableSection: some View {
         Section {
             VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Face").frame(width: 40, alignment: .leading)
-                    Text("Count").frame(width: 56, alignment: .trailing)
-                    Text("Freq %").frame(width: 72, alignment: .trailing)
-                    Text("Δ from ideal").frame(maxWidth: .infinity, alignment: .trailing)
-                }
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-
-                ForEach(1...6, id: \.self) { face in
-                    let count = CertifiedFairnessTest.faceCounts[face] ?? 0
-                    let freq  = Double(count) / Double(CertifiedFairnessTest.totalSamples) * 100
-                    let delta = freq - (100.0 / 6.0)
-                    HStack {
-                        Text("⚀⚁⚂⚃⚄⚅".map(String.init)[face - 1])
-                            .lineLimit(1)
-                            .frame(width: 40, alignment: .leading)
-                        Text("\(count)")
-                            .lineLimit(1)
-                            .frame(width: 56, alignment: .trailing)
-                        Text(String(format: "%.3f%%", freq))
-                            .lineLimit(1)
-                            .frame(width: 72, alignment: .trailing)
-                        Text(String(format: "%+.4fpp", delta))
-                            .lineLimit(1)
-                            .foregroundStyle(abs(delta) > 1.5 ? .orange : .secondary)
-                            .frame(maxWidth: .infinity, alignment: .trailing)
+                Grid(horizontalSpacing: 16, verticalSpacing: 6) {
+                    GridRow {
+                        Text("Face").gridColumnAlignment(.leading)
+                        Text("Count").gridColumnAlignment(.trailing)
+                        Text("Freq %").gridColumnAlignment(.trailing)
+                        Text("Δ from ideal").gridColumnAlignment(.trailing)
                     }
-                    .font(.subheadline.monospacedDigit())
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                    ForEach(1...6, id: \.self) { face in
+                        let count = CertifiedFairnessTest.faceCounts[face] ?? 0
+                        let freq  = Double(count) / Double(CertifiedFairnessTest.totalSamples) * 100
+                        let delta = freq - (100.0 / 6.0)
+                        GridRow {
+                            Text("⚀⚁⚂⚃⚄⚅".map(String.init)[face - 1])
+                            Text("\(count)")
+                            Text(String(format: "%.3f%%", freq))
+                            Text(String(format: "%+.4fpp", delta))
+                                .foregroundStyle(abs(delta) > 1.5 ? .orange : .secondary)
+                        }
+                        .font(.subheadline.monospacedDigit())
+                    }
                 }
 
                 Text("Ideal frequency is 16.6̄% per face. pp = percentage points deviation. At this sample size, random variation routinely produces ±0.5–1.5pp swings — anything under ±2pp is unremarkable.")

@@ -26,6 +26,8 @@ struct DiceRKView: View {
     let diceRoller: DiceRoller
     /// Current rendered size of this view — used to compute the camera FOV.
     var viewSize: CGSize = .zero
+    /// How much of the shorter viewport dimension the tray fills (0–1). Default 0.88.
+    var fillFactor: Float = 0.88
 
     // Persisted camera entity so the update closure can adjust FOV.
     @State private var cameraEntity = Entity()
@@ -139,7 +141,6 @@ struct DiceRKView: View {
         guard maxHalfTan > 0 else { return 62 }
 
         // fillFactor < 1 leaves a small margin around the tray edges.
-        let fillFactor: Float = 0.88
         return 2 * atan(maxHalfTan / fillFactor) * (180 / .pi)
     }
 

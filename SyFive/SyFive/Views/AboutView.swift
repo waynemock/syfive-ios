@@ -2,7 +2,8 @@ import SwiftUI
 
 struct AboutView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.theme) private var theme
+    @Environment(\.colorScheme) private var colorScheme
+    private var theme: Theme { Theme(type: .midnight, colorScheme: colorScheme) }
     @State private var isSafariPresented = false
 
     // TODO: replace with real App Store ID before submission
@@ -51,7 +52,7 @@ struct AboutView: View {
             .navigationTitle("About")
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) {
-                SyzygyInfo {
+                SyzygyInfo(theme: theme) {
                     isSafariPresented = true
                 }
             }

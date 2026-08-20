@@ -185,9 +185,6 @@ struct Theme {
     }
     /// Color for text on primary surfaces.
     var primaryText: Color {
-        if type == .paper {
-            return .black
-        }
         return colorScheme == .dark ? Color.white : Color.black
     }
     

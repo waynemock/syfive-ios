@@ -286,8 +286,12 @@ struct ContentView: View {
                 }
             }
             let ctx = modelContext
+            gameNight.onMatchStarted = {
+                celebrationCoordinator.clearAll()
+                celebrationCoordinator.clearWinnerAnnouncement()
+            }
             gameNight.onMatchComplete = { completedMatch in
-                // Guests write exactly once — upsert by session UUID.
+                // Upsert by session UUID so both host and guest end up with one canonical record.
                 let matchID = completedMatch.id
                 var descriptor = FetchDescriptor<MatchModel>(
                     predicate: #Predicate { $0.id == matchID }
@@ -295,10 +299,47 @@ struct ContentView: View {
                 descriptor.fetchLimit = 1
                 if let existing = (try? ctx.fetch(descriptor))?.first {
                     existing.hydrate(from: completedMatch, context: ctx)
+                    existing.isGameNight = true
                 } else {
                     let newModel = MatchModel()
                     ctx.insert(newModel)
                     newModel.hydrate(from: completedMatch, context: ctx)
+                    newModel.isGameNight = true
+                }
+                try? ctx.save()
+            }
+            gameNight.onHistoryManifestNeeded = {
+                // Fetch the most recent completed Game Night matches on this device.
+                let completed = "completed"
+                var descriptor = FetchDescriptor<MatchModel>(
+                    predicate: #Predicate { $0.statusRaw == completed },
+                    sortBy: [SortDescriptor(\MatchModel.completedAt, order: .reverse)]
+                )
+                descriptor.fetchLimit = 40
+                let all = (try? ctx.fetch(descriptor)) ?? []
+                return all.filter { $0.isGameNight }.prefix(20).map { $0.id }
+            }
+            gameNight.onHistoryMatchesNeeded = { matchIDs in
+                matchIDs.compactMap { id in
+                    var descriptor = FetchDescriptor<MatchModel>(predicate: #Predicate { $0.id == id })
+                    descriptor.fetchLimit = 1
+                    return (try? ctx.fetch(descriptor))?.first?.toDomain()
+                }
+            }
+            gameNight.onHistoryMatchesReceived = { matches in
+                for match in matches {
+                    let matchID = match.id
+                    var descriptor = FetchDescriptor<MatchModel>(predicate: #Predicate { $0.id == matchID })
+                    descriptor.fetchLimit = 1
+                    if let existing = (try? ctx.fetch(descriptor))?.first {
+                        existing.hydrate(from: match, context: ctx)
+                        existing.isGameNight = true
+                    } else {
+                        let newModel = MatchModel()
+                        ctx.insert(newModel)
+                        newModel.hydrate(from: match, context: ctx)
+                        newModel.isGameNight = true
+                    }
                 }
                 try? ctx.save()
             }
@@ -328,7 +369,6 @@ struct ContentView: View {
         .onChange(of: gameNight.phase) { _, newPhase in
             if newPhase == .inProgress {
                 showsGameNight = false
-                markCurrentMatchAsGameNight()
                 upsertGameNightPlayerModels()
             }
             // Re-show the seating sheet when the host calls playAgain().
@@ -350,6 +390,7 @@ struct ContentView: View {
             case .active:
                 director.handleForeground()
                 LegacyYahtzeeRepair.run(in: modelContext)
+                LegacyRematchRepair.run(in: modelContext)
             default: break
             }
         }

@@ -264,7 +264,6 @@ extension ContentView {
         guard let gameID = (try? modelContext.fetch(descriptor))?.first?.id else { return }
         celebrationCoordinator.clearWinnerAnnouncement()
         gameNight.broadcastRematch(gameID: gameID)
-        markCurrentMatchAsGameNight()
     }
 }
 

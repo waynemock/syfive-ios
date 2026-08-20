@@ -29,6 +29,6 @@ struct AppConfig {
     struct DebugGameNight {
         /// Capture Game Night logs per session and surface a "Game Night Logs" button
         /// at the bottom of each GN match detail sheet. Flip to false before shipping.
-        static let showLogs = true
+        static let showLogs = false
     }
 }

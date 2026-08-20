@@ -1,8 +1,10 @@
 import SwiftUI
 
 struct SyzygyInfo: View {
-    @Environment(\.theme) private var theme
-    
+    @Environment(\.theme) private var envTheme
+    var theme: Theme? = nil
+    private var resolvedTheme: Theme { theme ?? envTheme }
+
     var action: (() -> Void)?
 
     var body: some View {
@@ -26,8 +28,8 @@ struct SyzygyInfo: View {
             Spacer()
         }
         .font(.caption)
-        .foregroundStyle(theme.primaryAccent)
+        .foregroundStyle(resolvedTheme.primaryAccent)
         .padding(.vertical, 8)
-        .background(theme.backgroundColor)
+        .background(resolvedTheme.backgroundColor)
     }
 }

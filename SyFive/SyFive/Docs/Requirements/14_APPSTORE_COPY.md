@@ -92,7 +92,7 @@ description beat already conveys it.
 | 1 | Dice mid-tumble, motion caught in air | *Real dice. Real physics. Real rolls.* | Near-zero — roll and capture mid-air |
 | 2 | Two-player scorecard, two different themes | *A scorecard you can actually read.* | Low — reuse the game-night two-player setup |
 | 3 | The Yatzy moment: settled five-of-a-kind, rim light up, title card | *Five of a kind. Fifty points. No confetti.* | Opportunistic — capture next real Yatzy |
-| 4 | Dark, near-empty frame, one die | *No ads. No accounts. No noise.* | Near-zero — the icon with a caption |
+| 4 | Fair Dice sheet| *Real physics. Proven fair.* | Near-zero — just capture the sheet|
 
 Coverage: dice / scorecard+themes+multiplayer / signature moment+ethos / ethos closer.
 

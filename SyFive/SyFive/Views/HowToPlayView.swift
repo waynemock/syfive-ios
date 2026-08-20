@@ -91,7 +91,7 @@ struct HowToPlayView: View {
                 .accessibilityAddTraits(.isHeader)
             content()
                 .font(.body)
-                .foregroundStyle(theme.primaryText)
+                .foregroundStyle(.primary)
         }
     }
 
@@ -105,7 +105,7 @@ struct HowToPlayView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Upper")
                     .font(.subheadline.bold())
-                    .foregroundStyle(theme.primaryText)
+                    .foregroundStyle(theme.secondaryAccent)
                     .accessibilityAddTraits(.isHeader)
                 categoryRow(name: "Ones – Sixes", description: "Count that number and add them up.")
             }
@@ -113,7 +113,7 @@ struct HowToPlayView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Lower")
                     .font(.subheadline.bold())
-                    .foregroundStyle(theme.primaryText)
+                    .foregroundStyle(theme.secondaryAccent)
                     .accessibilityAddTraits(.isHeader)
                 categoryRow(name: "Three of a Kind", description: "Three matching. Score the total of all five dice.")
                 categoryRow(name: "Four of a Kind", description: "Four matching. Score the total of all five dice.")
@@ -136,7 +136,7 @@ struct HowToPlayView: View {
     private func categoryRow(name: String, description: String) -> some View {
         (Text(name).bold() + Text(" — ") + Text(description))
             .font(.body)
-            .foregroundStyle(theme.primaryText)
+            .foregroundStyle(.primary)
     }
 }
 

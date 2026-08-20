@@ -147,19 +147,6 @@ extension ContentView {
         if changed { try? modelContext.save() }
     }
 
-    func markCurrentMatchAsGameNight() {
-        var descriptor = FetchDescriptor<MatchModel>(
-            predicate: #Predicate { $0.statusRaw == "inProgress" },
-            sortBy: [SortDescriptor(\MatchModel.startedAt, order: .reverse)]
-        )
-        descriptor.fetchLimit = 1
-        guard let matchModel = (try? modelContext.fetch(descriptor))?.first else { return }
-        guard !matchModel.isGameNight else { return }
-        matchModel.isGameNight = true
-        model.isGameNight = true
-        try? modelContext.save()
-    }
-
     func syncPlayerThemesFromRoster() {
         let players = (try? modelContext.fetch(FetchDescriptor<PlayerModel>())) ?? []
         model.syncPlayerThemes(from: players)
@@ -175,11 +162,6 @@ extension ContentView {
         guard let gameID = (try? modelContext.fetch(gameDescriptor))?.first?.id else { return }
         model.save(to: modelContext, gameID: gameID)
         try? modelContext.save()
-        // markCurrentMatchAsGameNight() fires when phase→.inProgress, but the MatchModel may not
-        // exist yet at that moment (it's created here). Retry now that the record is persisted.
-        if gameNight.isSessionActive && gameNight.phase == .inProgress && !model.isGameNight {
-            markCurrentMatchAsGameNight()
-        }
         if model.isGameNight, let matchID = model.persistedMatchID {
             GameNightLogBuffer.shared.associateMatch(matchID: matchID)
         }

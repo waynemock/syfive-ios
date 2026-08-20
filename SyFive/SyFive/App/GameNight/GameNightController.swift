@@ -110,6 +110,10 @@ final class GameNightController {
     /// Fired on guests when matchComplete arrives. ContentView wires this to the upsert write.
     var onMatchComplete: ((Match) -> Void)?
 
+    /// Fired on guests when any matchStart arrives (new game or rematch).
+    /// ContentView wires this to clear celebration state so the winner card dismisses.
+    var onMatchStarted: (() -> Void)?
+
     // MARK: - Score announcement hook
 
     /// Fired on guest devices when an opponent's score is detected in an incoming matchState.
@@ -127,6 +131,18 @@ final class GameNightController {
     /// Fired on all devices when an undo is fully applied (host: after undoLastScore; guest: after undo matchState arrives).
     /// ContentView wires this to clear the score announcement banner.
     var onUndoApplied: (() -> Void)?
+
+    // MARK: - Match history sync hooks
+
+    /// Called to produce this device's manifest: the IDs of its last N completed GN matches.
+    /// ContentView wires this to a SwiftData fetch.
+    var onHistoryManifestNeeded: (() -> [UUID])?
+
+    /// Called with a list of match IDs to fetch. ContentView fetches and returns full Match values.
+    var onHistoryMatchesNeeded: (([UUID]) -> [Match])?
+
+    /// Called when a peer sends matches this device was missing. ContentView upserts them.
+    var onHistoryMatchesReceived: (([Match]) -> Void)?
 
     private let groupStateObserver = GroupStateObserver()
 
@@ -404,10 +420,14 @@ final class GameNightController {
         pendingAuthoritativeResult = nil
         onUndoWithDice = nil
         onMatchComplete = nil
+        onMatchStarted = nil
         onOpponentScored = nil
         onCommentaryReceived = nil
         onCommentarySettingsChanged = nil
         onUndoApplied = nil
+        onHistoryManifestNeeded = nil
+        onHistoryMatchesNeeded = nil
+        onHistoryMatchesReceived = nil
         pendingGuestUndoAvailable = false
         pendingHostUndoAvailable = false
         pendingSeatClaim = nil
@@ -644,8 +664,11 @@ final class GameNightController {
         case .matchState:     handleMatchState(envelope)                        // Phase 4
         case .matchComplete:  handleMatchComplete(envelope)                     // Phase 7
         case .matchAbandoned: handleMatchAbandoned()                            // Phase 8
-        case .seatRelease:    handleSeatRelease(envelope)
-        case .commentary:     handleCommentary(envelope)
+        case .seatRelease:       handleSeatRelease(envelope)
+        case .commentary:        handleCommentary(envelope)
+        case .historyManifest:   handleHistoryManifest(envelope)
+        case .historyRequest:    handleHistoryRequest(envelope)
+        case .historyResponse:   handleHistoryResponse(envelope)
         }
     }
 
@@ -754,10 +777,17 @@ final class GameNightController {
             resolutionPath = "spectator"
             role = .spectator
         }
+        // If the incoming match UUID differs from the one we were already tracking, this is a
+        // rematch (not a reconnect to the same game). Clear the SwiftData binding so game N+1
+        // doesn't overwrite game N's completed record on the first incremental save.
+        let isRematch = sessionMatchID != nil && sessionMatchID != payload.match.id
         sessionMatchID = payload.match.id
         sessionGameID = payload.match.gameID
         persistLocalParticipantID()
+        if isRematch { matchController?.clearPersistedMatchBinding() }
         matchController?.loadFromGameNightMatch(payload.match, currentSeatIndex: payload.currentSeatIndex)
+        onMatchStarted?()
+        broadcastHistoryManifest()
         logger.info(self, "handleMatchStart: matchID=\(payload.match.id) participants=\(payload.match.participants.count) seat=\(payload.currentSeatIndex) localPID=\(localParticipantID?.uuidString ?? "nil") path=\(resolutionPath)")
     }
 
@@ -917,6 +947,43 @@ final class GameNightController {
         removeSeat(seatClaimID: payload.seatClaimID)
     }
 
+    // MARK: - Match history sync
+
+    /// Broadcast this device's manifest of recent completed GN match IDs so peers can identify gaps.
+    private func broadcastHistoryManifest() {
+        guard let ids = onHistoryManifestNeeded?(), !ids.isEmpty else { return }
+        send(.historyManifest, payload: HistoryManifestPayload(matchIDs: ids))
+        logger.info(self, "history sync: broadcasting manifest count=\(ids.count)")
+    }
+
+    private func handleHistoryManifest(_ envelope: GameNightEnvelope) {
+        guard let payload = try? envelope.decode(HistoryManifestPayload.self) else { return }
+        let localIDs = Set(onHistoryManifestNeeded?() ?? [])
+        let missing = payload.matchIDs.filter { !localIDs.contains($0) }
+        guard !missing.isEmpty else {
+            logger.debug(self, "history sync: peer manifest count=\(payload.matchIDs.count), none missing locally")
+            return
+        }
+        logger.info(self, "history sync: peer has \(payload.matchIDs.count) match(es), requesting \(missing.count) missing")
+        send(.historyRequest, payload: HistoryRequestPayload(matchIDs: missing))
+    }
+
+    private func handleHistoryRequest(_ envelope: GameNightEnvelope) {
+        guard let payload = try? envelope.decode(HistoryRequestPayload.self),
+              let fetcher = onHistoryMatchesNeeded else { return }
+        let matches = fetcher(payload.matchIDs)
+        guard !matches.isEmpty else { return }
+        logger.info(self, "history sync: fulfilling request for \(payload.matchIDs.count) ID(s) with \(matches.count) match(es)")
+        send(.historyResponse, payload: HistoryResponsePayload(matches: matches))
+    }
+
+    private func handleHistoryResponse(_ envelope: GameNightEnvelope) {
+        guard let payload = try? envelope.decode(HistoryResponsePayload.self),
+              !payload.matches.isEmpty else { return }
+        logger.info(self, "history sync: received \(payload.matches.count) match(es) from peer")
+        onHistoryMatchesReceived?(payload.matches)
+    }
+
     // MARK: - Send helper
 
     private func send<P: Encodable>(_ kind: GameNightMessageKind, payload: P) {
@@ -1057,6 +1124,7 @@ final class GameNightController {
         matchController?.loadFromGameNightMatch(match, currentSeatIndex: currentSeatIndex)
         send(.matchStart, payload: MatchStartPayload(match: match, seatMappings: mappings, currentSeatIndex: currentSeatIndex))
         Task { await self.broadcastTableState() }
+        broadcastHistoryManifest()
     }
 
     /// Host-only: start a new game with the same seated participants without leaving the
@@ -1077,9 +1145,13 @@ final class GameNightController {
         persistLocalParticipantID()
         UserDefaults.standard.setGnWasHost(for: match.id)
         logger.info(self, "broadcastRematch: newMatchID=\(match.id) seats=\(seats.count) players=\(match.participants.map(\.displayName).joined(separator: ","))")
+        // Sever the SwiftData binding before loading the new match so game N+1's saves
+        // create a fresh row instead of overwriting game N's completed record.
+        matchController?.clearPersistedMatchBinding()
         matchController?.loadFromGameNightMatch(match, currentSeatIndex: 0)
         send(.matchStart, payload: MatchStartPayload(match: match, seatMappings: mappings, currentSeatIndex: 0))
         Task { await broadcastTableState() }
+        broadcastHistoryManifest()
     }
 
     /// Host-only: skip the seating phase and immediately resume an already-started match.

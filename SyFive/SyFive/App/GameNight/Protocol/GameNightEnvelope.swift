@@ -28,6 +28,9 @@ enum GameNightMessageKind: String, Sendable {
     case matchAbandoned
     case seatRelease
     case commentary
+    case historyManifest   // list of recent completed GN match IDs this device has
+    case historyRequest    // request specific match IDs from any peer that has them
+    case historyResponse   // full Match values delivered in response to historyRequest
 }
 
 extension GameNightEnvelope {

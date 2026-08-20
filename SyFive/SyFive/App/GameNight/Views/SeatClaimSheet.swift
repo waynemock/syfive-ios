@@ -76,25 +76,45 @@ struct SeatClaimSheet: View {
     }
 
     private var addPlayerCard: some View {
-        let theme = Theme(type: dummyMatchModel.nextPlayerThemeType, colorScheme: colorScheme)
         return Button {
             showsNewPlayer = true
         } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.title)
-                Text("Add Player")
-                    .font(.title3)
-                Spacer()
-            }
-            .padding(12)
-            .foregroundStyle(theme.primaryAccent)
-            .contentShape(Rectangle())
+            Label("New Player", systemImage: "plus.circle.fill")
+                .foregroundStyle(.tint)
         }
         .buttonStyle(.plain)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(theme.cellBackgroundColor)
-        )
     }
+}
+
+// MARK: - Previews
+
+private func makeSeatClaimContainer(players: [(String, String, String)] = []) -> ModelContainer {
+    let container = try! ModelContainer(
+        for: PlayerModel.self,
+        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+    for (name, initials, themeID) in players {
+        let pm = PlayerModel()
+        pm.name = name
+        pm.initials = initials
+        pm.themeID = themeID
+        container.mainContext.insert(pm)
+    }
+    return container
+}
+
+#Preview("With Players") {
+    let container = makeSeatClaimContainer(players: [
+        ("Alice Nakamura", "AN", "Midnight"),
+        ("Bob Chen",       "BC", "Ocean"),
+        ("Carmen Reyes",   "CR", "Forest"),
+        ("Dave Kim",       "DK", "Ember"),
+    ])
+    SeatClaimSheet(gameNight: GameNightController())
+        .modelContainer(container)
+}
+
+#Preview("Empty Roster") {
+    SeatClaimSheet(gameNight: GameNightController())
+        .modelContainer(makeSeatClaimContainer())
 }

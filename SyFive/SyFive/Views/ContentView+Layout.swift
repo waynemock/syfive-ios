@@ -18,7 +18,7 @@ extension ContentView {
         // embedded RealityView) from being destroyed on rotation.
         let layout = isPortrait
             ? AnyLayout(VStackLayout(spacing: 12))
-            : AnyLayout(HStackLayout(alignment: .top, spacing: 20))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 40))
         layout {
             DiceAreaView(model: model, onPlayAgain: {
                 if gameNight.isSessionActive {

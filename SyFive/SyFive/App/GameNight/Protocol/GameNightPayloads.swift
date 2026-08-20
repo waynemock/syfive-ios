@@ -157,3 +157,23 @@ struct CommentaryPayload: Codable, Sendable {
     /// Raw value of `CommentaryEventTier` — determines interrupt priority on the guest.
     let tierRaw: Int
 }
+
+// MARK: - Match history sync (post-matchStart background repair)
+
+/// Broadcast by every device immediately after matchStart. Lists the IDs of its
+/// last N completed Game Night matches so peers can spot gaps and request missing data.
+struct HistoryManifestPayload: Codable, Sendable {
+    let matchIDs: [UUID]
+}
+
+/// Broadcast when a device finds match IDs in a peer's manifest that it does not have
+/// locally. Any peer that holds those matches will respond with historyResponse.
+struct HistoryRequestPayload: Codable, Sendable {
+    let matchIDs: [UUID]
+}
+
+/// Sent in response to historyRequest. Contains the full Match values for whichever
+/// requested IDs the sender has locally. Receivers upsert each match by wire UUID.
+struct HistoryResponsePayload: Codable, Sendable {
+    let matches: [Match]
+}

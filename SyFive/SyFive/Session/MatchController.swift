@@ -320,9 +320,11 @@ final class MatchController {
             if let existing = (try? context.fetch(descriptor))?.first {
                 matchModel = existing
             } else {
-                // Session UUID didn't match any SwiftData row (Game Night first save).
-                // Create a new row and record its auto-generated UUID for future saves.
+                // Session UUID (wireUUID) didn't match any SwiftData row — first save for this
+                // GN game. Stamp the row with the wire UUID before insert so onMatchComplete
+                // can locate it by the same UUID and won't create a duplicate record.
                 let m = MatchModel()
+                m.id = mid
                 context.insert(m)
                 persistedMatchID = m.id
                 matchModel = m
@@ -347,6 +349,7 @@ final class MatchController {
             participants: buildParticipants()
         )
         matchModel.hydrate(from: match, context: context)
+        matchModel.isGameNight = isGameNight
     }
 
     /// Restores match state from a persisted MatchModel in-place, preserving view identity.
@@ -401,6 +404,14 @@ final class MatchController {
         diceValues = Array(repeating: 1, count: diceCount)
         isRolling = false
         clearUndoState()
+    }
+
+    /// Severs the link between in-memory state and the current SwiftData row so the next
+    /// save() creates a fresh record. Call before loadFromGameNightMatch() when starting a
+    /// brand-new match (rematch) — not when reconnecting to the same ongoing game.
+    func clearPersistedMatchBinding() {
+        persistedMatchID = nil
+        matchStartedAt = nil
     }
 
     /// Deletes the current in-progress match record. Call before resetGame() when the user
@@ -740,13 +751,14 @@ final class MatchController {
         held = Array(repeating: false, count: diceCount)
         rollsRemaining = rollsPerTurn
         isRolling = false
-        // Bind to the session match UUID on first load. If persistedMatchID is already set
-        // it points to the actual SwiftData row UUID (established on first save) — don't
-        // overwrite it or save() will miss the fetch and create a new row every turn.
+        // Bind to the wire UUID on first load so save() creates the row with the correct ID.
+        // If persistedMatchID is already set (reconnect or subsequent matchState), leave it alone —
+        // the row was already created for this game and the reference is still valid.
         if persistedMatchID == nil {
             persistedMatchID = match.id
         }
         matchStartedAt = match.startedAt
+        isGameNight = true
         clearUndoState()
     }
 

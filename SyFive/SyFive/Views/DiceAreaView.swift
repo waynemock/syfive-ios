@@ -8,6 +8,7 @@ struct DiceAreaView: View {
     @State private var diceRoller = DiceRoller()
     @State private var feelAdapter: DiceFeelAdapter?
     @State private var traySize: CGSize = .zero
+    @State private var trayContainerSize: CGSize = .zero
     @State private var suppressNextPlayerChangeDiceClear = false
     @State private var isAwaitingInitialTurnStart = false
     @Environment(FeelDirector.self) private var director
@@ -77,11 +78,20 @@ struct DiceAreaView: View {
 
     // MARK: - Subviews
 
+    // iPad landscape: tray container is portrait-shaped (height > width).
+    // Reduce the RK fill factor so the tray appears ~10% smaller.
+    private var trayFillFactor: Float {
+        let isIPad = UIDevice.current.userInterfaceIdiom == .pad
+        let isIPadLandscape = isIPad && trayContainerSize.height > trayContainerSize.width && trayContainerSize != .zero
+        return isIPadLandscape ? 0.74 : 0.88
+    }
+
     /// 3D RealityKit tray — square, fills available width dynamically.
     private var trayView: some View {
         Color.clear
+            .onGeometryChange(for: CGSize.self, of: { $0.size }) { trayContainerSize = $0 }
             .overlay {
-                DiceRKView(diceRoller: diceRoller)
+                DiceRKView(diceRoller: diceRoller, fillFactor: trayFillFactor)
                     .gesture(
                         SpatialTapGesture()
                             .targetedToAnyEntity()
