@@ -328,18 +328,16 @@ struct ContentView: View {
             }
             gameNight.onHistoryMatchesReceived = { matches in
                 for match in matches {
-                    let matchID = match.id
-                    var descriptor = FetchDescriptor<MatchModel>(predicate: #Predicate { $0.id == matchID })
-                    descriptor.fetchLimit = 1
-                    if let existing = (try? ctx.fetch(descriptor))?.first {
-                        existing.hydrate(from: match, context: ctx)
-                        existing.isGameNight = true
-                    } else {
-                        let newModel = MatchModel()
-                        ctx.insert(newModel)
-                        newModel.hydrate(from: match, context: ctx)
-                        newModel.isGameNight = true
+                    // Skip if an equivalent record already exists — either by wire UUID (post-fix
+                    // records) or by startedAt fingerprint within 20 min (pre-fix auto-UUID records).
+                    if GNMatchIdentity.duplicateExists(for: match, in: ctx) {
+                        logger.info(self, "onHistoryMatchesReceived: skipped duplicate id=\(match.id.uuidString.prefix(8))")
+                        continue
                     }
+                    let newModel = MatchModel()
+                    ctx.insert(newModel)
+                    newModel.hydrate(from: match, context: ctx)
+                    newModel.isGameNight = true
                 }
                 try? ctx.save()
             }
