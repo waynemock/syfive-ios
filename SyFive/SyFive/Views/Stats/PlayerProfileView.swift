@@ -2,10 +2,10 @@ import SwiftUI
 import SwiftData
 
 struct PlayerProfileView: View {
-    let playerID:  UUID
+    let playerID:   UUID
     let playerName: String
-    let themeType: Theme.ThemeType
-
+    let themeType:  Theme.ThemeType
+    var isArchived: Bool = false
 
     @Query(filter: #Predicate<MatchModel> { $0.statusRaw == "completed" },
            sort: \MatchModel.startedAt)
@@ -13,8 +13,10 @@ struct PlayerProfileView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.modelContext) private var modelContext
 
     @State private var profileMode: ProfileMode = .pvp
+    @State private var showsDeleteAlert = false
 
     private enum ProfileMode: Hashable { case pvp, solo }
 
@@ -62,6 +64,10 @@ struct PlayerProfileView: View {
         .sorted { ($0.h2h.lastMeeting ?? .distantPast) > ($1.h2h.lastMeeting ?? .distantPast) }
     }
 
+    private var playerHasMatches: Bool {
+        matches.contains { $0.participants.contains { $0.playerID == playerID } }
+    }
+
     private var insights: PlayerInsights? { playerInsights(playerID: playerID, matches: activeMatches) }
     private var summary: PlayerSummary?   { playerSummary(playerID: playerID, matches: activeMatches) }
 
@@ -98,6 +104,35 @@ struct PlayerProfileView: View {
                     Button("Done") { dismiss() }
                 }
             }
+        }
+        .safeAreaInset(edge: .bottom) {
+            if isArchived && !playerHasMatches {
+                Button(role: .destructive) {
+                    showsDeleteAlert = true
+                } label: {
+                    Label("Delete Player", systemImage: "trash")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color(.systemBackground).opacity(0.95))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.red)
+                .background(.ultraThinMaterial)
+            }
+        }
+        .alert("Delete \(playerName)?", isPresented: $showsDeleteAlert) {
+            Button("Delete", role: .destructive) {
+                var descriptor = FetchDescriptor<PlayerModel>(predicate: #Predicate { $0.id == playerID })
+                descriptor.fetchLimit = 1
+                if let player = (try? modelContext.fetch(descriptor))?.first {
+                    modelContext.delete(player)
+                    try? modelContext.save()
+                }
+                dismiss()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will permanently remove them from your player list.")
         }
         .tint(theme.primaryAccent)
         .environment(\.theme, theme)

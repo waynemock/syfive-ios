@@ -309,7 +309,10 @@ struct ContentView: View {
                 try? ctx.save()
             }
             gameNight.onHistoryManifestNeeded = {
-                // Fetch the most recent completed Game Night matches on this device.
+                // Only advertise matches where every participant is in the current session.
+                // Prevents sending history from games the receiving device never attended.
+                let sessionPlayerIDs = Set(gameNight.seats.compactMap { $0.playerID })
+                guard !sessionPlayerIDs.isEmpty else { return [] }
                 let completed = "completed"
                 var descriptor = FetchDescriptor<MatchModel>(
                     predicate: #Predicate { $0.statusRaw == completed },
@@ -317,7 +320,11 @@ struct ContentView: View {
                 )
                 descriptor.fetchLimit = 40
                 let all = (try? ctx.fetch(descriptor)) ?? []
-                return all.filter { $0.isGameNight }.prefix(20).map { $0.id }
+                return all.filter { model in
+                    guard model.isGameNight else { return false }
+                    let pIDs = model.participants.compactMap { $0.playerID }
+                    return !pIDs.isEmpty && pIDs.allSatisfy { sessionPlayerIDs.contains($0) }
+                }.prefix(20).map { $0.id }
             }
             gameNight.onHistoryMatchesNeeded = { matchIDs in
                 matchIDs.compactMap { id in
@@ -327,7 +334,18 @@ struct ContentView: View {
                 }
             }
             gameNight.onHistoryMatchesReceived = { matches in
+                // Build local player ID set once for the whole batch.
+                let localPlayerIDs = Set(
+                    ((try? ctx.fetch(FetchDescriptor<PlayerModel>())) ?? []).map { $0.id }
+                )
                 for match in matches {
+                    // Skip if any participant is unknown to this device.
+                    let participantIDs = match.participants.compactMap { $0.playerID }
+                    guard !participantIDs.isEmpty,
+                          participantIDs.allSatisfy({ localPlayerIDs.contains($0) }) else {
+                        logger.info(self, "onHistoryMatchesReceived: skipped foreign match id=\(match.id.uuidString.prefix(8))")
+                        continue
+                    }
                     // Skip if an equivalent record already exists — either by wire UUID (post-fix
                     // records) or by startedAt fingerprint within 20 min (pre-fix auto-UUID records).
                     if GNMatchIdentity.duplicateExists(for: match, in: ctx) {

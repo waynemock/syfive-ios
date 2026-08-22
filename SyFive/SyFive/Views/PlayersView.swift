@@ -86,7 +86,8 @@ struct PlayersView: View {
                 PlayerProfileView(
                     playerID: player.id,
                     playerName: player.name,
-                    themeType: Theme.ThemeType(rawValue: player.themeID) ?? .midnight
+                    themeType: Theme.ThemeType(rawValue: player.themeID) ?? .midnight,
+                    isArchived: player.isArchived
                 )
             }
             .sheet(item: $pendingLink) { gameNightPlayer in
@@ -219,16 +220,12 @@ struct PlayersView: View {
 
             Spacer()
 
-            Button {
-                player.isArchived = false
-            } label: {
-                Image(systemName: "arrow.up.trash")
-                    .foregroundStyle(.secondary)
-                    .font(.title2)
-            }
-            .buttonStyle(.plain)
+            Image(systemName: "list.bullet.rectangle")
+                .foregroundStyle(theme.primaryAccent.opacity(0.4))
+                .font(.title2)
         }
         .contentShape(Rectangle())
+        .onTapGesture { selectedProfile = player }
         .swipeActions(edge: .leading) {
             Button {
                 player.isArchived = false
