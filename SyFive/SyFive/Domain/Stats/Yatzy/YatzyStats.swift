@@ -30,7 +30,7 @@ func yatzyStats(playerID: UUID, matches: [Match]) -> YatzyStats? {
         // Yatzy box: scored 50 = hit, 0 = scratch, nil = shouldn't exist in completed match.
         let yatzyValue = p.scoreEntries.first { $0.slotKey == YatzyCategory.yatzy.slotKey }?.value
         let boxHit       = yatzyValue == Decimal(50) ? 1 : 0
-        let bonusHits    = p.yatzyBonus / 100
+        let bonusHits    = p.bonusPoints / 100
 
         yatzyHits   += boxHit
         careerCount += boxHit + bonusHits

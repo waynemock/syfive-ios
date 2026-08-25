@@ -174,7 +174,7 @@ enum StatsFixtures {
         seat: Int,
         finalScore: Decimal,
         rank: Int,
-        yatzyBonus: Int = 0,
+        bonusPoints: Int = 0,
         scoreEntries: [ScoreEntry] = []
     ) -> Participant {
         let label = [0: "A", 1: "B", 2: "C"][seat] ?? "?"
@@ -183,7 +183,7 @@ enum StatsFixtures {
             seat: seat,
             finalScore: finalScore,
             rank: rank,
-            yatzyBonus: yatzyBonus,
+            bonusPoints: bonusPoints,
             playerID: playerID,
             teamID: nil,
             displayName: "Player \(label)",

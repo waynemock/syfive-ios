@@ -6,7 +6,7 @@ import SwiftData
     var seat: Int = 0
     var finalScore: Decimal = 0
     var rank: Int = 0
-    var yatzyBonus: Int = 0
+    var bonusPoints: Int = 0
     var playerID: UUID? = nil
     var teamID: UUID? = nil
     var displayName: String = ""

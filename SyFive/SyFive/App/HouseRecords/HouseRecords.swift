@@ -338,8 +338,8 @@ struct HouseRecords {
         let base = entry?.value == 50 ? 1 : 0
 
         let effectiveBonus: Int
-        if p.yatzyBonus > 0 {
-            effectiveBonus = p.yatzyBonus
+        if p.bonusPoints > 0 {
+            effectiveBonus = p.bonusPoints
         } else {
             let cardSum = p.scoreEntries.compactMap { $0.value }.reduce(Decimal(0), +)
             let upperSum = p.scoreEntries

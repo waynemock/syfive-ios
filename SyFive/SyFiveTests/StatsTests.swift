@@ -454,7 +454,7 @@ struct StatsTests {
         let entry = ScoreEntry(slotKey: YatzyCategory.chance.slotKey, value: Decimal(26),
                                metadata: nil, recordedAt: nil)
         let participant = Participant(
-            id: UUID(), seat: 0, finalScore: 26, rank: 1, yatzyBonus: 0,
+            id: UUID(), seat: 0, finalScore: 26, rank: 1, bonusPoints: 0,
             playerID: FixtureID.playerA, teamID: nil,
             displayName: "A", displayInitials: "A", displayThemeID: "midnight",
             scoreEntries: [entry]

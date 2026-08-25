@@ -66,7 +66,7 @@ struct UnfinishedMatchRow: View {
                 Participant(
                     id: UUID(), seat: i,
                     finalScore: Decimal(p.score), rank: 0,
-                    yatzyBonus: 0, playerID: nil, teamID: nil,
+                    bonusPoints: 0, playerID: nil, teamID: nil,
                     displayName: p.name,
                     displayInitials: String(p.name.prefix(1)),
                     displayThemeID: p.theme,

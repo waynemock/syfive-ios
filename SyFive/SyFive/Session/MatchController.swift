@@ -380,7 +380,7 @@ final class MatchController {
                 }
             )
             playerScores.append(scores)
-            playerYatzyBonuses.append(p.yatzyBonus)
+            playerYatzyBonuses.append(p.bonusPoints)
             playerThemes.append(themeType)
             playerDisplayNames.append(p.displayName)
             playerDisplayInitials.append(p.displayInitials)
@@ -583,7 +583,7 @@ final class MatchController {
                 seat: i,
                 finalScore: Decimal(totalScore(for: i)),
                 rank: isGameOver ? computeRank(for: i) : 0,
-                yatzyBonus: playerYatzyBonuses[i],
+                bonusPoints: playerYatzyBonuses[i],
                 playerID: playerIDs[i],
                 teamID: nil,
                 displayName: playerDisplayNames[i],
@@ -735,7 +735,7 @@ final class MatchController {
             })
         }
         playerScoreTimestamps = sorted.map { _ in [:] }
-        playerYatzyBonuses = sorted.map { $0.yatzyBonus }
+        playerYatzyBonuses = sorted.map { $0.bonusPoints }
         playerThemes = sorted.map { Theme.ThemeType(rawValue: $0.displayThemeID) ?? .midnight }
         playerDisplayNames = sorted.map { $0.displayName }
         playerDisplayInitials = sorted.map { $0.displayInitials }
