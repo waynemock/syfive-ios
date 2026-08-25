@@ -1,7 +1,22 @@
 import SwiftUI
 import Observation
 import RealityKit
+import UIKit
+import SyLibDice
 import SyLibFeel
+
+extension Theme {
+    var dicePalette: DiceTintPalette {
+        DiceTintPalette(
+            normal: UIColor(primaryAccent),
+            held: UIColor(heldAccent),
+            nudgeable: UIColor(stuckColor),
+            stuck: UIColor(errorColor),
+            pip: UIColor(pipColor),
+            heldPip: UIColor(heldPipColor)
+        )
+    }
+}
 
 struct DiceAreaView: View {
     @Bindable var model: MatchController
@@ -16,6 +31,7 @@ struct DiceAreaView: View {
     @Environment(CelebrationCoordinator.self) private var celebrationCoordinator
     @Environment(GameNightController.self) private var gameNight
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.theme) private var theme
     private let rollControlHeight: CGFloat = 24
 
     var body: some View {
@@ -92,7 +108,7 @@ struct DiceAreaView: View {
         Color.clear
             .onGeometryChange(for: CGSize.self, of: { $0.size }) { trayContainerSize = $0 }
             .overlay {
-                DiceRKView(diceRoller: diceRoller, fillFactor: trayFillFactor)
+                DiceRKView(diceRoller: diceRoller, palette: theme.dicePalette, fillFactor: trayFillFactor, backgroundColor: theme.backgroundColor)
                     .gesture(
                         SpatialTapGesture()
                             .targetedToAnyEntity()

@@ -1,4 +1,5 @@
 import Foundation
+import SyLibDice
 
 // MARK: - Supporting types
 

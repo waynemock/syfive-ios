@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		B01D8B2C303DDCCF00D0F468 /* SyLibFeel in Frameworks */ = {isa = PBXBuildFile; productRef = B01D8B2B303DDCCF00D0F468 /* SyLibFeel */; };
+		B01D8B2E303DE62A00D0F468 /* SyLibDice in Frameworks */ = {isa = PBXBuildFile; productRef = B01D8B2D303DE62A00D0F468 /* SyLibDice */; };
 		B024FFCD303DCE700095E1AE /* SyLibCache in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFCC303DCE700095E1AE /* SyLibCache */; };
 		B024FFCF303DCE700095E1AE /* SyLibCore in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFCE303DCE700095E1AE /* SyLibCore */; };
 		B024FFD1303DCE700095E1AE /* SyLibDSP in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFD0303DCE700095E1AE /* SyLibDSP */; };
@@ -105,6 +106,7 @@
 				B024FFCD303DCE700095E1AE /* SyLibCache in Frameworks */,
 				B024FFCF303DCE700095E1AE /* SyLibCore in Frameworks */,
 				B024FFD1303DCE700095E1AE /* SyLibDSP in Frameworks */,
+				B01D8B2E303DE62A00D0F468 /* SyLibDice in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -178,6 +180,7 @@
 				B024FFD0303DCE700095E1AE /* SyLibDSP */,
 				B024FFD2303DCE700095E1AE /* SyLibUI */,
 				B01D8B2B303DDCCF00D0F468 /* SyLibFeel */,
+				B01D8B2D303DE62A00D0F468 /* SyLibDice */,
 			);
 			productName = Pentara;
 			productReference = B09DE90D2F4BBD400018F241 /* SyFive.app */;
@@ -718,6 +721,10 @@
 		B01D8B2B303DDCCF00D0F468 /* SyLibFeel */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SyLibFeel;
+		};
+		B01D8B2D303DE62A00D0F468 /* SyLibDice */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SyLibDice;
 		};
 		B024FFCC303DCE700095E1AE /* SyLibCache */ = {
 			isa = XCSwiftPackageProductDependency;

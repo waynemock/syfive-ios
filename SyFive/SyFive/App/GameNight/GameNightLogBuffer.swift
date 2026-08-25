@@ -11,18 +11,13 @@ final class GameNightLogBuffer: @unchecked Sendable {
 
     private let lock = NSLock()
     private var currentMatchID: UUID?
-    private var fileHandle: FileHandle?
+    nonisolated(unsafe) private var fileHandle: FileHandle?
 
     private static let gnCategories: Set<String> = [
         "GameNightController", "MatchController", "ContentView",
         "GameNightActivity", "SessionController", "MatchPresenting",
     ]
 
-    private static let timeFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "HH:mm:ss.SSS"
-        return f
-    }()
 
     // MARK: - Lifecycle
 
@@ -39,8 +34,9 @@ final class GameNightLogBuffer: @unchecked Sendable {
         FileManager.default.createFile(atPath: url.path, contents: Data())
         let fh = try? FileHandle(forWritingTo: url)
         lock.withLock { fileHandle = fh }
+        let categories = Self.gnCategories
         AppLogger.sinks["gameNight"] = { @Sendable [weak self] category, level, message in
-            guard Self.gnCategories.contains(category) else { return }
+            guard categories.contains(category) else { return }
             self?.appendLine(category: category, level: level, message: message)
         }
     }
@@ -82,8 +78,10 @@ final class GameNightLogBuffer: @unchecked Sendable {
 
     // MARK: - Private
 
-    private func appendLine(category: String, level: String, message: String) {
-        let ts = Self.timeFormatter.string(from: Date())
+    private nonisolated func appendLine(category: String, level: String, message: String) {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm:ss.SSS"
+        let ts = f.string(from: Date())
         let line = "\(ts) [\(category)/\(level)] \(message)\n"
         guard let data = line.data(using: .utf8) else { return }
         lock.withLock {

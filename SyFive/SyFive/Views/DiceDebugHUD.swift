@@ -1,6 +1,7 @@
 import SwiftUI
 import Charts
 import UniformTypeIdentifiers
+import SyLibDice
 
 /// Debug fairness HUD for the dice physics system.
 /// Enable via `AppConfig.DebugDice.showHarness = true`.
