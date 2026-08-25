@@ -1,6 +1,7 @@
 import SwiftUI
 import Observation
 import RealityKit
+import SyLibFeel
 
 struct DiceAreaView: View {
     @Bindable var model: MatchController
@@ -463,7 +464,7 @@ struct DiceAreaView: View {
 
 #Preview {
     DiceAreaView(model: MatchController())
-        .environment(FeelDirector())
+        .environment(FeelDirector(catalog: .syFive))
         .environment(CelebrationCoordinator())
         .environment(GameNightController())
 }

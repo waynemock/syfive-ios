@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import SyLibFeel
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss

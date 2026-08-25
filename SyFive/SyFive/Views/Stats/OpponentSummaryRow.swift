@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import SyLibFeel
 
 struct OpponentRecord: Identifiable {
     var id: UUID { opponentID }
@@ -111,9 +112,9 @@ struct OpponentSummaryRow: View {
         opponentID: UUID(), opponentName: "Sherida", opponentInitials: "RM",
         opponentThemeType: .forest, h2h: h2h
     )
-    return OpponentSummaryRow(profilePlayerName: "Wayne", profileThemeType: .midnight, record: record)
+    OpponentSummaryRow(profilePlayerName: "Wayne", profileThemeType: .midnight, record: record)
         .padding()
         .environment(\.theme, Theme(type: .midnight, colorScheme: .dark))
         .modelContainer(for: MatchModel.self, inMemory: true)
-        .environment(FeelDirector())
+        .environment(FeelDirector(catalog: .syFive))
 }

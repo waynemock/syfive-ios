@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import SyLibFeel
 
 struct MatchDetailView: View {
     let matchModel: MatchModel
@@ -253,6 +254,6 @@ private struct HistoryScorecardWidthKey: PreferenceKey {
         MatchDetailView(matchModel: match)
     }
     .modelContainer(container)
-    .environment(FeelDirector())
+    .environment(FeelDirector(catalog: .syFive))
     .preferredColorScheme(.dark)
 }

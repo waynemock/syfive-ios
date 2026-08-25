@@ -1,4 +1,5 @@
 import Foundation
+import SyLibFeel
 
 // The SyFive-specific recipe values. These numbers ARE the spec (07_AUDIO_HAPTICS_DESIGN §5).
 // Change nothing here without going through the feel board → freeze cycle described in §9.

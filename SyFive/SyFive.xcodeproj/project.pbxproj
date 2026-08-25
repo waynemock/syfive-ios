@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B01D8B2C303DDCCF00D0F468 /* SyLibFeel in Frameworks */ = {isa = PBXBuildFile; productRef = B01D8B2B303DDCCF00D0F468 /* SyLibFeel */; };
 		B024FFCD303DCE700095E1AE /* SyLibCache in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFCC303DCE700095E1AE /* SyLibCache */; };
 		B024FFCF303DCE700095E1AE /* SyLibCore in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFCE303DCE700095E1AE /* SyLibCore */; };
 		B024FFD1303DCE700095E1AE /* SyLibDSP in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFD0303DCE700095E1AE /* SyLibDSP */; };
@@ -99,6 +100,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B01D8B2C303DDCCF00D0F468 /* SyLibFeel in Frameworks */,
 				B024FFD3303DCE700095E1AE /* SyLibUI in Frameworks */,
 				B024FFCD303DCE700095E1AE /* SyLibCache in Frameworks */,
 				B024FFCF303DCE700095E1AE /* SyLibCore in Frameworks */,
@@ -123,12 +125,20 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		B01D8B2A303DDCCF00D0F468 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		B09DE9042F4BBD400018F241 = {
 			isa = PBXGroup;
 			children = (
 				B09DE90F2F4BBD400018F241 /* SyFive */,
 				B09DE9212F4BBD410018F241 /* SyFiveTests */,
 				B09DE92B2F4BBD410018F241 /* SyFiveUITests */,
+				B01D8B2A303DDCCF00D0F468 /* Frameworks */,
 				B09DE90E2F4BBD400018F241 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -167,6 +177,7 @@
 				B024FFCE303DCE700095E1AE /* SyLibCore */,
 				B024FFD0303DCE700095E1AE /* SyLibDSP */,
 				B024FFD2303DCE700095E1AE /* SyLibUI */,
+				B01D8B2B303DDCCF00D0F468 /* SyLibFeel */,
 			);
 			productName = Pentara;
 			productReference = B09DE90D2F4BBD400018F241 /* SyFive.app */;
@@ -704,6 +715,10 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		B01D8B2B303DDCCF00D0F468 /* SyLibFeel */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SyLibFeel;
+		};
 		B024FFCC303DCE700095E1AE /* SyLibCache */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SyLibCache;

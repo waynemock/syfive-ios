@@ -1,5 +1,6 @@
 import SwiftUI
 import SyLibCore
+import SyLibFeel
 
 // Debug feel board — App layer, SwiftUI, never extracted (§9).
 // Gate: AppConfig.DebugFeel.showFeelBoard
@@ -342,5 +343,5 @@ private struct LabeledSlider: View {
 
 #Preview {
     FeelBoardView()
-        .environment(FeelDirector())
+        .environment(FeelDirector(catalog: .syFive))
 }

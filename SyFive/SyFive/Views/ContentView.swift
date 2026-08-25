@@ -1,10 +1,11 @@
 import SwiftUI
 import SwiftData
 import SyLibCore
+import SyLibFeel
 
 struct ContentView: View {
     @State var model = MatchController()
-    @State var director = FeelDirector()
+    @State var director = FeelDirector(catalog: .syFive)
     @State var showsResetAlert = false
     @State var showsHouseRecords = false
     @State var showsHistory = false

@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 import AVFoundation
+import SyLibFeel
 @testable import SyFive
 
 struct FeelTests {

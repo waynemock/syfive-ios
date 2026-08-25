@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 import SwiftUI
+import SyLibFeel
 
 enum AppColorScheme: String, CaseIterable, Codable {
     case system
@@ -34,20 +35,6 @@ enum CommentaryMode: String, CaseIterable, Codable {
         case .off:           "Off"
         case .gameNightOnly: "Game Night Only"
         case .allGames:      "All Games"
-        }
-    }
-}
-
-enum AppSoundMode: String, CaseIterable, Codable {
-    case off
-    case mix
-    case exclusive
-
-    var displayName: String {
-        switch self {
-        case .off:       "Off"
-        case .mix:       "Mix with Other Audio"
-        case .exclusive: "Game Audio Only"
         }
     }
 }

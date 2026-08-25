@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import SyLibFeel
 
 struct HeadToHeadDetailView: View {
     let profilePlayerName: String
@@ -203,7 +204,7 @@ private extension Decimal {
         averageScoreA: 247, averageScoreB: 231,
         lastMeeting: Date(), currentStreakA: 2
     )
-    return HeadToHeadDetailView(
+    HeadToHeadDetailView(
         profilePlayerName: "Wayne",
         profileThemeType: .midnight,
         opponentName: "Sherida",
@@ -211,5 +212,5 @@ private extension Decimal {
         h2h: h2h
     )
     .modelContainer(for: MatchModel.self, inMemory: true)
-    .environment(FeelDirector())
+    .environment(FeelDirector(catalog: .syFive))
 }
