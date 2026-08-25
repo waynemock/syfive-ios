@@ -1,5 +1,6 @@
 import SwiftUI
 import Observation
+import SyLibCore
 
 struct ScorecardView: View {
     @Bindable var model: MatchController

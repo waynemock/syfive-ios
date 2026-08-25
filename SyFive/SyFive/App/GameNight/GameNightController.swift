@@ -2,6 +2,7 @@ import AVFoundation
 import Combine
 import Foundation
 import GroupActivities
+import SyLibCore
 
 /// Session orchestrator for Game Night. Owns the SharePlay session, the
 /// messenger, role assignment, and all inbound message routing.

@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import GroupActivities
+import SyLibCore
 
 /// Presents GroupActivitySharingController imperatively from the topmost UIViewController.
 /// The controller supports both FaceTime (active or new) and iMessage threads as transports.

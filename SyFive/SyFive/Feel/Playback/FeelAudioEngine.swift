@@ -1,5 +1,6 @@
 import Foundation
 import AVFoundation
+import SyLibCore
 
 // AVAudioEngine wrapper for the Feel system.
 // 8 pooled one-shot nodes (round-robin, steal-oldest) + 1 dedicated bed node.

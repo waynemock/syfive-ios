@@ -1,5 +1,6 @@
 import Foundation
 import CoreHaptics
+import SyLibCore
 
 // CoreHaptics wrapper. Pre-builds CHHapticPatternPlayers at prepare() time so
 // firing is O(µs). Non-Taptic hardware (iPad) no-ops via the capability gate.

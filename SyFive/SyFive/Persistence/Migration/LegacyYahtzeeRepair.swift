@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import SyLibCore
 
 // Runs on every launch to repair ParticipantModel records broken by the yahtzee → yatzy field
 // rename in the "Expunged yahtzee" commit. CloudKit treats a rename as field deletion + addition,

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import SyLibCore
 
 // Runs on every launch to repair or remove stale MatchModel records.
 //

@@ -1,6 +1,7 @@
 import SwiftUI
 import RealityKit
 import Observation
+import SyLibCore
 
 /// Orchestrates physics dice rolls: spawns dice, applies impulses, detects settle, delivers results.
 ///

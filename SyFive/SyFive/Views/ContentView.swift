@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import SyLibCore
 
 struct ContentView: View {
     @State var model = MatchController()

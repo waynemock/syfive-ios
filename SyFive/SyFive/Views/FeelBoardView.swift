@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibCore
 
 // Debug feel board — App layer, SwiftUI, never extracted (§9).
 // Gate: AppConfig.DebugFeel.showFeelBoard

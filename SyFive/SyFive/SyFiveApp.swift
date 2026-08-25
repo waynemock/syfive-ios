@@ -7,9 +7,14 @@
 
 import SwiftUI
 import SwiftData
+import SyLibCore
 
 @main
 struct SyFiveApp: App {
+    init() {
+        AppLogger.appName = "SyFive"
+    }
+
     @State private var gameNight = GameNightController()
 
     var sharedModelContainer: ModelContainer = {

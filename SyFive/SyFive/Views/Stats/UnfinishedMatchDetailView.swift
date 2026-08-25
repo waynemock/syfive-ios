@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import SyLibCore
 
 struct UnfinishedMatchDetailView: View {
     let matchModel: MatchModel

@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SyLibCore
 
 // Drives visual celebrations — Yatzy rising motes and game-over slow-fall.
 // Injected via .environment(_:) in ContentView; triggered by DiceAreaView (Yatzy)

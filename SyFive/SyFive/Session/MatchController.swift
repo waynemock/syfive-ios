@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import SwiftUI
 import SwiftData
+import SyLibCore
 
 @Observable
 final class MatchController {

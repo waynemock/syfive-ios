@@ -1,4 +1,5 @@
 import Foundation
+import SyLibCore
 
 /// Writes Game Night session logs directly to disk as each entry arrives.
 /// Logs land in `<Documents>/gnlogs/current.log` from the moment the session
@@ -38,7 +39,7 @@ final class GameNightLogBuffer: @unchecked Sendable {
         FileManager.default.createFile(atPath: url.path, contents: Data())
         let fh = try? FileHandle(forWritingTo: url)
         lock.withLock { fileHandle = fh }
-        AppLogger.sinks["gameNight"] = { [weak self] category, level, message in
+        AppLogger.sinks["gameNight"] = { @Sendable [weak self] category, level, message in
             guard Self.gnCategories.contains(category) else { return }
             self?.appendLine(category: category, level: level, message: message)
         }
