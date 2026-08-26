@@ -62,7 +62,8 @@
 				Docs/Requirements/13_HOLD_HINT_DESIGN.md,
 				Docs/Requirements/14_APPSTORE_COPY.md,
 				Docs/Requirements/15_HELP_SCREEN.md,
-				Docs/SYLIB_MIGRATION_PLAN.md,
+				Docs/SyLib/00_SYLIB_MIGRATION_PLAN.md,
+				Docs/SyLib/01_SYLIBDICE_STANDALONE_WAVE.md,
 				Info.plist,
 			);
 			target = B09DE90C2F4BBD400018F241 /* SyFive */;

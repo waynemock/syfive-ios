@@ -3,6 +3,7 @@ import SyLibScoring
 import SwiftData
 import SyLibCore
 import SyLibFeel
+import SyLibDice
 
 struct ContentView: View {
     @State var model = MatchController()
@@ -459,7 +460,7 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showsDiceFairness) {
             NavigationStack {
-                DiceFairnessView()
+                DiceFairnessView(accentColor: theme.primaryAccent)
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) {
                             Button("Done") { showsDiceFairness = false }
