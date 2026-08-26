@@ -1,5 +1,6 @@
 import SwiftUI
 import SyLibScoring
+import SyLibCore
 import Observation
 import UIKit
 import SyLibDice
@@ -74,7 +75,7 @@ struct DiceAreaView: View {
             }
             diceRoller.keepScreenAwake = { UIApplication.shared.isIdleTimerDisabled = $0 }
             diceRoller.config.logDiagnostics = AppConfig.DebugDice.logRollDiagnostics
-            diceRoller.config.appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+            diceRoller.config.appVersion = Bundle.main.appVersionShort
             if gameNight.isSessionActive {
                 wireGameNightHooks()
             }
@@ -145,7 +146,7 @@ struct DiceAreaView: View {
                             let isYatzy = !values.isEmpty && values.dropFirst().allSatisfy { $0 == values[0] }
                             let yatzyBox = model.scores(for: model.currentPlayerIndex)[.yatzy]
                             if isYatzy && (yatzyBox == nil || yatzyBox == 50) {
-                                director.yatzyMoment()
+                                director.celebration()
                                 celebrationCoordinator.triggerYatzy(playerIndex: model.currentPlayerIndex)
                             }
                         }
@@ -257,7 +258,7 @@ struct DiceAreaView: View {
             guard isYatzy else { return }
             let yatzyBox = mc.scores(for: mc.currentPlayerIndex)[.yatzy]
             guard yatzyBox == nil || yatzyBox == 50 else { return }
-            dir.yatzyMoment()
+            dir.celebration()
             cc.triggerYatzy(playerIndex: mc.currentPlayerIndex)
         }
         gn.onHoldToggled = { dieIndex, isHeld in

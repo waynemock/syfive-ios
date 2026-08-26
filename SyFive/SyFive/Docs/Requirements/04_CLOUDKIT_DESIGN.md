@@ -197,7 +197,7 @@ yields N catalog rows for N devices.
    in the Domain layer (pure data; Foundation-only rule intact):
 
    ```swift
-   // Domain/Values/Game.swift
+   // Domain/Game+BuiltIn.swift  (SyFive — extension on SyLibScoring.Game)
    extension Game {
        /// Fixed identity for the built-in Yatzy catalog entry.
        /// Every install seeds this same UUID; dedupe relies on it. Never change.

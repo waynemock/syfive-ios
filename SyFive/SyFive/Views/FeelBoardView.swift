@@ -21,7 +21,7 @@ struct FeelBoardView: View {
     private static let eventOrder = [
         "settle_thunk", "hold_engage", "hold_release",
         "die_nudge", "die_reroll", "score_confirm",
-        "yatzy_moment", "game_end", "undo",
+        "celebration", "game_end", "undo",
     ]
     private static let rattleOrder = ["rattle_bed"]
 

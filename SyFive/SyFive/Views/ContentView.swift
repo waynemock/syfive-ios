@@ -460,7 +460,7 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showsDiceFairness) {
             NavigationStack {
-                DiceFairnessView(accentColor: theme.primaryAccent)
+                DiceFairnessView(accentColor: theme.primaryAccent, appName: "SyFive")
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) {
                             Button("Done") { showsDiceFairness = false }

@@ -74,7 +74,7 @@ file is HEAD.*
 | ID | Current ruling | Source → chain |
 |---|---|---|
 | D-023 | CloudKit ships at 1.0. Per-app private container `iCloud.com.syzygysoftwerks.SyFive` (not a shared "Sy" container), with a one-line revert lever. *(rec.)* | `03_CLOUDKIT` |
-| D-024 | The built-in Yatzy catalog entry seeds with the fixed well-known UUID `BFB7F8F6-87D2-4700-9267-36A8ED4AC3C8` for cross-device deduplication. *(rec.)* | `03_CLOUDKIT` |
+| D-024 | The built-in Yatzy catalog entry seeds with the fixed well-known UUID `BFB7F8F6-87D2-4700-9267-36A8ED4AC3C8` for cross-device deduplication. Constant lives in `Domain/Game+BuiltIn.swift` (SyFive extension on `SyLibScoring.Game`) — kept app-side so `SyLibScoring` stays game-agnostic. *(rec.)* | `03_CLOUDKIT` |
 | D-025 | `ScoreEntryModel` is **not** registered in the CloudKit schema — scorecards travel inside the participant blob. | `03_CLOUDKIT` |
 | D-026 | **Dev → Production schema promotion is a hard gate** before any TestFlight build. | `03_CLOUDKIT` |
 | D-027 | Sync UX is calm and silent: no spinners, no toggles, no sync status chrome. | `03_CLOUDKIT` |

@@ -77,8 +77,8 @@ extension FeelCatalog {
             ),
 
             // §5.6 — Yatzy moment: rising bloom D4→A4→D5
-            "yatzy_moment": SoundRecipe(
-                id: "yatzy_moment",
+            "celebration": SoundRecipe(
+                id: "celebration",
                 durationMs: 950,
                 layers: [
                     .tone(.init(freqHz: 293.66, levelDb: -18, startMs:   0, attackMs: 6, decayTauMs: 300)),
@@ -170,8 +170,8 @@ extension FeelCatalog {
             ),
 
             // §5.6 — 200 ms continuous swell aligned with D5 arrival (D-119)
-            "yatzy_moment": HapticRecipe(
-                id: "yatzy_moment",
+            "celebration": HapticRecipe(
+                id: "celebration",
                 events: [.init(timeMs: 180, kind: .continuous, intensity: 0.55, sharpness: 0.15, durationMs: 200)]
             ),
 
