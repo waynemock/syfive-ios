@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibScoring
 import Charts
 
 /// Bar chart showing how often a player finishes in each place.

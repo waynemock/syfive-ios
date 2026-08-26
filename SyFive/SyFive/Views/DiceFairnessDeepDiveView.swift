@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibDice
 
 struct DiceFairnessDeepDiveView: View {
     @Environment(\.theme) private var theme

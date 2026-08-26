@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		B01D8B2C303DDCCF00D0F468 /* SyLibFeel in Frameworks */ = {isa = PBXBuildFile; productRef = B01D8B2B303DDCCF00D0F468 /* SyLibFeel */; };
 		B01D8B2E303DE62A00D0F468 /* SyLibDice in Frameworks */ = {isa = PBXBuildFile; productRef = B01D8B2D303DE62A00D0F468 /* SyLibDice */; };
+		B01D8B30303F022C00D0F468 /* SyLibScoring in Frameworks */ = {isa = PBXBuildFile; productRef = B01D8B2F303F022C00D0F468 /* SyLibScoring */; };
 		B024FFCD303DCE700095E1AE /* SyLibCache in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFCC303DCE700095E1AE /* SyLibCache */; };
 		B024FFCF303DCE700095E1AE /* SyLibCore in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFCE303DCE700095E1AE /* SyLibCore */; };
 		B024FFD1303DCE700095E1AE /* SyLibDSP in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFD0303DCE700095E1AE /* SyLibDSP */; };
@@ -42,12 +43,6 @@
 		B09DE9302F4BBD410018F241 /* Exceptions for "SyFive" folder in "SyFive" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Dice/Docs/DICE_FAIRNESS_REPORT.txt,
-				Dice/Docs/DICE_FAIRNESS_RUN.csv,
-				Dice/Docs/DICE_FAIRNESS_TESTING.md,
-				Dice/Docs/DICE_IMPLEMENTATION_PLAN.md,
-				Dice/Docs/DICE_REQUIREMENTS.md,
-				Dice/Docs/DICE_RETROSPECTIVE.md,
 				Docs/APP_ICON_PROMPT.md,
 				Docs/ENGINEERING_GUIDELINES.md,
 				Docs/IMPLEMENTATION_STATUS.md,
@@ -69,7 +64,6 @@
 				Docs/Requirements/15_HELP_SCREEN.md,
 				Docs/SYLIB_MIGRATION_PLAN.md,
 				Info.plist,
-				Utilities/analyze_dice_fairness.py,
 			);
 			target = B09DE90C2F4BBD400018F241 /* SyFive */;
 		};
@@ -107,6 +101,7 @@
 				B024FFCF303DCE700095E1AE /* SyLibCore in Frameworks */,
 				B024FFD1303DCE700095E1AE /* SyLibDSP in Frameworks */,
 				B01D8B2E303DE62A00D0F468 /* SyLibDice in Frameworks */,
+				B01D8B30303F022C00D0F468 /* SyLibScoring in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -181,6 +176,7 @@
 				B024FFD2303DCE700095E1AE /* SyLibUI */,
 				B01D8B2B303DDCCF00D0F468 /* SyLibFeel */,
 				B01D8B2D303DE62A00D0F468 /* SyLibDice */,
+				B01D8B2F303F022C00D0F468 /* SyLibScoring */,
 			);
 			productName = Pentara;
 			productReference = B09DE90D2F4BBD400018F241 /* SyFive.app */;
@@ -725,6 +721,10 @@
 		B01D8B2D303DE62A00D0F468 /* SyLibDice */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SyLibDice;
+		};
+		B01D8B2F303F022C00D0F468 /* SyLibScoring */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SyLibScoring;
 		};
 		B024FFCC303DCE700095E1AE /* SyLibCache */ = {
 			isa = XCSwiftPackageProductDependency;

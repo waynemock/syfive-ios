@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 import SyLibCore
 
 // App-layer, SyFive-specific. Does not enter the Domain layer or SyLib (§2.13, §6.12).

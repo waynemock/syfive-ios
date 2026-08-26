@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 import SyLibDice
 
 // MARK: - Supporting types

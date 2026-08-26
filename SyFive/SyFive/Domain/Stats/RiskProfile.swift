@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 
 struct RiskProfile: Sendable {
     var totalScratchRate:    Double          // zeros / total fills across all matches

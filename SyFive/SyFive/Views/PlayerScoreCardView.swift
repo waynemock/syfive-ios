@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibScoring
 import Observation
 import SwiftData
 import SyLibFeel

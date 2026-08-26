@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 
 struct MatchProgression: Sendable {
     var matchID: UUID

@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibScoring
 
 /// Context-sensitive onboarding sheet for Game Night SharePlay.
 /// Covers four meaningful states: pre-session, host waiting for guests, guest accepting, guest already connected.

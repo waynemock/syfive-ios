@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibScoring
 import SwiftData
 
 /// The "signature moment" card — shown in pre-game player cards when two roster players

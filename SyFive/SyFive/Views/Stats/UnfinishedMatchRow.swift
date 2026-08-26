@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibScoring
 
 struct UnfinishedMatchRow: View {
     let match: Match

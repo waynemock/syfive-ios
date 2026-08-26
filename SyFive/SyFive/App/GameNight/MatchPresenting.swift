@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 
 /// Read-only interface shared by MatchController (host authority) and TableReplica
 /// (guest-side render model). Views that need to work in both pass-and-play and

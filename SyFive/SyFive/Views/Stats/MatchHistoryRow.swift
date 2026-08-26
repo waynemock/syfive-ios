@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibScoring
 
 struct MatchHistoryRow: View {
     let match: Match

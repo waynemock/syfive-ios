@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 import SwiftData
 
 /// Shared identity utilities for completed Game Night matches.

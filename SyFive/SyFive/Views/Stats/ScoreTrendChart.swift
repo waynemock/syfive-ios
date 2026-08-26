@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibScoring
 import Charts
 
 /// Line chart showing a player's final score across matches over time.

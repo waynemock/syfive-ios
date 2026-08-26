@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 import SwiftData
 
 // Persistence twin of Domain.Game — a reusable game catalog entry.

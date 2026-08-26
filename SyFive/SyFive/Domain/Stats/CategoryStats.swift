@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 
 // Per-category statistics for one player across completed matches.
 // Tier 2: reads YatzyCategory slotKey semantics. Compile-checks: Foundation only.

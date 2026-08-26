@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 
 /// Average score per Yatzy category across completed matches for a player.
 /// x = category index (0–12), y = average value, label = display name.

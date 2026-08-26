@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibScoring
 import SwiftData
 
 /// Lets the user link a Game Night player to an existing local roster player.

@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 
 // Upper-section aggregate stats for one player across completed matches.
 // Calls upperSubtotal() from YatzyScoring — Tier 2 per the architecture.

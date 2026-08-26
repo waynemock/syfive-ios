@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import SyLibScoring
 @testable import SyFive
 
 struct YatzyScoringTests {

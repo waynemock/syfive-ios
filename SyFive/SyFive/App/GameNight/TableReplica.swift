@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 import Observation
 
 /// Guest-side render model. Adopts MatchPresenting so views can bind it without

@@ -1,4 +1,5 @@
 import AVFoundation
+import SyLibScoring
 import Combine
 import Foundation
 import GroupActivities
@@ -1217,10 +1218,10 @@ final class GameNightController {
 
     private func buildInitialMatch(gameID: UUID) -> (Match, [SeatMapping]) {
         var mappings: [SeatMapping] = []
-        let participants: [Participant] = seats.enumerated().map { index, seat in
+        let participants: [SyLibScoring.Participant] = seats.enumerated().map { index, seat in
             let participantID = UUID()
             mappings.append(SeatMapping(seatClaimID: seat.seatClaimID, participantID: participantID))
-            return Participant(
+            return SyLibScoring.Participant(
                 id: participantID,
                 seat: index,
                 finalScore: 0,

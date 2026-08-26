@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 import GroupActivities
 
 /// The GroupActivities activity type for a SyFive Game Night session.

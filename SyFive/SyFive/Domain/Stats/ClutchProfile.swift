@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 
 // Tier 1 concept (game-agnostic analysis on a score series), Tier 2 implementation
 // because the progression replay calls YatzyScoring. Refactor to Tier 1 once

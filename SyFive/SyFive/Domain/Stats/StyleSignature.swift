@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 
 enum SectionLean: String, Sendable {
     case upperFirst   // > 55% of first-7 fills are upper section

@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 import Testing
 @testable import SyFive
 

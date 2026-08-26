@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 
 extension ParticipantModel {
     func toDomain() -> Participant {

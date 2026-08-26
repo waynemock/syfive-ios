@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibScoring
 import SwiftData
 
 /// The pre-game seating screen shown to all players during the `settingTable` phase.

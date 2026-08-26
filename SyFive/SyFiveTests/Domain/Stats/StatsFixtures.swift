@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 @testable import SyFive
 
 // Synthetic completed Match values for unit-testing Domain/Stats/.

@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibScoring
 import SyLibFeel
 
 struct PreGameGridView: View {

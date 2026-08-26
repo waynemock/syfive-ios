@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibScoring
 import SwiftData
 
 /// Lets the local player pick themselves from the roster to claim a seat.

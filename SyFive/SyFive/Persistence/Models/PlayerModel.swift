@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 import SwiftData
 
 @Model final class PlayerModel {

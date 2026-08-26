@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 
 extension PlayerModel {
     func toDomain() -> Player {

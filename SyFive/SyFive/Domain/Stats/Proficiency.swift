@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 
 struct Proficiency: Sendable {
     var strongest: [YatzyCategory]      // top-3 by efficiency (averageValue / maxPossible)

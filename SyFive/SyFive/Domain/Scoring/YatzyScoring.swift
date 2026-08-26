@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 
 // A Yatzy scorecard maps each category to its scored value.
 // Key presence = scored (even at Decimal(0) = deliberately scratched zero).

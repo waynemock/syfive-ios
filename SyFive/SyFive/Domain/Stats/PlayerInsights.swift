@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 
 struct PlayerInsights: Sendable {
     var playerID:     UUID

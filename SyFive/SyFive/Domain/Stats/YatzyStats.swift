@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 
 // Yatzy and bonus statistics for one player across completed matches.
 // Reads yatzyBonus (denormalized on Participant) and the Yatzy category entry.

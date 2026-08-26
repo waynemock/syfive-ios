@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibScoring
 import SwiftData
 
 /// Merges an archived player's match history into an active roster player.

@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import SyLibDice
 
 struct DiceFairnessView: View {
     private let ideal = 100.0 / 6.0

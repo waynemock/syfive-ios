@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 import Observation
 import SwiftUI
 import SwiftData

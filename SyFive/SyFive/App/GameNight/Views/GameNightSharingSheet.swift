@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibScoring
 import UIKit
 import GroupActivities
 import SyLibCore

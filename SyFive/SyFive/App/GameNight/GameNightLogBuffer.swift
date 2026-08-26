@@ -1,4 +1,5 @@
 import Foundation
+import SyLibScoring
 import SyLibCore
 
 /// Writes Game Night session logs directly to disk as each entry arrives.
