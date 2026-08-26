@@ -276,6 +276,7 @@ extension ContentView {
 struct GameNightAlertModifier: ViewModifier {
     @Environment(GameNightController.self) private var gameNight
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.openURL) private var openURL
     @Binding var showsSessionEndedAlert: Bool
     @Binding var showsGameNightGuestReconnect: Bool
     @Binding var pendingGuestReconnectMatchID: UUID?
@@ -398,6 +399,20 @@ struct GameNightAlertModifier: ViewModifier {
             }
             .onChange(of: gameNight.sessionEndedDuringPlay) { _, ended in
                 if ended { showsSessionEndedAlert = true }
+            }
+            .alert("Can't Join Game Night", isPresented: Binding(
+                get: { gameNight.hostVersionMismatch != nil },
+                set: { if !$0 { gameNight.clearHostVersionMismatch() } }
+            )) {
+                Button("Update") { openURL(AboutView.appStoreURL) }
+                Button("Dismiss", role: .cancel) { gameNight.clearHostVersionMismatch() }
+            } message: {
+                if let v = gameNight.hostVersionMismatch,
+                   v > GameNightEnvelope.currentProtocolVersion {
+                    Text("The host is running a newer version of SyFive. Update SyFive from the App Store to join.")
+                } else {
+                    Text("The host is running a different version of SyFive. Make sure both devices have the latest version from the App Store.")
+                }
             }
     }
 

@@ -57,6 +57,15 @@ final class GameNightController {
     /// Cleared automatically when the proxied turn is scored.
     private(set) var isProxyMode = false
 
+    /// Number of joiners declined this session because their protocol version
+    /// didn't match. Surfaced in table setup so the host can tell them to update.
+    private(set) var versionMismatchedCount: Int = 0
+    /// Protocol version of the most recent declined joiner, for direction messaging.
+    private(set) var lastMismatchedProtocolVersion: Int?
+    /// Set when the host's protocol version differs from ours. The local device
+    /// cannot participate; the UI must explain why.
+    private(set) var hostVersionMismatch: Int?
+
     /// Session-scoped commentary override. Host writes; guests receive via tableState.
     /// Never persisted — the session ends and solo settings reassert immediately.
     var commentaryEnabled: Bool = false
@@ -173,6 +182,8 @@ final class GameNightController {
     /// (i.e. our seatClaimID is not yet visible in a received tableState).
     /// Allows automatic resend if the claim was sent before the host started listening.
     private var pendingSeatClaim: SeatClaimPayload? = nil
+    /// Fires on guests if no compatible tableState arrives within 10 s of hello.
+    private var versionMismatchTimeoutTask: Task<Void, Never>?
 
     // MARK: - App-launch entry point
 
@@ -281,6 +292,17 @@ final class GameNightController {
         } else {
             // Announce ourselves so the host can version-check and send tableState.
             Task { await self.sendHello() }
+            // Backstop: if no compatible tableState arrives within 10 s (the host may be
+            // too old to send one), surface the version-mismatch alert.
+            versionMismatchTimeoutTask = Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(10))
+                guard let self, !Task.isCancelled,
+                      self.isSessionActive,
+                      self.phase == .settingTable,
+                      self.hostVersionMismatch == nil else { return }
+                self.hostVersionMismatch = 0
+                self.logger.info(self, "configureSession: no compatible tableState after 10 s — surfacing version mismatch alert")
+            }
         }
         isGuestAwaitingReconnect = false
         sessionActivationCount += 1
@@ -327,6 +349,11 @@ final class GameNightController {
     /// Clear the session-ended flag after the UI has acknowledged it.
     func clearSessionEndedFlag() {
         sessionEndedDuringPlay = false
+    }
+
+    /// Clear the host version mismatch flag after the UI has acknowledged it.
+    func clearHostVersionMismatch() {
+        hostVersionMismatch = nil
     }
 
     // MARK: - Audio interruption recovery (private)
@@ -415,6 +442,11 @@ final class GameNightController {
         seats = []
         phase = .settingTable
         versionMismatchedIDs = []
+        versionMismatchedCount = 0
+        lastMismatchedProtocolVersion = nil
+        hostVersionMismatch = nil
+        versionMismatchTimeoutTask?.cancel()
+        versionMismatchTimeoutTask = nil
         localSeatClaimID = nil
         localParticipantID = nil
         onRollBegan = nil
@@ -621,7 +653,8 @@ final class GameNightController {
             seats: seats,
             commentaryEnabled: commentaryEnabled,
             commentaryPackID: commentaryPackID,
-            commentaryLevelRaw: commentaryLevelRaw
+            commentaryLevelRaw: commentaryLevelRaw,
+            protocolVersion: GameNightEnvelope.currentProtocolVersion
         ))
     }
 
@@ -682,6 +715,8 @@ final class GameNightController {
         guard payload.protocolVersion == GameNightEnvelope.currentProtocolVersion else {
             logger.info(self, "Version mismatch from \(senderID): v\(payload.protocolVersion)")
             versionMismatchedIDs.insert(senderID)
+            versionMismatchedCount = versionMismatchedIDs.count
+            lastMismatchedProtocolVersion = payload.protocolVersion
             return
         }
         logger.info(self, "handleHello: v\(payload.protocolVersion) appV=\(payload.appVersion) from=\(senderID) — sending catch-up phase=\(phase.rawValue)")
@@ -704,6 +739,17 @@ final class GameNightController {
     private func handleTableState(_ envelope: GameNightEnvelope) {
         guard role != .host,
               let payload = try? envelope.decode(TableStatePayload.self) else { return }
+        let hostVersion = payload.protocolVersion ?? 1
+        if hostVersion != GameNightEnvelope.currentProtocolVersion {
+            hostVersionMismatch = hostVersion
+            versionMismatchTimeoutTask?.cancel()
+            versionMismatchTimeoutTask = nil
+            logger.info(self, "handleTableState: version mismatch hostVersion=\(hostVersion) ours=\(GameNightEnvelope.currentProtocolVersion)")
+            return
+        }
+        hostVersionMismatch = nil
+        versionMismatchTimeoutTask?.cancel()
+        versionMismatchTimeoutTask = nil
         phase = payload.phase
         seats = payload.seats
         commentaryEnabled = payload.commentaryEnabled

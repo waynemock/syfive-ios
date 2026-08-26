@@ -51,6 +51,8 @@ struct TableStatePayload: Codable, Sendable {
     let commentaryEnabled: Bool
     let commentaryPackID: String
     let commentaryLevelRaw: String
+    /// Absent in messages from hosts older than this field was added; treat nil as v1.
+    let protocolVersion: Int?
 }
 
 /// Sent by a guest (or the host adding a local seat) to claim one seat.

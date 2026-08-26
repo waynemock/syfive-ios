@@ -20,6 +20,7 @@ struct TableSettingView: View {
         NavigationStack {
             List {
                 seatsSection
+                versionMismatchSection
                 if gameNight.phase == .settingTable {
                     claimSection
                 }
@@ -107,6 +108,28 @@ struct TableSettingView: View {
         } header: {
             Text("Table")
                 .foregroundStyle(theme.primaryAccent)
+        }
+    }
+
+    @ViewBuilder
+    private var versionMismatchSection: some View {
+        if gameNight.versionMismatchedCount > 0 {
+            let count = gameNight.versionMismatchedCount
+            let who = count == 1 ? "Someone on the call" : "\(count) people on the call"
+            let verb = count == 1 ? "is" : "are"
+            let message: String = {
+                if let v = gameNight.lastMismatchedProtocolVersion,
+                   v < GameNightEnvelope.currentProtocolVersion {
+                    return "\(who) \(verb) running an older version of SyFive and can't join. Ask them to update from the App Store."
+                } else {
+                    return "\(who) \(verb) running a newer version of SyFive. Update SyFive to play together."
+                }
+            }()
+            Section {
+                Label(message, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.secondary)
+                    .font(.subheadline)
+            }
         }
     }
 
