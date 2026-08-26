@@ -1,6 +1,7 @@
 import SwiftUI
 import SyLibScoring
 import SwiftData
+import SyLibScoringData
 
 /// Lets the local player pick themselves from the roster to claim a seat.
 /// Presented from TableSettingView when the device hasn't yet claimed a seat.

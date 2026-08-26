@@ -4,6 +4,7 @@ import SwiftData
 import SyLibCore
 import SyLibFeel
 import SyLibDice
+import SyLibScoringData
 
 struct ContentView: View {
     @State var model = MatchController()

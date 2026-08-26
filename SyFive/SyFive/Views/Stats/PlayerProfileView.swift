@@ -1,6 +1,7 @@
 import SwiftUI
 import SyLibScoring
 import SwiftData
+import SyLibScoringData
 
 struct PlayerProfileView: View {
     let playerID:   UUID

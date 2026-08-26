@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import SyLibScoringData
 
 private enum HistorySegment: CaseIterable {
     case finished, unfinished

@@ -10,6 +10,7 @@
 		B01D8B2C303DDCCF00D0F468 /* SyLibFeel in Frameworks */ = {isa = PBXBuildFile; productRef = B01D8B2B303DDCCF00D0F468 /* SyLibFeel */; };
 		B01D8B2E303DE62A00D0F468 /* SyLibDice in Frameworks */ = {isa = PBXBuildFile; productRef = B01D8B2D303DE62A00D0F468 /* SyLibDice */; };
 		B01D8B30303F022C00D0F468 /* SyLibScoring in Frameworks */ = {isa = PBXBuildFile; productRef = B01D8B2F303F022C00D0F468 /* SyLibScoring */; };
+		B01D8B40303F81C000D0F468 /* SyLibScoringData in Frameworks */ = {isa = PBXBuildFile; productRef = B01D8B3F303F81C000D0F468 /* SyLibScoringData */; };
 		B024FFCD303DCE700095E1AE /* SyLibCache in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFCC303DCE700095E1AE /* SyLibCache */; };
 		B024FFCF303DCE700095E1AE /* SyLibCore in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFCE303DCE700095E1AE /* SyLibCore */; };
 		B024FFD1303DCE700095E1AE /* SyLibDSP in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFD0303DCE700095E1AE /* SyLibDSP */; };
@@ -64,6 +65,7 @@
 				Docs/Requirements/15_HELP_SCREEN.md,
 				Docs/SyLib/00_SYLIB_MIGRATION_PLAN.md,
 				Docs/SyLib/01_SYLIBDICE_STANDALONE_WAVE.md,
+				Docs/SyLib/02_SYLIBSCORINGDATA_WAVE.md,
 				Info.plist,
 			);
 			target = B09DE90C2F4BBD400018F241 /* SyFive */;
@@ -98,6 +100,7 @@
 			files = (
 				B01D8B2C303DDCCF00D0F468 /* SyLibFeel in Frameworks */,
 				B024FFD3303DCE700095E1AE /* SyLibUI in Frameworks */,
+				B01D8B40303F81C000D0F468 /* SyLibScoringData in Frameworks */,
 				B024FFCD303DCE700095E1AE /* SyLibCache in Frameworks */,
 				B024FFCF303DCE700095E1AE /* SyLibCore in Frameworks */,
 				B024FFD1303DCE700095E1AE /* SyLibDSP in Frameworks */,
@@ -178,6 +181,7 @@
 				B01D8B2B303DDCCF00D0F468 /* SyLibFeel */,
 				B01D8B2D303DE62A00D0F468 /* SyLibDice */,
 				B01D8B2F303F022C00D0F468 /* SyLibScoring */,
+				B01D8B3F303F81C000D0F468 /* SyLibScoringData */,
 			);
 			productName = Pentara;
 			productReference = B09DE90D2F4BBD400018F241 /* SyFive.app */;
@@ -726,6 +730,10 @@
 		B01D8B2F303F022C00D0F468 /* SyLibScoring */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SyLibScoring;
+		};
+		B01D8B3F303F81C000D0F468 /* SyLibScoringData */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SyLibScoringData;
 		};
 		B024FFCC303DCE700095E1AE /* SyLibCache */ = {
 			isa = XCSwiftPackageProductDependency;

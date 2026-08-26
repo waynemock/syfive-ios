@@ -1,6 +1,7 @@
 import SwiftUI
 import SyLibScoring
 import SwiftData
+import SyLibScoringData
 
 /// Lets the user link a Game Night player to an existing local roster player.
 /// On confirmation the local player's match history is remapped to the Game Night UUID,

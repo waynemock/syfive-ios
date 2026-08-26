@@ -1,6 +1,7 @@
 import SwiftUI
 import SyLibScoring
 import SwiftData
+import SyLibScoringData
 
 /// The pre-game seating screen shown to all players during the `settingTable` phase.
 /// Host sees reorder/remove controls and a Start button; guests see a seat-claim button.

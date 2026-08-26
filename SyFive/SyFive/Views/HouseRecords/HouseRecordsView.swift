@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import SyLibScoringData
 
 struct HouseRecordsView: View {
     @Query(filter: #Predicate<MatchModel> { $0.statusRaw == "completed" },

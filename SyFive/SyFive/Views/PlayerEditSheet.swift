@@ -1,6 +1,7 @@
 import SwiftUI
 import SyLibScoring
 import SwiftData
+import SyLibScoringData
 
 struct PlayerEditSheet: View {
     enum Mode: Identifiable {

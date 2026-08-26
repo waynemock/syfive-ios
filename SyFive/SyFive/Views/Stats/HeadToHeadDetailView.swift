@@ -2,6 +2,7 @@ import SwiftUI
 import SyLibScoring
 import SwiftData
 import SyLibFeel
+import SyLibScoringData
 
 struct HeadToHeadDetailView: View {
     let profilePlayerName: String

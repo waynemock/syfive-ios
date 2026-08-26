@@ -2,6 +2,7 @@ import SwiftUI
 import SyLibScoring
 import SwiftData
 import SyLibFeel
+import SyLibScoringData
 
 struct MatchDetailView: View {
     let matchModel: MatchModel

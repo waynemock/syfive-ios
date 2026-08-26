@@ -1,6 +1,7 @@
 import SwiftUI
 import SyLibScoring
 import SwiftData
+import SyLibScoringData
 
 /// Merges an archived player's match history into an active roster player.
 /// The active player's UUID is kept; all of the retiring player's ParticipantModel

@@ -2,6 +2,7 @@ import SwiftUI
 import SyLibScoring
 import SwiftData
 import SyLibCore
+import SyLibScoringData
 
 extension ContentView {
 

@@ -4,6 +4,7 @@ import Observation
 import SwiftUI
 import SwiftData
 import SyLibCore
+import SyLibScoringData
 
 @Observable
 final class MatchController {

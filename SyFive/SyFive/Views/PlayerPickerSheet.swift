@@ -1,6 +1,7 @@
 import SwiftUI
 import SyLibScoring
 import SwiftData
+import SyLibScoringData
 
 struct PlayerPickerSheet: View {
     @Bindable var model: MatchController

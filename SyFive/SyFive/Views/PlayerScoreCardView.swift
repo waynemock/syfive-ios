@@ -3,6 +3,7 @@ import SyLibScoring
 import Observation
 import SwiftData
 import SyLibFeel
+import SyLibScoringData
 
 struct PlayerScoreCardView: View {
     @Bindable var model: MatchController
