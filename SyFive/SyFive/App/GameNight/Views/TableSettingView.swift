@@ -87,7 +87,7 @@ struct TableSettingView: View {
                     .italic()
             }
             ForEach(gameNight.seats, id: \.seatClaimID) { seat in
-                let isOwnSeat = seat.seatClaimID == gameNight.localSeatClaimID
+                let isOwnSeat = seat.seatClaimID == gameNight.session.localSeatClaimID
                 SeatRow(seat: seat, colorScheme: colorScheme,
                         isLocal: isOwnSeat,
                         canRemove: gameNight.phase == .settingTable && (gameNight.role == .host || isOwnSeat),
@@ -113,12 +113,12 @@ struct TableSettingView: View {
 
     @ViewBuilder
     private var versionMismatchSection: some View {
-        if gameNight.versionMismatchedCount > 0 {
-            let count = gameNight.versionMismatchedCount
+        if gameNight.session.versionMismatchedCount > 0 {
+            let count = gameNight.session.versionMismatchedCount
             let who = count == 1 ? "Someone on the call" : "\(count) people on the call"
             let verb = count == 1 ? "is" : "are"
             let message: String = {
-                if let v = gameNight.lastMismatchedProtocolVersion,
+                if let v = gameNight.session.lastMismatchedProtocolVersion,
                    v < GameNightEnvelope.currentProtocolVersion {
                     return "\(who) \(verb) running an older version of SyFive and can't join. Ask them to update from the App Store."
                 } else {
@@ -135,7 +135,7 @@ struct TableSettingView: View {
 
     private var claimSection: some View {
         Section {
-            if gameNight.localSeatClaimID == nil {
+            if gameNight.session.localSeatClaimID == nil {
                 Button {
                     showsSeatClaim = true
                 } label: {
@@ -143,7 +143,7 @@ struct TableSettingView: View {
                 }
             }
         } footer: {
-            if gameNight.localSeatClaimID == nil {
+            if gameNight.session.localSeatClaimID == nil {
                 Text("Just here to watch? Skip claiming a seat — you'll spectate the game with live dice and scores.")
             }
         }

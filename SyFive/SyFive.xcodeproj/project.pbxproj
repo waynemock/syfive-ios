@@ -66,6 +66,8 @@
 				Docs/SyLib/00_SYLIB_MIGRATION_PLAN.md,
 				Docs/SyLib/01_SYLIBDICE_STANDALONE_WAVE.md,
 				Docs/SyLib/02_SYLIBSCORINGDATA_WAVE.md,
+				Docs/SyLib/03_GAMENIGHT_BEHAVIOR_INVENTORY.md,
+				Docs/SyLib/04_GAMENIGHT_PHASE1_SPLIT.md,
 				Info.plist,
 			);
 			target = B09DE90C2F4BBD400018F241 /* SyFive */;

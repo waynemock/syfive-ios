@@ -49,7 +49,7 @@ extension ContentView {
                 Image(systemName: "person.3.fill")
                     .foregroundStyle(Color.green)
             }
-        } else if gameNight.isEligibleForGroupSession {
+        } else if gameNight.session.isEligibleForGroupSession {
             // Active FaceTime/iMessage call — promote Game Night as the primary action.
             Button {
                 gameNight.prepareAsHost()
@@ -191,7 +191,7 @@ extension ContentView {
     /// True when the leading area is showing a Game Night action (not the plain + / ↺ button).
     /// Controls visibility of the help (?) button that sits to the right of it.
     var showsGameNightHelpButton: Bool {
-        (gameNight.isEligibleForGroupSession && !gameNight.isSessionActive && !gameNight.isSessionPending) ||
+        (gameNight.session.isEligibleForGroupSession && !gameNight.isSessionActive && !gameNight.isSessionPending) ||
         gameNight.isSessionPending ||
         (gameNight.isSessionActive && gameNight.phase == .settingTable)
     }
@@ -397,17 +397,17 @@ struct GameNightAlertModifier: ViewModifier {
             } message: {
                 Text("Starting Game Night will set aside your current game. You can resume it from History later.")
             }
-            .onChange(of: gameNight.sessionEndedDuringPlay) { _, ended in
+            .onChange(of: gameNight.session.sessionEndedDuringPlay) { _, ended in
                 if ended { showsSessionEndedAlert = true }
             }
             .alert("Can't Join Game Night", isPresented: Binding(
-                get: { gameNight.hostVersionMismatch != nil },
+                get: { gameNight.session.hostVersionMismatch != nil },
                 set: { if !$0 { gameNight.clearHostVersionMismatch() } }
             )) {
                 Button("Update") { openURL(AboutView.appStoreURL) }
                 Button("Dismiss", role: .cancel) { gameNight.clearHostVersionMismatch() }
             } message: {
-                if let v = gameNight.hostVersionMismatch,
+                if let v = gameNight.session.hostVersionMismatch,
                    v > GameNightEnvelope.currentProtocolVersion {
                     Text("The host is running a newer version of SyFive. Update SyFive from the App Store to join.")
                 } else {
@@ -426,7 +426,7 @@ struct GameNightAlertModifier: ViewModifier {
         matchDesc.fetchLimit = 1
         guard let match = (try? modelContext.fetch(matchDesc))?.first,
               match.isGameNight,
-              UserDefaults.standard.gnWasHost(for: match.id) else { return nil }
+              gameNight.gnWasHost(for: match.id) else { return nil }
 
         let yatzyID = ScoringSystemID.yatzy.rawValue
         let gameDesc = FetchDescriptor<GameModel>(

@@ -18,7 +18,7 @@ extension ContentView {
             model.load(from: matchModel)
             ensurePlayerModels(for: matchModel.participants)
             if matchModel.isGameNight && !gameNight.isSessionActive {
-                let wasHost = UserDefaults.standard.gnWasHost(for: matchModel.id)
+                let wasHost = gameNight.gnWasHost(for: matchModel.id)
                 if wasHost {
                     // Host re-initiates the session from the reconnect alert.
                     showsGameNightReconnect = true

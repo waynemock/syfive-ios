@@ -248,7 +248,7 @@ struct ContentView: View {
         // Keyed off sessionActivationCount rather than isSessionActive so this always fires,
         // even when tearDownSession() + reconfigure flips isSessionActive false→true in the
         // same SwiftUI render cycle (net value unchanged → onChange would otherwise be skipped).
-        .onChange(of: gameNight.sessionActivationCount) { _, count in
+        .onChange(of: gameNight.session.sessionActivationCount) { _, count in
             logger.info(self, "onChange(sessionActivationCount): count=\(count) isSessionActive=\(gameNight.isSessionActive) phase=\(String(describing: gameNight.phase))")
             guard gameNight.isSessionActive else {
                 logger.warning(self, "onChange(sessionActivationCount): isSessionActive=false, skipping")
@@ -496,7 +496,7 @@ struct ContentView: View {
         .sheet(isPresented: $showsGameNightHelp) {
             GameNightHelpSheet(
                 context: gameNightHelpContext,
-                isEligibleForGroupSession: gameNight.isEligibleForGroupSession
+                isEligibleForGroupSession: gameNight.session.isEligibleForGroupSession
             )
             .environment(\.theme, theme)
         }

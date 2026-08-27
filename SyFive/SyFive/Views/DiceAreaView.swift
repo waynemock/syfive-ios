@@ -289,7 +289,7 @@ struct DiceAreaView: View {
     private var isLocalTurn: Bool {
         // Pre-reconnect: participant ID was restored from UserDefaults — use it
         // so the scorecard highlights the correct player while waiting.
-        if gameNight.isGuestAwaitingReconnect,
+        if gameNight.session.isGuestAwaitingReconnect,
            let localID = gameNight.localParticipantID {
             let ids = model.participantIDs
             guard model.currentPlayerIndex < ids.count else { return false }
@@ -322,7 +322,7 @@ struct DiceAreaView: View {
         if isPlayAgainButton {
             return !gameNight.isSessionActive || gameNight.role == .host
         }
-        guard !gameNight.isGuestAwaitingReconnect else { return false }
+        guard !gameNight.session.isGuestAwaitingReconnect else { return false }
         return model.playerCount > 0 && isLocalTurn && model.rollsRemaining > 0 && !model.isGameOver && !model.isRolling && !allDiceHeld
     }
 
@@ -339,7 +339,7 @@ struct DiceAreaView: View {
             }
             return "Play Again"
         }
-        if gameNight.isGuestAwaitingReconnect {
+        if gameNight.session.isGuestAwaitingReconnect {
             return "Waiting for Game Night…"
         }
         if gameNight.isSessionActive, gameNight.phase == .inProgress, !isLocalTurn {
