@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibCommentary
 import SyLibCore
 import SyLibDice
 import SyLibFeel
@@ -36,7 +37,7 @@ struct ContentView: View {
     /// only if the user explicitly taps Rejoin.
     @State var pendingGuestReconnectMatchID: UUID? = nil
     @State var celebrationCoordinator = CelebrationCoordinator()
-    @State var commentaryEngine: CommentaryEngine? = nil
+    @State var commentaryEngine: CommentaryEngine<CommentaryEventKind>? = nil
     @State var isUpdateAvailable = false
     @State var updateBadgeAcknowledged = false
     @Environment(GameNightController.self) var gameNight

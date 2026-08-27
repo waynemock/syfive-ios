@@ -1,4 +1,5 @@
 import Foundation
+import SyLibCommentary
 import SyLibScoring
 import SyLibDice
 import SyLibGameNight
@@ -102,15 +103,6 @@ struct MatchCompletePayload: Codable, Sendable {
 /// Broadcast when the host abandons the session. Devices close gracefully.
 /// Intentionally empty — the message kind is sufficient.
 struct MatchAbandonedPayload: Codable, Sendable {}
-
-/// Broadcast by the host when the commentary engine speaks a line.
-/// Guests speak the same text verbatim using their local voice, so all
-/// devices produce identical commentary chosen by the host's settings.
-struct CommentaryPayload: Codable, Sendable {
-    let text: String
-    /// Raw value of `CommentaryEventTier` — determines interrupt priority on the guest.
-    let tierRaw: Int
-}
 
 // MARK: - Match history sync (post-matchStart background repair)
 

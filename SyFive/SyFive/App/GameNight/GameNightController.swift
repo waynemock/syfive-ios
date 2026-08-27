@@ -1,4 +1,5 @@
 import Foundation
+import SyLibCommentary
 import SyLibCore
 import SyLibDice
 import SyLibGameNight
@@ -62,6 +63,7 @@ final class GameNightController {
     // MARK: - Session method pass-throughs
 
     func listenForSessions() async {
+        GameNightLogBuffer.configure(keyPrefix: session.keyPrefix)
         GameNightLogBuffer.shared.isLoggingEnabled = AppConfig.DebugGameNight.showLogs
         session.onTearDown = { [weak self] in self?.performControllerTearDown() }
         session.onNeedsMatchStateBroadcast = { [weak self] in Task { await self?.broadcastMatchState() } }

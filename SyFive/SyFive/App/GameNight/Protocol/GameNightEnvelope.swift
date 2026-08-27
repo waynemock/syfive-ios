@@ -1,8 +1,6 @@
 import Foundation
 import SyLibGameNight
 
-// `GameNightEnvelope` and `GameNightSessionKind` are imported from SyLibGameNight.
-
 /// SyFive's 13 app-layer message kinds. These are game-specific and are NOT part
 /// of the package — the session forwards anything it does not own to the controller.
 /// Raw values must not change — they are on the wire.

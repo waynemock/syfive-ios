@@ -55,6 +55,7 @@ extension ContentView {
             Button {
                 gameNight.prepareAsHost()
                 GameNightSharing.present(
+                    activity: GameNightActivity(),
                     onRequiresConversation: {
                         gameNight.cancelHostPreparation()
                         showsInviteInstructions = true
@@ -106,6 +107,7 @@ extension ContentView {
             Button {
                 gameNight.prepareAsHost()
                 GameNightSharing.present(
+                    activity: GameNightActivity(),
                     onRequiresConversation: {
                         // Sharing controller was cancelled or needs a conversation first.
                         // Reset host preparation so a later incoming session from another
@@ -300,6 +302,7 @@ struct GameNightAlertModifier: ViewModifier {
                         pendingResumeGameID = ids.gameID
                         gameNight.prepareAsHost()
                         GameNightSharing.present(
+                            activity: GameNightActivity(),
                             onRequiresConversation: {
                                 gameNight.cancelHostPreparation()
                                 pendingResumeMatchID = nil
@@ -343,6 +346,7 @@ struct GameNightAlertModifier: ViewModifier {
                 Button("Resume as Host") {
                     gameNight.prepareAsHost()
                     GameNightSharing.present(
+                        activity: GameNightActivity(),
                         onRequiresConversation: {
                             gameNight.cancelHostPreparation()
                             pendingResumeMatchID = nil

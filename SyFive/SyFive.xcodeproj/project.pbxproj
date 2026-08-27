@@ -12,6 +12,7 @@
 		B01D8B30303F022C00D0F468 /* SyLibScoring in Frameworks */ = {isa = PBXBuildFile; productRef = B01D8B2F303F022C00D0F468 /* SyLibScoring */; };
 		B01D8B40303F81C000D0F468 /* SyLibScoringData in Frameworks */ = {isa = PBXBuildFile; productRef = B01D8B3F303F81C000D0F468 /* SyLibScoringData */; };
 		B01D8D5530405DF600D0F468 /* SyLibGameNight in Frameworks */ = {isa = PBXBuildFile; productRef = B01D8D5430405DF600D0F468 /* SyLibGameNight */; };
+		B01D8D5E30408DBE00D0F468 /* SyLibCommentary in Frameworks */ = {isa = PBXBuildFile; productRef = B01D8D5D30408DBE00D0F468 /* SyLibCommentary */; };
 		B024FFCD303DCE700095E1AE /* SyLibCache in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFCC303DCE700095E1AE /* SyLibCache */; };
 		B024FFCF303DCE700095E1AE /* SyLibCore in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFCE303DCE700095E1AE /* SyLibCore */; };
 		B024FFD1303DCE700095E1AE /* SyLibDSP in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFD0303DCE700095E1AE /* SyLibDSP */; };
@@ -73,6 +74,8 @@
 				Docs/SyLib/06_GAMENIGHT_PHASE2_STEP2.md,
 				Docs/SyLib/07_GAMENIGHT_PHASE3_VIEWS.md,
 				Docs/SyLib/08_GAMENIGHT_PHASE3B_TABLEVIEW.md,
+				Docs/SyLib/09_GAMENIGHT_PHASE4_CLOSEOUT.md,
+				Docs/SyLib/10_SYLIBCOMMENTARY_BRIEF.md,
 				Info.plist,
 			);
 			target = B09DE90C2F4BBD400018F241 /* SyFive */;
@@ -106,6 +109,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B01D8B2C303DDCCF00D0F468 /* SyLibFeel in Frameworks */,
+				B01D8D5E30408DBE00D0F468 /* SyLibCommentary in Frameworks */,
 				B024FFD3303DCE700095E1AE /* SyLibUI in Frameworks */,
 				B01D8B40303F81C000D0F468 /* SyLibScoringData in Frameworks */,
 				B024FFCD303DCE700095E1AE /* SyLibCache in Frameworks */,
@@ -191,6 +195,7 @@
 				B01D8B2F303F022C00D0F468 /* SyLibScoring */,
 				B01D8B3F303F81C000D0F468 /* SyLibScoringData */,
 				B01D8D5430405DF600D0F468 /* SyLibGameNight */,
+				B01D8D5D30408DBE00D0F468 /* SyLibCommentary */,
 			);
 			productName = Pentara;
 			productReference = B09DE90D2F4BBD400018F241 /* SyFive.app */;
@@ -747,6 +752,10 @@
 		B01D8D5430405DF600D0F468 /* SyLibGameNight */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SyLibGameNight;
+		};
+		B01D8D5D30408DBE00D0F468 /* SyLibCommentary */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SyLibCommentary;
 		};
 		B024FFCC303DCE700095E1AE /* SyLibCache */ = {
 			isa = XCSwiftPackageProductDependency;

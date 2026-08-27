@@ -1,6 +1,7 @@
 import Foundation
+import SyLibCommentary
 
-extension CommentaryPersonality {
+extension CommentaryPersonality where Kind == CommentaryEventKind {
     static let sports = CommentaryPersonality(
         id: "sports",
         displayName: "Sports",
@@ -8,7 +9,7 @@ extension CommentaryPersonality {
         prosody: CommentaryProsody(rate: 0.54, pitchMultiplier: 1.08, preUtteranceDelay: 0.05, postUtteranceDelay: 0.05),
         previewLine: "Five of a kind, folks! The crowd is absolutely losing it right now!",
         lines: [
-            .yatzyRolled: [
+            "yatzyRolled": [
                 "Yatzy! {player} brings the house down!",
                 "Five of a kind! {player} rolls the perfect one, folks!",
                 "Are you kidding me? {player} nails the Yatzy!",
@@ -31,7 +32,7 @@ extension CommentaryPersonality {
                 "And there it is! {player} joins the Yatzy club!",
                 "{player} just made this look easy. Yatzy!"
             ],
-            .yatzyBonusEarned: [
+            "yatzyBonusEarned": [
                 "Another one?! {player} with the bonus Yatzy, plus a hundred!",
                 "{player} is on fire! Back-to-back five of a kind!",
                 "Stop it! {player} rolls ANOTHER Yatzy! Hundred more!",
@@ -54,7 +55,7 @@ extension CommentaryPersonality {
                 "The bonus banner is up! {player} adds one hundred!",
                 "{player} just turned this into a highlight reel!"
             ],
-            .winnerDeclared: [
+            "winnerDeclared": [
                 "That's the ballgame! {winner} takes it with {score}!",
                 "Final score, {winner} on top! What a performance!",
                 "{winner} wins it, folks! {score} points and a trophy!",
@@ -77,7 +78,7 @@ extension CommentaryPersonality {
                 "Champagne for {winner}! The title is theirs!",
                 "{winner} closes the show! {score} and the win!"
             ],
-            .winnerTie: [
+            "winnerTie": [
                 "We've got a tie! {winner}, deadlocked at {score}!",
                 "Photo finish, folks! {winner} share the top!",
                 "No separation! {winner} tied at {score}!",
@@ -93,7 +94,7 @@ extension CommentaryPersonality {
                 "No winner alone tonight! {winner} share it!",
                 "A draw! {winner} both walk away on top!"
             ],
-            .upperBonusEarned: [
+            "upperBonusEarned": [
                 "{player} locks in the upper bonus! Thirty-five more!",
                 "There's the bonus! {player} cracks sixty-three!",
                 "{player} does the upper work and cashes in! Plus thirty-five!",
@@ -115,7 +116,7 @@ extension CommentaryPersonality {
                 "{player} closes the upper section in style! Bonus!",
                 "Thirty-five points, courtesy of {player}'s discipline!"
             ],
-            .yatzyScratched: [
+            "yatzyScratched": [
                 "Ohh, {player} scratches the Yatzy! No bonus insurance now!",
                 "Big swing! {player} zeroes out the Yatzy box!",
                 "That's a scratch on the Yatzy for {player}! Gutsy or grim, you decide!",
@@ -137,7 +138,7 @@ extension CommentaryPersonality {
                 "No Yatzy for {player} tonight! Scratched clean!",
                 "{player} poisons the box! Zero on the Yatzy!"
             ],
-            .bigTurn: [
+            "bigTurn": [
                 "{player} drops a {category} for {value}! Big points!",
                 "That's a {category}! {player} banks {value}!",
                 "{player} with the {category}, worth {value}!",
@@ -159,7 +160,7 @@ extension CommentaryPersonality {
                 "Big-time roll! {player} banks {value} with the {category}!",
                 "{player} finishes the {category} in style! {value}!"
             ],
-            .leadChange: [
+            "leadChange": [
                 "New leader! {leader} surges past {runnerUp}!",
                 "And {leader} takes the lead! What a swing!",
                 "{leader} moves to the front! {runnerUp} bumped to second!",
@@ -181,7 +182,7 @@ extension CommentaryPersonality {
                 "{leader} takes over first place!",
                 "{runnerUp} led, but now it's all {leader}!"
             ],
-            .turnStart: [
+            "turnStart": [
                 "{player} steps up to the tray!",
                 "Here comes {player}!",
                 "{player} is on the clock!",
@@ -203,7 +204,7 @@ extension CommentaryPersonality {
                 "{player} steps in!",
                 "Time for {player}!"
             ],
-            .categoryScored: [
+            "categoryScored": [
                 "{player} takes {value} on the {category}.",
                 "{category} for {player}, {value} points.",
                 "{player} banks {value} on the {category}!",
@@ -225,7 +226,7 @@ extension CommentaryPersonality {
                 "{player} moves the total with a {category}. {value}!",
                 "{value} more on the {category} for {player}!"
             ],
-            .categoryScratched: [
+            "categoryScratched": [
                 "{player} scratches the {category}. Zero there.",
                 "Nothing on the {category} for {player}.",
                 "{player} takes a zero on the {category}.",

@@ -1,4 +1,5 @@
 import Foundation
+import SyLibCommentary
 import SyLibScoring
 import Observation
 import SwiftUI
@@ -55,7 +56,7 @@ final class MatchController {
     /// True while physics dice are mid-roll (between beginRoll and receiveDiceResults).
     private(set) var isRolling: Bool = false
     private var lastScoreSnapshot: LastScoreSnapshot?
-    var commentaryEventSink: ((CommentaryEvent) -> Void)?
+    var commentaryEventSink: ((CommentaryEvent<CommentaryEventKind>) -> Void)?
 
     init() {
         diceValues = Array(repeating: 1, count: diceCount)
@@ -629,7 +630,7 @@ final class MatchController {
     }
 
     private func emitCommentaryEvent(
-        sink: (CommentaryEvent) -> Void,
+        sink: (CommentaryEvent<CommentaryEventKind>) -> Void,
         category: YatzyCategory,
         scoreVal: Int,
         scoringPlayerIndex: Int,
@@ -647,46 +648,44 @@ final class MatchController {
                     .filter { $0 != w }
                     .sorted { totalScore(for: $0) > totalScore(for: $1) }
                 let secondScore = others.first.map { totalScore(for: $0) } ?? 0
-                sink(CommentaryEvent(kind: .winnerDeclared,
-                                     winner: playerDisplayNames[w],
+                sink(.winnerDeclared(winner: playerDisplayNames[w],
                                      runnerUp: others.first.map { playerDisplayNames[$0] },
                                      score: winScore,
                                      margin: winScore - secondScore))
             } else {
                 let names = winners.map { playerDisplayNames[$0] }.joined(separator: ", ")
-                sink(CommentaryEvent(kind: .winnerTie, winner: names, score: winScore))
+                sink(.winnerTie(winner: names, score: winScore))
             }
             return
         }
         // Primary event for this scoring action
         if earnedBonus {
-            sink(CommentaryEvent(kind: .yatzyBonusEarned, player: scoringPlayerName))
+            sink(.yatzyBonusEarned(player: scoringPlayerName))
         } else if category == .yatzy && scoreVal == 50 {
-            sink(CommentaryEvent(kind: .yatzyRolled, player: scoringPlayerName))
+            sink(.yatzyRolled(player: scoringPlayerName))
         } else if category == .yatzy && scoreVal == 0 {
-            sink(CommentaryEvent(kind: .yatzyScratched, player: scoringPlayerName))
+            sink(.yatzyScratched(player: scoringPlayerName))
         } else if scoreVal == 0 {
-            sink(CommentaryEvent(kind: .categoryScratched, player: scoringPlayerName, category: category.displayName))
+            sink(.categoryScratched(player: scoringPlayerName, category: category.displayName))
         } else if scoreVal >= 25 {
-            sink(CommentaryEvent(kind: .bigTurn, player: scoringPlayerName, category: category.displayName, value: scoreVal))
+            sink(.bigTurn(player: scoringPlayerName, category: category.displayName, value: scoreVal))
         } else {
-            sink(CommentaryEvent(kind: .categoryScored, player: scoringPlayerName, category: category.displayName, value: scoreVal))
+            sink(.categoryScored(player: scoringPlayerName, category: category.displayName, value: scoreVal))
         }
         // Upper bonus just earned this turn
         if !hadUpperBonus && upperBonus(for: scoringPlayerIndex) > 0 {
-            sink(CommentaryEvent(kind: .upperBonusEarned, player: scoringPlayerName))
+            sink(.upperBonusEarned(player: scoringPlayerName))
         }
         // Lead change (sole new leader different from before)
         let newLeaders = leaderIndices
         if newLeaders.count == 1 && newLeaders != previousLeaderIndices, let leader = newLeaders.first {
             let byScore = (0..<playerCount).sorted { totalScore(for: $0) > totalScore(for: $1) }
             let runnerUpIdx = byScore.first { $0 != leader }
-            sink(CommentaryEvent(kind: .leadChange,
-                                 runnerUp: runnerUpIdx.map { playerDisplayNames[$0] },
-                                 leader: playerDisplayNames[leader]))
+            sink(.leadChange(leader: playerDisplayNames[leader],
+                             runnerUp: runnerUpIdx.map { playerDisplayNames[$0] }))
         }
         // Turn start for the next player
-        sink(CommentaryEvent(kind: .turnStart, player: currentPlayerName))
+        sink(.turnStart(player: currentPlayerName))
     }
 
     static func defaultTheme(for index: Int) -> Theme.ThemeType {

@@ -1,6 +1,7 @@
 import Foundation
+import SyLibCommentary
 
-extension CommentaryPersonality {
+extension CommentaryPersonality where Kind == CommentaryEventKind {
     static let zen = CommentaryPersonality(
         id: "zen",
         displayName: "Zen",
@@ -8,7 +9,7 @@ extension CommentaryPersonality {
         prosody: CommentaryProsody(rate: 0.42, pitchMultiplier: 0.96, preUtteranceDelay: 0.35, postUtteranceDelay: 0.30),
         previewLine: "Five dice, one mind. Everything arrives in its own time.",
         lines: [
-            .yatzyRolled: [
+            "yatzyRolled": [
                 "Five dice, one mind. {player} finds the Yatzy.",
                 "Everything settles into place for {player}. A Yatzy.",
                 "{player} rolls, and the dice agree. Yatzy.",
@@ -31,7 +32,7 @@ extension CommentaryPersonality {
                 "{player} did nothing extra, and everything worked. Yatzy.",
                 "A small miracle on the table. {player}, five of a kind."
             ],
-            .yatzyBonusEarned: [
+            "yatzyBonusEarned": [
                 "Again, the dice align for {player}. A hundred more, received quietly.",
                 "The flow continues. {player} finds another five of a kind.",
                 "What began, continues. {player} takes the bonus.",
@@ -54,7 +55,7 @@ extension CommentaryPersonality {
                 "Again, effortless. {player} takes the hundred.",
                 "{player} and fortune, still walking together."
             ],
-            .winnerDeclared: [
+            "winnerDeclared": [
                 "The game rests. {winner} arrives at the top, with {score}.",
                 "All turns complete. {winner} holds the highest score.",
                 "{winner} finishes gently ahead. {score} points.",
@@ -77,7 +78,7 @@ extension CommentaryPersonality {
                 "The last die settles. {winner} wins, by {margin}.",
                 "Well played, everyone. {winner}, the quiet victor."
             ],
-            .winnerTie: [
+            "winnerTie": [
                 "Two paths, one summit. {winner} arrive together, at {score}.",
                 "A tie. {winner} share the game, and the peace.",
                 "No one ahead, no one behind. {winner}, level at {score}.",
@@ -93,7 +94,7 @@ extension CommentaryPersonality {
                 "No division tonight. {winner} share the win.",
                 "Stillness, and a tie. {winner}, both first."
             ],
-            .upperBonusEarned: [
+            "upperBonusEarned": [
                 "Patience rewarded. {player} earns the upper bonus.",
                 "{player} tended the small numbers, and the bonus arrived.",
                 "Steady work brings its gift. {player}, thirty-five points.",
@@ -115,7 +116,7 @@ extension CommentaryPersonality {
                 "{player} finishes the upper work in peace.",
                 "Sixty-three, and beyond. {player} receives the bonus."
             ],
-            .yatzyScratched: [
+            "yatzyScratched": [
                 "{player} releases the Yatzy, and takes nothing. Sometimes we let go.",
                 "A zero on the Yatzy. {player} chooses to release the fifty.",
                 "{player} scratches the box. What is empty stays empty. It is enough.",
@@ -137,7 +138,7 @@ extension CommentaryPersonality {
                 "{player} scratches the Yatzy, and the mind stays calm.",
                 "Zero, chosen freely by {player}. Even loss can be clean."
             ],
-            .bigTurn: [
+            "bigTurn": [
                 "{player} completes the {category}. {value} points, arriving in order.",
                 "The pattern reveals itself. {player}, a {category} for {value}.",
                 "{player} lets the dice fall into place. {category}, {value}.",
@@ -159,7 +160,7 @@ extension CommentaryPersonality {
                 "{player} takes the {category}. {value}, no fuss.",
                 "The dice cooperate. {player} banks {value} on the {category}."
             ],
-            .leadChange: [
+            "leadChange": [
                 "The lead shifts, softly. {leader} moves ahead of {runnerUp}.",
                 "{leader} rises to the front. The game breathes and changes.",
                 "Nothing stays fixed. {leader} now leads.",
@@ -181,7 +182,7 @@ extension CommentaryPersonality {
                 "{leader} moves to first. Nothing is settled yet.",
                 "The lead rests with {leader} now. Watch it change again."
             ],
-            .turnStart: [
+            "turnStart": [
                 "{player}'s turn. Breathe, then roll.",
                 "The dice come to {player}.",
                 "It is {player}'s moment now.",
@@ -203,7 +204,7 @@ extension CommentaryPersonality {
                 "{player}'s turn begins.",
                 "The dice belong to {player} now."
             ],
-            .categoryScored: [
+            "categoryScored": [
                 "{player} takes {value} on the {category}. Onward.",
                 "The {category}, filled. {player}, {value}.",
                 "{player} places {value} on the {category}, calmly.",
@@ -225,7 +226,7 @@ extension CommentaryPersonality {
                 "{player} places the {category}. {value}.",
                 "A steady {value} on the {category}. {player}."
             ],
-            .categoryScratched: [
+            "categoryScratched": [
                 "{player} releases the {category}. Zero. It is fine.",
                 "A zero on the {category}. {player} lets it pass.",
                 "{player} sets the {category} aside, empty.",
