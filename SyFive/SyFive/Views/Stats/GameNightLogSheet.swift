@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibGameNight
 
 struct GameNightLogSheet: View {
     let matchID: UUID

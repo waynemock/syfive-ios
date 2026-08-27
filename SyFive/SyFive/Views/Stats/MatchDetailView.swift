@@ -1,8 +1,9 @@
 import SwiftUI
-import SyLibScoring
-import SwiftData
 import SyLibFeel
+import SyLibGameNight
+import SyLibScoring
 import SyLibScoringData
+import SwiftData
 
 struct MatchDetailView: View {
     let matchModel: MatchModel

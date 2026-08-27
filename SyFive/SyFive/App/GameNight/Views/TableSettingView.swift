@@ -1,7 +1,8 @@
 import SwiftUI
+import SyLibGameNight
 import SyLibScoring
-import SwiftData
 import SyLibScoringData
+import SwiftData
 
 /// The pre-game seating screen shown to all players during the `settingTable` phase.
 /// Host sees reorder/remove controls and a Start button; guests see a seat-claim button.
@@ -118,8 +119,15 @@ struct TableSettingView: View {
             let who = count == 1 ? "Someone on the call" : "\(count) people on the call"
             let verb = count == 1 ? "is" : "are"
             let message: String = {
-                if let v = gameNight.session.lastMismatchedProtocolVersion,
-                   v < GameNightEnvelope.currentProtocolVersion {
+                guard let v = gameNight.session.lastMismatchedVersion,
+                      let kind = gameNight.session.lastMismatchKind else {
+                    return "\(who) \(verb) running a different version of SyFive and can't join. Make sure both devices have the latest version from the App Store."
+                }
+                let ours = switch kind {
+                case .transport: GameNightEnvelope.currentProtocolVersion
+                case .app:       GameNightMessageKind.appProtocolVersion
+                }
+                if v < ours {
                     return "\(who) \(verb) running an older version of SyFive and can't join. Ask them to update from the App Store."
                 } else {
                     return "\(who) \(verb) running a newer version of SyFive. Update SyFive to play together."

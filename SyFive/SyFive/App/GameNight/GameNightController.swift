@@ -1,6 +1,7 @@
 import Foundation
 import SyLibCore
 import SyLibDice
+import SyLibGameNight
 import SyLibScoring
 
 /// Game logic layer for Game Night. Holds a `GameNightSession` (transport/seats/handshake)
@@ -16,21 +17,23 @@ final class GameNightController {
 
     // MARK: - Role
 
-    enum Role {
-        case host
-        case guest
-        case spectator  // joined after matchStart; no seat, read-only
-    }
+    typealias Role = GameNightRole
 
     // MARK: - Session (transport layer)
 
-    let session = GameNightSession(keyPrefix: "syfive")
+    let session = GameNightSession<GameNightActivity>(
+        keyPrefix: "syfive",
+        appProtocolVersion: GameNightMessageKind.appProtocolVersion
+    )
 
-    init() {
-        // The session holds these opaquely; the app owns what they mean.
-        session.commentaryPackID = CommentaryPersonality.zen.id
-        session.commentaryLevelRaw = CommentaryLevel.celebrations.rawValue
-    }
+    // commentaryEnabled/PackID/LevelRaw are deliberately NOT reset on teardown.
+    // They are the host's session-scoped preference and should carry into the next
+    // Game Night rather than silently reverting to defaults. Not an omission.
+    private var appSettings = GameNightAppSettings(
+        commentaryEnabled: false,
+        commentaryPackID: CommentaryPersonality.zen.id,
+        commentaryLevelRaw: CommentaryLevel.celebrations.rawValue
+    )
 
     // MARK: - Deliberate forwarding properties
     // These are kept on GameNightController because they are observed by multiple view files
@@ -44,26 +47,41 @@ final class GameNightController {
 
     /// Commentary fields: read/write so views can bind (e.g. $gameNight.commentaryEnabled).
     var commentaryEnabled: Bool {
-        get { session.commentaryEnabled }
-        set { session.commentaryEnabled = newValue }
+        get { appSettings.commentaryEnabled }
+        set { appSettings.commentaryEnabled = newValue }
     }
     var commentaryPackID: String {
-        get { session.commentaryPackID }
-        set { session.commentaryPackID = newValue }
+        get { appSettings.commentaryPackID }
+        set { appSettings.commentaryPackID = newValue }
     }
     var commentaryLevelRaw: String {
-        get { session.commentaryLevelRaw }
-        set { session.commentaryLevelRaw = newValue }
+        get { appSettings.commentaryLevelRaw }
+        set { appSettings.commentaryLevelRaw = newValue }
     }
 
     // MARK: - Session method pass-throughs
 
     func listenForSessions() async {
+        GameNightLogBuffer.shared.isLoggingEnabled = AppConfig.DebugGameNight.showLogs
         session.onTearDown = { [weak self] in self?.performControllerTearDown() }
         session.onNeedsMatchStateBroadcast = { [weak self] in Task { await self?.broadcastMatchState() } }
-        session.onTableStateReceived = { [weak self] _ in self?.onCommentarySettingsChanged?() }
-        session.onAppMessage = { [weak self] kind, envelope, senderID in
-            self?.handleAppMessage(kind, envelope, from: senderID)
+        session.appSettingsProvider = { [weak self] in
+            guard let self else { return nil }
+            return try? JSONEncoder().encode(self.appSettings)
+        }
+        session.onTableStateReceived = { [weak self] envelope in
+            guard let self else { return }
+            if let payload = try? envelope.decode(TableStatePayload.self),
+               let data = payload.appSettings,
+               let settings = try? JSONDecoder().decode(GameNightAppSettings.self, from: data) {
+                self.appSettings.commentaryEnabled = settings.commentaryEnabled
+                self.appSettings.commentaryPackID = settings.commentaryPackID
+                self.appSettings.commentaryLevelRaw = settings.commentaryLevelRaw
+            }
+            self.onCommentarySettingsChanged?()
+        }
+        session.onAppMessage = { [weak self] kindString, envelope, senderID in
+            self?.handleAppMessage(kindString, envelope, from: senderID)
         }
         await session.listenForSessions()
     }
@@ -79,7 +97,11 @@ final class GameNightController {
     }
 
     func playAgain() { session.playAgain() }
-    func abandonSession() { session.abandonSession() }
+    func abandonSession() {
+        guard session.role == .host, session.isSessionActive else { return }
+        session.send(.matchAbandoned, payload: MatchAbandonedPayload())
+        session.abandonSession()
+    }
     func clearSessionEndedFlag() { session.clearSessionEndedFlag() }
     func clearHostVersionMismatch() { session.clearHostVersionMismatch() }
     func claimSeat(displayName: String, displayInitials: String, themeID: String, playerID: UUID?, isLocal: Bool = false) {
@@ -403,7 +425,8 @@ final class GameNightController {
 
     // MARK: - Inbound message router
 
-    private func handleAppMessage(_ kind: GameNightMessageKind, _ envelope: GameNightEnvelope, from senderID: UUID) {
+    private func handleAppMessage(_ kindString: String, _ envelope: GameNightEnvelope, from senderID: UUID) {
+        guard let kind = GameNightMessageKind(rawValue: kindString) else { return }
         switch kind {
         case .matchStart:        handleMatchStart(envelope)
         case .rollBegan:         handleRollBegan(envelope)
@@ -418,7 +441,6 @@ final class GameNightController {
         case .historyManifest:   handleHistoryManifest(envelope)
         case .historyRequest:    handleHistoryRequest(envelope)
         case .historyResponse:   handleHistoryResponse(envelope)
-        default: break
         }
     }
 

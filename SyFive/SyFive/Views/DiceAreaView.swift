@@ -1,10 +1,11 @@
 import SwiftUI
-import SyLibScoring
 import SyLibCore
-import Observation
-import UIKit
 import SyLibDice
 import SyLibFeel
+import SyLibGameNight
+import SyLibScoring
+import Observation
+import UIKit
 
 extension Theme {
     var dicePalette: DiceTintPalette {
