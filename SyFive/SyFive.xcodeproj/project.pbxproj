@@ -71,6 +71,8 @@
 				Docs/SyLib/04_GAMENIGHT_PHASE1_SPLIT.md,
 				Docs/SyLib/05_GAMENIGHT_PHASE2_STEP1.md,
 				Docs/SyLib/06_GAMENIGHT_PHASE2_STEP2.md,
+				Docs/SyLib/07_GAMENIGHT_PHASE3_VIEWS.md,
+				Docs/SyLib/08_GAMENIGHT_PHASE3B_TABLEVIEW.md,
 				Info.plist,
 			);
 			target = B09DE90C2F4BBD400018F241 /* SyFive */;

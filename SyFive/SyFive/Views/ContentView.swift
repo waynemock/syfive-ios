@@ -485,21 +485,20 @@ struct ContentView: View {
                 .environment(\.theme, theme)
         }
         .sheet(isPresented: $showsInviteInstructions) {
-            GameNightInviteInstructions()
-                .environment(\.theme, theme)
+            GameNightInviteInstructions(accentColor: theme.primaryAccent)
         }
         .sheet(isPresented: $showsGameNightPendingSheet) {
-            GameNightPendingSheet {
+            GameNightPendingSheet(accentColor: theme.primaryAccent) {
                 gameNight.cancelHostPreparation()
             }
-            .environment(\.theme, theme)
         }
         .sheet(isPresented: $showsGameNightHelp) {
             GameNightHelpSheet(
                 context: gameNightHelpContext,
-                isEligibleForGroupSession: gameNight.session.isEligibleForGroupSession
+                isEligibleForGroupSession: gameNight.session.isEligibleForGroupSession,
+                appName: "SyFive",
+                accentColor: theme.primaryAccent
             )
-            .environment(\.theme, theme)
         }
         .sheet(isPresented: $showsHowToPlay) {
             HowToPlayView(settings: appSettings)
