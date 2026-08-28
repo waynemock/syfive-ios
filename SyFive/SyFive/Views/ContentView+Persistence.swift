@@ -22,7 +22,7 @@ extension ContentView {
                 let wasHost = gameNight.gnWasHost(for: matchModel.id)
                 if wasHost {
                     // Host re-initiates the session from the reconnect alert.
-                    showsGameNightReconnect = true
+                    gnAlerts.showsHostReconnect = true
                     pendingResumeMatchID = matchModel.id
                     let yatzyID = ScoringSystemID.yatzy.rawValue
                     let gameDesc = FetchDescriptor<GameModel>(
@@ -32,8 +32,8 @@ extension ContentView {
                 } else {
                     // Guest (or host whose wasHost flag was lost): show a choice rather than
                     // silently blocking rolling. prepareForGuestReconnect is called only on opt-in.
-                    showsGameNightGuestReconnect = true
-                    pendingGuestReconnectMatchID = matchModel.id
+                    gnAlerts.showsGuestReconnect = true
+                    gnAlerts.pendingGuestReconnectMatchID = matchModel.id
                 }
             }
             return

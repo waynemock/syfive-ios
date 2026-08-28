@@ -20,12 +20,9 @@ struct ContentView: View {
     @State var showsAbout = false
     @State var showsFeelBoard = false
     @State var showsGameNight = false
-    @State var showsSessionEndedAlert = false
-    @State var showsGameNightReconnect = false
-    @State var showsGameNightGuestReconnect = false
+    @State var gnAlerts = GameNightAlertState()
     @State var showsGameNightLocalConflictAlert = false
     @State var showsInviteInstructions = false
-    @State var showsCancelGameNightAlert = false
     @State var showsGameNightPendingSheet = false
     @State var showsGameNightHelp = false
     @State var showsHowToPlay = false
@@ -33,9 +30,6 @@ struct ContentView: View {
     /// can skip the seating sheet and jump straight to the in-progress match.
     @State var pendingResumeMatchID: UUID? = nil
     @State var pendingResumeGameID: UUID? = nil
-    /// Match ID held across the guest reconnect alert — passed to prepareForGuestReconnect
-    /// only if the user explicitly taps Rejoin.
-    @State var pendingGuestReconnectMatchID: UUID? = nil
     @State var celebrationCoordinator = CelebrationCoordinator()
     @State var commentaryEngine: CommentaryEngine<CommentaryEventKind>? = nil
     @State var isUpdateAvailable = false
@@ -183,17 +177,49 @@ struct ContentView: View {
                      ? "Start a new Game Night game with the same players, or reset to a local game."
                      : "Pause saves the game to History so you can resume it later. Delete removes it permanently.")
             }
-            .modifier(GameNightAlertModifier(
-                showsSessionEndedAlert: $showsSessionEndedAlert,
-                showsGameNightGuestReconnect: $showsGameNightGuestReconnect,
-                pendingGuestReconnectMatchID: $pendingGuestReconnectMatchID,
-                showsGameNightReconnect: $showsGameNightReconnect,
-                pendingResumeMatchID: $pendingResumeMatchID,
-                pendingResumeGameID: $pendingResumeGameID,
-                showsCancelGameNightAlert: $showsCancelGameNightAlert,
-                showsGameNightLocalConflictAlert: $showsGameNightLocalConflictAlert,
-                showsGameNight: $showsGameNight
-            ))
+        }
+        .gameNightAlerts(
+            session: gameNight.session,
+            state: gnAlerts,
+            appName: "SyFive",
+            appStoreURL: AboutView.appStoreURL,
+            onAbandonSession: { gameNight.abandonSession() },
+            onGuestReconnect: { gameNight.prepareForGuestReconnect(matchID: $0) },
+            hostReconnectIDs: { fetchHostReconnectIDs() },
+            onHostReconnect: { matchID, gameID in
+                pendingResumeMatchID = matchID
+                pendingResumeGameID = gameID
+                gameNight.beginHosting(
+                    onNeedsConversation: {
+                        pendingResumeMatchID = nil
+                        pendingResumeGameID = nil
+                    },
+                    onReadyToSeat: { showsGameNight = true }
+                )
+            }
+        )
+        .alert("Reconnect Game Night?", isPresented: $gnAlerts.showsHostReconnect) {
+            Button("Resume as Host") {
+                gameNight.beginHosting(
+                    onNeedsConversation: {
+                        pendingResumeMatchID = nil
+                        pendingResumeGameID = nil
+                    },
+                    onReadyToSeat: { showsGameNight = true }
+                )
+            }
+            Button("Play Locally", role: .cancel) {
+                pendingResumeMatchID = nil
+                pendingResumeGameID = nil
+            }
+        } message: {
+            Text("Your scores are intact. If you were the host, tap Resume as Host — guests will rejoin automatically.")
+        }
+        .alert("Local Game in Progress", isPresented: $showsGameNightLocalConflictAlert) {
+            Button("Play Game Night") { showsGameNight = true }
+            Button("Keep Playing", role: .cancel) {}
+        } message: {
+            Text("Starting Game Night will set aside your current game. You can resume it from History later.")
         }
         .overlay {
             CelebrationView(model: model)
@@ -266,7 +292,7 @@ struct ContentView: View {
                 Task { await gameNight.broadcastTableState() }
             }
             syncCommentaryEngine()
-            showsGameNightReconnect = false
+            gnAlerts.showsHostReconnect = false
             // Close any open sheets so the seating sheet can present immediately.
             showsHouseRecords = false
             showsHistory = false

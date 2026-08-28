@@ -118,6 +118,16 @@ final class GameNightController {
 
     func prepareAsHost() { session.prepareAsHost() }
     func cancelHostPreparation() { session.cancelHostPreparation() }
+    func beginHosting(
+        onNeedsConversation: @escaping () -> Void,
+        onReadyToSeat: @escaping () -> Void
+    ) {
+        session.beginHosting(
+            activity: GameNightActivity(),
+            onNeedsConversation: onNeedsConversation,
+            onReadyToSeat: onReadyToSeat
+        )
+    }
     func endSession() { session.endSession() }
 
     /// Deliberate wrapper: session releases the seat; coordinator clears match-layer participant ID.

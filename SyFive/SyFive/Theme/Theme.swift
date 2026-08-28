@@ -273,6 +273,10 @@ struct Theme {
         self.type = type
         self.colorScheme = colorScheme
     }
+
+    static func accent(forThemeID id: String, colorScheme: ColorScheme) -> Color {
+        Theme(type: ThemeType(rawValue: id) ?? .midnight, colorScheme: colorScheme).primaryAccent
+    }
 }
 
 // MARK: - Environment Key
