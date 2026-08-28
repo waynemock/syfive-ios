@@ -1,5 +1,6 @@
 import Foundation
 import SyLibGameNight
+import SyLibGameNightMatch
 
 /// SyFive's 13 app-layer message kinds. These are game-specific and are NOT part
 /// of the package — the session forwards anything it does not own to the controller.

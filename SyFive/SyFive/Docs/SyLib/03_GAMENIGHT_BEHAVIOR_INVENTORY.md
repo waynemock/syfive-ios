@@ -19,10 +19,13 @@ audio interruption, or the invite banner. A third device is needed for the
 starred (★) entries.
 
 > **Status.** Reconstructed from the controller source, with the original failure
-> modes filled in from Pops's recollection (3.1, 3.2, 4.3, 6.3, 7.3). Two open
+> modes filled in from Pops's recollection (3.1, 3.2, 4.3, 6.3, 7.3). One open
 > item remains, marked ⚠️: the missing version-mismatch UI (5.1), which is being
 > addressed separately. Nothing here has been verified on device yet — the
 > sign-off table at the end is empty by design.
+> Section 9 was added before Phase A of the `SyLibGameNightMatch` extraction
+> (2026-08-27) to document match-layer behaviors that are about to move into the
+> package.
 
 ---
 
@@ -227,14 +230,45 @@ won't reconnect — would otherwise strand everyone else at their turn with no w
 to complete the match. This is the escape hatch. Host-only and manual by design:
 `enableProxyMode()` guards on `role == .host`, and nothing activates it
 automatically.
+**Score attribution:** `enableProxyMode()` sets `outboundParticipantID` to the
+absent guest's participant UUID. Every scoring broadcast while proxy is active
+carries that ID, not the host's own, so the scores land on the correct
+participant. If `outboundParticipantID` is nil or wrong, the absent guest's
+turns are silently credited to the host — a misattribution invisible until the
+match is in history. See also 9.2.
 **Test note:** have a guest force-quit mid-match and confirm the host can carry
-the match to completion for them.
+the match to completion for them. After the match ends, check history on another
+device — the absent player's participant must show the scores the host entered,
+not the host's own record.
 
 ### 6.4 Undo across devices
 **Trigger:** Host undoes a score after a guest has seen it.
 **Correct behavior:** Both devices return to the same pre-score state, dice included.
 **Why it exists:** `onUndoWithDice`, `pendingGuestUndoAvailable`,
 `pendingHostUndoAvailable`, and `clearUndoSnapshot()` on the match controller.
+The undo window closes the moment another player begins rolling:
+`onRollStarted` calls `clearUndoSnapshot()` on the match controller, which
+clears `lastScoreSnapshot` and disables the undo button on all devices.
+
+### 6.5 Guest undo snapshot survives the host's state echo
+**Trigger:** Guest scores a category. Wait for the host to echo `matchState`
+back (happens automatically after every score). Tap undo on the guest device.
+**Correct behavior:** The undo button remains active after the echo. Tapping
+it reverts the score and restores the pre-score dice.
+**Why it exists:** `loadFromGameNightMatch` calls `clearUndoState()` as its
+last step. Routing the self-echo through the normal load path would destroy the
+guest's undo snapshot the moment the host's echo arrives.
+
+`loadFromGameNightMatchPreservingUndo` saves `lastScoreSnapshot`, calls
+`loadFromGameNightMatch`, then restores the snapshot. The call site that
+distinguishes self-echo from "another player scored" is in `handleMatchState`:
+the condition is whether `currentSeatIndex` in the incoming payload still
+points at the local player's seat.
+
+**Extraction risk:** any refactor that routes the self-echo through the standard
+`loadFromGameNightMatch` instead of the preserving variant silently breaks guest
+undo. The symptom is that the undo button disappears the moment the host echoes
+back — which is the wrong trigger; undo should stay alive until the next roll.
 
 ---
 
@@ -309,6 +343,88 @@ ordering is load-bearing.
 
 ---
 
+## 9. Match-layer extraction
+
+These entries document behaviors that are about to move into `SyLibGameNightMatch`.
+Added before Phase A (2026-08-27) so the scenarios exist in the test suite
+before the code moves. Run these together with §6 and §7 after every phase.
+
+### 9.1 Participant resolution — three paths ★
+
+**Trigger:** Start a match. On each device, check the `handleMatchStart` log
+line for the `resolutionPath` field.
+
+**Correct behavior:** Every seated player resolves to exactly one participant
+ID. The log line reads `claimID`, `playerID`, or `spectator`. No seated device
+logs `spectator`.
+
+**Why it exists:** `handleMatchStart` resolves the local participant ID through
+three ordered paths:
+
+1. **claimID** — `seatMappings.first { $0.seatClaimID == effectiveClaimID }` —
+   normal case; the guest's seat claim is in the mapping.
+2. **playerID** — match against `seat.playerID` in the local roster — reconnect
+   case; the claim ID is stale but the player record is present.
+3. **spectator** — neither matched; the device is watching but has no seat.
+
+The `resolutionPath` log string exists *only* to name which path fired. If it
+disappears after extraction, one of the three paths was dropped. The host always
+resolves via claimID; a force-quit-and-rejoin guest should resolve via playerID.
+
+**Extraction risk:** all three paths must move together into the coordinator. A
+consolidation that merges claimID and playerID into a single lookup will miss
+the fallback ordering and strand reconnecting guests as spectators.
+
+**Test note:** force the playerID path by having a guest force-quit mid-match
+and rejoin. The log must say `resolutionPath=playerID`, not `spectator`, and
+the guest must land in the correct seat with their score intact.
+
+### 9.2 Proxy mode — scores attributed to the absent player in history
+
+**Trigger:** Enable proxy mode for an absent player (6.3). Play all their
+remaining turns until `isGameOver`. Then, in a new session with the returning
+device, start a match to trigger history sync.
+
+**Correct behavior:** The absent player's participant record in history shows
+the scores the host entered on their behalf, not the host's own scores.
+
+**Why it exists:** `enableProxyMode()` sets `outboundParticipantID` to the
+absent guest's UUID. The scoring broadcast path reads `outboundParticipantID`
+as the acting participant when it is set. If it is nil, the host's own ID is
+used, and the absent guest receives no scores while the host appears to have
+scored twice.
+
+**Extraction risk:** `enableProxyMode`, `disableProxyMode`, and the scoring
+broadcast path that reads `outboundParticipantID` must move together. If the
+enable/disable methods move but the broadcast path does not (or vice versa),
+all proxy-mode scores are silently misattributed with no error surfaced.
+
+**Test note:** after the match completes, verify in match history on a third
+device that the absent player's participant has the correct scores and the
+host's participant does not have duplicates.
+
+### 9.3 Participant resolution recovers after a mid-match reconnect ★
+
+**Trigger:** Guest force-quits mid-match. Rejoin via the SharePlay button.
+Observe which resolution path fires (see 9.1) and verify the seat assignment.
+
+**Correct behavior:** Guest lands in the same seat, with their score intact,
+without any explicit re-claim action. The resolution log says `playerID`.
+
+**Why it exists:** On rejoining, the guest's `localSeatClaimID` is nil (they
+haven't re-claimed). `effectiveClaimID = session.localSeatClaimID ?? session.pendingSeatClaim?.seatClaimID`
+covers the case where the claim ID is stale. The playerID fallback then matches
+the guest's roster player against the seat that was already assigned to them.
+Together these ensure a returning guest restores their seat rather than being
+treated as a new spectator.
+
+**Extraction risk:** this recovery depends on `effectiveClaimID`'s nil-coalescing
+fallback (inventory 4.3) and the playerID resolution path (9.1) working in
+sequence. Either can be broken independently without breaking the other, so both
+must be present.
+
+---
+
 ## Extraction notes
 
 Behaviors that depend on something other than the type's own API, and so are
@@ -324,6 +440,9 @@ invisible to a signature-level review:
 | 4.2–4.3 pending claim | resend-on-next-tableState; claim-ID fallback |
 | 8.1 log completeness | `flushToDisk()` before state clearing |
 | 7.2 rematch data loss | guest infers rematch from `sessionMatchID` **before** it is reassigned |
+| 9.1 participant resolution | three paths logged by `resolutionPath`; claimID → playerID → spectator in order |
+| 9.2 proxy attribution | `outboundParticipantID` must travel with the scoring broadcast path |
+| 6.5 / 9.3 undo echo | `loadFromGameNightMatchPreservingUndo` on the self-echo path; not the clearing variant |
 
 Two items to resolve during extraction rather than after:
 
@@ -358,3 +477,4 @@ Two items to resolve during extraction rather than after:
 | 6 Turn flow | ☐ | | |
 | 7 Match lifecycle | ☐ | | |
 | 8 Diagnostics | ☐ | | |
+| 9 Match-layer extraction | ☐ | | |

@@ -1,5 +1,6 @@
 import Foundation
 import SyLibCommentary
+import SyLibGameNightMatch
 import SyLibScoring
 import Observation
 import SwiftUI
@@ -78,6 +79,10 @@ final class MatchController {
     }
 
     var playerCount: Int { playerScores.count }
+
+    /// Theme raw values in seat order — exposed for `GameNightMatchHost` protocol conformance
+    /// so the coordinator can build `SeatSnapshot` without importing SyFive's `Theme` type.
+    var playerDisplayThemeIDs: [String] { playerThemes.map { $0.rawValue } }
 
     var playerNames: [String] { playerDisplayNames }
 
@@ -516,6 +521,7 @@ final class MatchController {
                                 gameJustEnded: gameJustEnded)
         }
         onScoreApplied?(category, capturedDice)
+        onMoveApplied?()
         if !hadUpperBonus && upperBonus(for: scoringPlayerIndex) > 0 {
             onUpperBonusEarned?(scoringPlayerIndex)
         }
@@ -699,15 +705,20 @@ final class MatchController {
 
     /// Fires after every successful `score()` application, carrying the scored
     /// category and the dice values that were live at scoring time.
-    /// GameNightController wires this: host → broadcastMatchState; guest → proposeScore.
+    /// GameNightController wires this for the guest proposal path (YatzyCategory-specific).
     var onScoreApplied: ((YatzyCategory, [Int]) -> Void)?
 
+    /// Generic "a move was applied" signal for GameNightMatchCoordinator.
+    /// Fires after `onScoreApplied` in every successful `score()`. The coordinator
+    /// wires this; `onScoreApplied` remains for Yatzy-specific proposal logic and coexists.
+    var onMoveApplied: (() -> Void)?
+
     /// Fires after a successful `undoLastScore()`.
-    /// GameNightController wires this: host → broadcastMatchState; guest → proposeUndo.
+    /// GameNightMatchCoordinator wires this for host broadcast + guest undo proposal.
     var onUndone: (() -> Void)?
 
     /// Fires when `beginRoll()` succeeds.
-    /// GameNightController wires this on the host to close the undo window.
+    /// GameNightMatchCoordinator wires this to close the undo window on all devices.
     var onRollStarted: (() -> Void)?
 
     /// Fires from `score()` when a non-Yatzy score is applied in a multi-player game,
@@ -821,3 +832,9 @@ final class MatchController {
     }
 #endif
 }
+
+// MatchController satisfies all GameNightMatchHost requirements without additional code:
+// all listed properties and methods are already declared, and onMoveApplied was added
+// alongside the existing onScoreApplied hook in commit adding Phase A.
+@MainActor
+extension MatchController: GameNightMatchHost {}

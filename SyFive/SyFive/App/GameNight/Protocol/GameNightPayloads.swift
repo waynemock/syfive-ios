@@ -1,11 +1,15 @@
 import Foundation
 import SyLibCommentary
+import SyLibGameNightMatch
 import SyLibScoring
 import SyLibDice
 import SyLibGameNight
 
 // GameNightPhase, SeatSnapshot, SeatMapping, HelloPayload, TableStatePayload,
 // SeatClaimPayload, SeatReleasePayload are imported from SyLibGameNight.
+// MatchStartPayload, MatchStatePayload, MatchCompletePayload, MatchAbandonedPayload,
+// HistoryManifestPayload, HistoryRequestPayload, HistoryResponsePayload are imported
+// from SyLibGameNightMatch.
 
 // MARK: - App settings (opaque to the session layer)
 
@@ -21,18 +25,7 @@ struct GameNightAppSettings: Codable, Sendable {
     var commentaryLevelRaw: String
 }
 
-// MARK: - App-layer payload structs (SyFive only)
-
-/// Locks the table. Carries the initial `Match` (no scores yet) plus the
-/// mapping from pre-lock `seatClaimID`s to the `participantID`s inside it.
-/// Each device uses this mapping to discover its own `participantID`.
-/// On a resume, `match` carries the mid-game snapshot and `currentSeatIndex`
-/// points to the interrupted turn's player.
-struct MatchStartPayload: Codable, Sendable {
-    let match: Match
-    let seatMappings: [SeatMapping]
-    let currentSeatIndex: Int
-}
+// MARK: - SyFive-only app-layer payloads (roll theater and scoring)
 
 /// Sent by the roller at the moment dice are launched. Spectators replay the
 /// recipe through their own physics engine.
@@ -80,46 +73,6 @@ struct UndoRequestPayload: Codable, Sendable {
     let participantID: UUID
 }
 
-/// Full match snapshot broadcast after every applied action (score, undo, turn
-/// advance). Normally transient dice state is omitted; spectators derive roll
-/// count from the `rollBegan` stream. Exception: undo broadcasts include
-/// `diceValues`/`rollsRemaining` so the undone player can rescore immediately.
-struct MatchStatePayload: Codable, Sendable {
-    let match: Match
-    /// Index into `match.participants` for the seat whose turn it is.
-    let currentSeatIndex: Int
-    /// Pre-scoring dice values, present only in undo broadcasts.
-    var diceValues: [Int]? = nil
-    /// Rolls remaining for the seat, present only in undo broadcasts (always 0).
-    var rollsRemaining: Int? = nil
-}
+// MARK: - Commentary
 
-/// Broadcast when the match completes. Every guest device upserts this `Match`
-/// by UUID into its own local store — the single guest write of the session.
-struct MatchCompletePayload: Codable, Sendable {
-    let match: Match
-}
-
-/// Broadcast when the host abandons the session. Devices close gracefully.
-/// Intentionally empty — the message kind is sufficient.
-struct MatchAbandonedPayload: Codable, Sendable {}
-
-// MARK: - Match history sync (post-matchStart background repair)
-
-/// Broadcast by every device immediately after matchStart. Lists the IDs of its
-/// last N completed Game Night matches so peers can spot gaps and request missing data.
-struct HistoryManifestPayload: Codable, Sendable {
-    let matchIDs: [UUID]
-}
-
-/// Broadcast when a device finds match IDs in a peer's manifest that it does not have
-/// locally. Any peer that holds those matches will respond with historyResponse.
-struct HistoryRequestPayload: Codable, Sendable {
-    let matchIDs: [UUID]
-}
-
-/// Sent in response to historyRequest. Contains the full Match values for whichever
-/// requested IDs the sender has locally. Receivers upsert each match by wire UUID.
-struct HistoryResponsePayload: Codable, Sendable {
-    let matches: [Match]
-}
+// CommentaryPayload is defined in SyLibCommentary and imported above.
