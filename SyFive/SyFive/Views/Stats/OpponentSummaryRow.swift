@@ -1,5 +1,6 @@
 import SwiftUI
 import SyLibScoring
+import SyLibUI
 import SwiftData
 import SyLibFeel
 import SyLibScoringData
@@ -42,7 +43,7 @@ struct OpponentSummaryRow: View {
 
     private var cardContent: some View {
         HStack(spacing: 10) {
-            PlayerInitialsCircle(initials: record.opponentInitials, themeType: record.opponentThemeType)
+            InitialsCircle(initials: record.opponentInitials, color: opponentTheme.primaryAccent, diameter: 28)
             VStack(alignment: .leading, spacing: 2) {
                 Text(record.opponentName)
                     .font(.subheadline.weight(.semibold))

@@ -6,6 +6,7 @@ import SyLibFeel
 import SyLibGameNight
 import SyLibScoring
 import SyLibScoringData
+import SyLibUI
 import SwiftData
 
 struct ContentView: View {
@@ -136,7 +137,13 @@ struct ContentView: View {
                         }
                         #endif
                     } label: {
-                        MainMenuButton(showBadge: shouldShowUpdateBadge)
+                        IconButton(
+                            "ellipsis.circle",
+                            badge: shouldShowUpdateBadge ? 0 : nil,
+                            badgeBackground: theme.primaryAccent,
+                            badgeOutline: Color.black.opacity(0.8)
+                        )
+                        .accessibilityLabel(shouldShowUpdateBadge ? "Menu, update available" : "Menu")
                     }
                     .simultaneousGesture(TapGesture().onEnded {
                         acknowledgeUpdateBadge()

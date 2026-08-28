@@ -1,5 +1,6 @@
 import SwiftUI
 import SyLibScoring
+import SyLibUI
 import SwiftData
 import SyLibScoringData
 
@@ -29,9 +30,10 @@ struct PlayerMergeSheet: View {
             List {
                 Section {
                     HStack(spacing: 12) {
-                        PlayerInitialsCircle(
+                        InitialsCircle(
                             initials: retiring.initials,
-                            themeType: Theme.ThemeType(rawValue: retiring.themeID) ?? .midnight,
+                            color: Theme.accent(forThemeID: retiring.themeID, colorScheme: colorScheme),
+                            diameter: 28,
                             opacity: 0.5
                         )
                         VStack(alignment: .leading, spacing: 2) {
@@ -92,7 +94,7 @@ struct PlayerMergeSheet: View {
         let theme = Theme(type: themeType, colorScheme: colorScheme)
 
         return HStack(spacing: 12) {
-            PlayerInitialsCircle(initials: player.initials, themeType: themeType)
+            InitialsCircle(initials: player.initials, color: theme.primaryAccent, diameter: 28)
 
             Text(player.name)
                 .font(.body)
