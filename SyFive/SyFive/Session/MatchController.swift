@@ -2,6 +2,7 @@ import Foundation
 import SyLibCommentary
 import SyLibGameNightMatch
 import SyLibScoring
+import SyLibYatzy
 import Observation
 import SwiftUI
 import SwiftData
@@ -104,7 +105,7 @@ final class MatchController {
     var canEditPlayers: Bool { !hasStarted }
 
     var isGameOver: Bool {
-        playerCount > 0 && (0..<playerCount).allSatisfy { isComplete(scorecard: yatzyScorecard(for: $0)) }
+        playerCount > 0 && (0..<playerCount).allSatisfy { YatzyScoring.isComplete(scorecard: yatzyScorecard(for: $0)) }
     }
 
     var winnerIndices: [Int] {
@@ -195,7 +196,7 @@ final class MatchController {
     }
 
     func totalScore(for playerIndex: Int) -> Int {
-        grandTotal(scorecard: yatzyScorecard(for: playerIndex), yatzyBonus: yatzyBonus(for: playerIndex))
+        YatzyScoring.grandTotal(scorecard: yatzyScorecard(for: playerIndex), yatzyBonus: yatzyBonus(for: playerIndex))
     }
 
     func isWinner(_ playerIndex: Int) -> Bool { winnerIndices.contains(playerIndex) }
@@ -501,7 +502,7 @@ final class MatchController {
         let scoringPlayerIndex = currentPlayerIndex
         let previousLeaderIndices = leaderIndices
         let hadUpperBonus = upperBonus(for: currentPlayerIndex) > 0
-        let earnedBonus = qualifiesForExtraYatzyBonus(dice: diceValues, scorecard: yatzyScorecard(for: currentPlayerIndex))
+        let earnedBonus = YatzyScoring.qualifiesForExtraYatzyBonus(dice: diceValues, scorecard: yatzyScorecard(for: currentPlayerIndex))
         if earnedBonus {
             playerYatzyBonuses[currentPlayerIndex] += 100
         }
@@ -625,14 +626,14 @@ final class MatchController {
 
     private func scoreValue(for category: YatzyCategory, playerIndex: Int) -> Int {
         let scorecard = yatzyScorecard(for: playerIndex)
-        if let joker = jokerValue(of: category, dice: diceValues, scorecard: scorecard) {
+        if let joker = YatzyScoring.jokerValue(of: category, dice: diceValues, scorecard: scorecard) {
             return joker
         }
-        return faceValue(of: category, dice: diceValues)
+        return YatzyScoring.faceValue(of: category, dice: diceValues)
     }
 
     private func legalScoreCategories(for playerIndex: Int) -> [YatzyCategory] {
-        legalCategories(dice: diceValues, scorecard: yatzyScorecard(for: playerIndex))
+        YatzyScoring.legalCategories(dice: diceValues, scorecard: yatzyScorecard(for: playerIndex))
     }
 
     private func emitCommentaryEvent(

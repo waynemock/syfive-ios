@@ -4,6 +4,7 @@ import SyLibGameNightMatch
 import SyLibScoring
 import SyLibDice
 import SyLibGameNight
+import SyLibYatzy
 
 // GameNightPhase, SeatSnapshot, SeatMapping, HelloPayload, TableStatePayload,
 // SeatClaimPayload, SeatReleasePayload are imported from SyLibGameNight.

@@ -83,7 +83,7 @@ file is HEAD.*
 
 | ID | Current ruling | Source → chain |
 |---|---|---|
-| D-028 | Two-tier stats mirroring the scoring split: Tier 1 generic (SyLib), Tier 2 Yatzy-specific (Yatzy module). | `03_STATS` |
+| D-028 | Two-tier stats mirroring the scoring split: Tier 1 generic (`SyLibScoring`), Tier 2 Yatzy-specific (`SyLibYatzy` in sylib-swift). `legalValues(for:)` / `isLegalValue(_:for:)` added to `YatzyScoring` for manual-entry validation (ScoreIt v2 consumer). | `03_STATS` → `13_SYLIB_YATZY` |
 | D-029 | **Compute-on-read, no stored aggregates.** All stats and insights derivable retroactively with zero schema additions — a hard constraint. | `03_STATS` |
 | D-030 | `ScoreEntry.recordedAt` is always written at checkpoint flush; `nil` means legacy data only. | `03_STATS` |
 | D-031 | Dice telemetry is excluded from the stats contract. | `03_STATS` |

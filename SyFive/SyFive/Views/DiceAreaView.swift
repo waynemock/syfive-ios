@@ -4,6 +4,7 @@ import SyLibDice
 import SyLibFeel
 import SyLibGameNight
 import SyLibScoring
+import SyLibYatzy
 import Observation
 import UIKit
 

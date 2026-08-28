@@ -2,6 +2,7 @@ import SwiftUI
 import SyLibFeel
 import SyLibGameNight
 import SyLibScoring
+import SyLibYatzy
 import SyLibScoringData
 import SwiftData
 

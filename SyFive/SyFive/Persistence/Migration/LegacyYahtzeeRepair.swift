@@ -1,5 +1,6 @@
 import Foundation
 import SyLibScoring
+import SyLibYatzy
 import SwiftData
 import SyLibCore
 import SyLibScoringData

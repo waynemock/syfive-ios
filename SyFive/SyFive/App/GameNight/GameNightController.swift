@@ -5,6 +5,7 @@ import SyLibDice
 import SyLibGameNight
 import SyLibGameNightMatch
 import SyLibScoring
+import SyLibYatzy
 
 /// Game logic layer for Game Night. Holds a `GameNightSession` (transport/seats/handshake)
 /// and a `GameNightMatchCoordinator` (match lifecycle, history sync, proxy mode).
