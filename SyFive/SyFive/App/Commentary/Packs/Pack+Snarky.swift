@@ -1,6 +1,7 @@
 import Foundation
+import SyLibCommentary
 
-extension CommentaryPersonality {
+extension CommentaryPersonality where Kind == CommentaryEventKind {
     static let snarky = CommentaryPersonality(
         id: "snarky",
         displayName: "Snarky",
@@ -8,7 +9,7 @@ extension CommentaryPersonality {
         prosody: CommentaryProsody(rate: 0.48, pitchMultiplier: 0.98, preUtteranceDelay: 0.20, postUtteranceDelay: 0.15),
         previewLine: "Five of a kind. The dice clearly have a favorite tonight. Suspicious.",
         lines: [
-            .yatzyRolled: [
+            "yatzyRolled": [
                 "A Yatzy. {player} is going to be insufferable now.",
                 "Five of a kind. The dice clearly like {player} better than the rest of us.",
                 "Oh good, a Yatzy. {player} will remind everyone of this for weeks.",
@@ -31,7 +32,7 @@ extension CommentaryPersonality {
                 "Well rolled, {player}. Nobody's jealous. Everyone's jealous.",
                 "A Yatzy for {player}. The dice have chosen a favorite and it isn't you, reader."
             ],
-            .yatzyBonusEarned: [
+            "yatzyBonusEarned": [
                 "Another Yatzy. {player} is just showing off now.",
                 "A second five of a kind. {player}, leave some for the class.",
                 "Oh, a bonus Yatzy. {player} definitely needed the extra hundred.",
@@ -54,7 +55,7 @@ extension CommentaryPersonality {
                 "{player} stacks a hundred. The dice know exactly what they're doing.",
                 "A repeat Yatzy. Truly inspiring. Truly annoying. Both, {player}."
             ],
-            .winnerDeclared: [
+            "winnerDeclared": [
                 "{winner} wins. Everyone act surprised.",
                 "And the winner is {winner}, who will absolutely bring this up again.",
                 "{winner} takes it by {margin}. {runnerUp} is fine. {runnerUp} is totally fine.",
@@ -77,7 +78,7 @@ extension CommentaryPersonality {
                 "{winner} wins. {runnerUp} played great and lost anyway. Delightful.",
                 "Your champion, {winner}, who definitely won't rig the next one. Probably."
             ],
-            .winnerTie: [
+            "winnerTie": [
                 "A tie. Nobody wins, everybody argues.",
                 "{winner} tied at {score}. A rematch is now legally required.",
                 "It's a draw. {winner} will each claim they really won.",
@@ -93,7 +94,7 @@ extension CommentaryPersonality {
                 "Level game. {winner} will litigate this for years.",
                 "A tie. Congratulations to {winner}, and to chaos."
             ],
-            .upperBonusEarned: [
+            "upperBonusEarned": [
                 "{player} got the upper bonus. Someone read the rules.",
                 "Thirty-five bonus points for {player}. The nerds call this strategy.",
                 "{player} cleared sixty-three. Suspiciously competent.",
@@ -115,7 +116,7 @@ extension CommentaryPersonality {
                 "{player} got the bonus and a smug little nod, no doubt.",
                 "Bonus points, {player}. The math homework paid off after all."
             ],
-            .yatzyScratched: [
+            "yatzyScratched": [
                 "{player} scratched the Yatzy. Bold. Reckless. Both.",
                 "A zero on the Yatzy. {player} lives dangerously.",
                 "{player} just poisoned the box. No takebacks, no bonus, no mercy.",
@@ -137,7 +138,7 @@ extension CommentaryPersonality {
                 "{player} poisons the box. The dice will absolutely hold a grudge.",
                 "Scratched. {player}, that's going to be a fun one to explain later."
             ],
-            .bigTurn: [
+            "bigTurn": [
                 "{player} scores a {category} for {value}. Look at that, actual competence.",
                 "A {category} worth {value}. {player} is trying now. Concerning.",
                 "{player} banks {value} on the {category}. Suspiciously well played.",
@@ -159,7 +160,7 @@ extension CommentaryPersonality {
                 "{player} banks {value}. The {category} came easy. Some people have all the luck.",
                 "{value} on the {category}. {player} is quietly running away with this. Quietly."
             ],
-            .leadChange: [
+            "leadChange": [
                 "{leader} takes the lead. {runnerUp} did not care for that.",
                 "New leader, {leader}. The peace was nice while it lasted.",
                 "{leader} passes {runnerUp}. Betrayal, honestly.",
@@ -181,7 +182,7 @@ extension CommentaryPersonality {
                 "{leader} leads now, briefly, probably, we'll see.",
                 "{leader} passes {runnerUp}. Somewhere a friendship strains."
             ],
-            .turnStart: [
+            "turnStart": [
                 "{player}'s turn. Try to make it count.",
                 "Up next, {player}. No pressure. Some pressure.",
                 "{player}, the dice await your questionable decisions.",
@@ -203,7 +204,7 @@ extension CommentaryPersonality {
                 "Up you go, {player}. We believe in you. Mostly.",
                 "It's {player}'s turn. Set your expectations accordingly."
             ],
-            .categoryScored: [
+            "categoryScored": [
                 "{player} takes {value} on the {category}. Bold choice. We'll allow it.",
                 "{value} for the {category}. {player} is playing it safe. Yawn.",
                 "{player} scores {value} on the {category}. Riveting stuff.",
@@ -225,7 +226,7 @@ extension CommentaryPersonality {
                 "{value} on the {category}. That'll... do something, {player}.",
                 "The {category} for {value}. {player} soldiers on. Barely."
             ],
-            .categoryScratched: [
+            "categoryScratched": [
                 "{player} scratches the {category}. That'll haunt them.",
                 "Zero on the {category}. {player} had bigger plans, clearly.",
                 "{player} takes a zero. Strategic. Allegedly.",

@@ -1,5 +1,8 @@
 import SwiftUI
+import SyLibCommentary
+import SyLibScoring
 import SwiftData
+import SyLibFeel
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
@@ -64,17 +67,10 @@ private struct SettingsForm: View {
             }
 
             Section {
-                Picker("Commentary", selection: $settings.commentaryModeRaw) {
-                    ForEach(CommentaryMode.allCases, id: \.rawValue) { mode in
-                        Text(mode.displayName).tag(mode.rawValue)
-                    }
-                }
-                if settings.commentaryMode != .off {
-                    NavigationLink {
-                        CommentarySettingsView(settings: settings)
-                    } label: {
-                        Text("Voice, Personality & Level")
-                    }
+                NavigationLink {
+                    CommentaryScreen(settings: settings)
+                } label: {
+                    LabeledContent("Commentary", value: settings.commentaryMode.displayName)
                 }
             } header: {
                 Text("Commentary")

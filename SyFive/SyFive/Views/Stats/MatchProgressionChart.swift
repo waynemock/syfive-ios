@@ -1,4 +1,6 @@
 import SwiftUI
+import SyLibScoring
+import SyLibYatzy
 import Charts
 
 /// Multi-line race chart showing all participants' running totals across a match.

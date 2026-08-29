@@ -1,5 +1,9 @@
 import SwiftUI
+import SyLibScoring
+import SyLibUI
 import SwiftData
+import SyLibFeel
+import SyLibScoringData
 
 struct OpponentRecord: Identifiable {
     var id: UUID { opponentID }
@@ -39,7 +43,7 @@ struct OpponentSummaryRow: View {
 
     private var cardContent: some View {
         HStack(spacing: 10) {
-            PlayerInitialsCircle(initials: record.opponentInitials, themeType: record.opponentThemeType)
+            InitialsCircle(initials: record.opponentInitials, color: opponentTheme.primaryAccent, diameter: 28)
             VStack(alignment: .leading, spacing: 2) {
                 Text(record.opponentName)
                     .font(.subheadline.weight(.semibold))
@@ -111,9 +115,9 @@ struct OpponentSummaryRow: View {
         opponentID: UUID(), opponentName: "Sherida", opponentInitials: "RM",
         opponentThemeType: .forest, h2h: h2h
     )
-    return OpponentSummaryRow(profilePlayerName: "Wayne", profileThemeType: .midnight, record: record)
+    OpponentSummaryRow(profilePlayerName: "Wayne", profileThemeType: .midnight, record: record)
         .padding()
         .environment(\.theme, Theme(type: .midnight, colorScheme: .dark))
         .modelContainer(for: MatchModel.self, inMemory: true)
-        .environment(FeelDirector())
+        .environment(FeelDirector(catalog: .syFive))
 }

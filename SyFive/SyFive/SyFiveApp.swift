@@ -7,20 +7,19 @@
 
 import SwiftUI
 import SwiftData
+import SyLibCore
+import SyLibScoringData
 
 @main
 struct SyFiveApp: App {
+    init() {
+        AppLogger.appName = "SyFive"
+    }
+
     @State private var gameNight = GameNightController()
 
     var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            PlayerModel.self,
-            TeamModel.self,
-            GameModel.self,
-            MatchModel.self,
-            ParticipantModel.self,
-            AppSettingsModel.self,
-        ])
+        let schema = Schema(ScoringSchema.current + [AppSettingsModel.self])
         let modelConfiguration = ModelConfiguration(
             schema: schema,
             isStoredInMemoryOnly: false,

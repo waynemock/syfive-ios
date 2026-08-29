@@ -1,4 +1,6 @@
 import Foundation
+import SyLibDice
+import SyLibFeel
 
 // App-layer adapter: conforms DiceAudioControlling → forwards to FeelDirector.
 // Retained by DiceAreaView alongside diceRoller; see Stage 3 wiring in DiceAreaView.

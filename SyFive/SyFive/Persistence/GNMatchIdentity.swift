@@ -1,5 +1,7 @@
 import Foundation
+import SyLibScoring
 import SwiftData
+import SyLibScoringData
 
 /// Shared identity utilities for completed Game Night matches.
 /// Single source of truth for the fingerprint algorithm and spread limit

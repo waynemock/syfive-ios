@@ -1,37 +1,67 @@
 import SwiftUI
+import SyLibCore
+import SyLibDice
+import SyLibFeel
+import SyLibGameNight
+import SyLibScoring
+import SyLibYatzy
 import Observation
-import RealityKit
+import UIKit
+
+extension Theme {
+    var dicePalette: DiceTintPalette {
+        DiceTintPalette(
+            normal: UIColor(primaryAccent),
+            held: UIColor(heldAccent),
+            nudgeable: UIColor(stuckColor),
+            stuck: UIColor(errorColor),
+            pip: UIColor(pipColor),
+            heldPip: UIColor(heldPipColor)
+        )
+    }
+}
 
 struct DiceAreaView: View {
     @Bindable var model: MatchController
     var onPlayAgain: () -> Void = {}
     @State private var diceRoller = DiceRoller()
     @State private var feelAdapter: DiceFeelAdapter?
-    @State private var traySize: CGSize = .zero
-    @State private var trayContainerSize: CGSize = .zero
     @State private var suppressNextPlayerChangeDiceClear = false
     @State private var isAwaitingInitialTurnStart = false
     @Environment(FeelDirector.self) private var director
     @Environment(CelebrationCoordinator.self) private var celebrationCoordinator
     @Environment(GameNightController.self) private var gameNight
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.theme) private var theme
     private let rollControlHeight: CGFloat = 24
 
     var body: some View {
         VStack(spacing: 0) {
-            ZStack(alignment: .top) {
-                trayView
-                Text("Tap dice to hold")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 8)
-                    .opacity(showHoldHint ? 1 : 0)
-                    .animation(.easeInOut(duration: 0.25), value: showHoldHint)
+            DiceTrayView(
+                roller: diceRoller,
+                palette: theme.dicePalette,
+                backgroundColor: theme.backgroundColor,
+                isInteractive: isLocalTurn,
+                canToggleHold: model.canScore,
+                showHoldHint: showHoldHint,
+                onHoldToggled: { index in
+                    model.toggleHold(at: index)
+                    diceRoller.setHeld(model.held)
+                    let engaged = model.held.indices.contains(index) ? model.held[index] : false
+                    if gameNight.isSessionActive && gameNight.phase == .inProgress {
+                        gameNight.sendHoldToggled(dieIndex: index, isHeld: engaged)
+                    }
+                    director.holdToggled(engaged: engaged)
+                },
+                onNudge:  { director.dieNudged() },
+                onReroll: { director.dieRerolled() }
+            ) {
+                DiceTrayOverlayView(model: model)
             }
             rollControls
             #if DEBUG
             if AppConfig.DebugDice.showPhysicsSliders {
-                physicsDebugPanel
+                PhysicsTuningPanel(roller: diceRoller)
             }
             if AppConfig.DebugDice.showHarness {
                 DiceDebugHUD(diceRoller: diceRoller)
@@ -47,7 +77,7 @@ struct DiceAreaView: View {
             }
             diceRoller.keepScreenAwake = { UIApplication.shared.isIdleTimerDisabled = $0 }
             diceRoller.config.logDiagnostics = AppConfig.DebugDice.logRollDiagnostics
-            diceRoller.config.appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+            diceRoller.config.appVersion = Bundle.main.appVersionShort
             if gameNight.isSessionActive {
                 wireGameNightHooks()
             }
@@ -77,34 +107,6 @@ struct DiceAreaView: View {
     }
 
     // MARK: - Subviews
-
-    // iPad landscape: tray container is portrait-shaped (height > width).
-    // Reduce the RK fill factor so the tray appears ~10% smaller.
-    private var trayFillFactor: Float {
-        let isIPad = UIDevice.current.userInterfaceIdiom == .pad
-        let isIPadLandscape = isIPad && trayContainerSize.height > trayContainerSize.width && trayContainerSize != .zero
-        return isIPadLandscape ? 0.74 : 0.88
-    }
-
-    /// 3D RealityKit tray — square, fills available width dynamically.
-    private var trayView: some View {
-        Color.clear
-            .onGeometryChange(for: CGSize.self, of: { $0.size }) { trayContainerSize = $0 }
-            .overlay {
-                DiceRKView(diceRoller: diceRoller, fillFactor: trayFillFactor)
-                    .gesture(
-                        SpatialTapGesture()
-                            .targetedToAnyEntity()
-                            .onEnded { value in
-                                handleDiceTap(value.entity)
-                            }
-                    )
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay {
-                DiceTrayOverlayView(model: model)
-            }
-    }
 
     private var rollControls: some View {
         VStack(spacing: 8) {
@@ -146,7 +148,7 @@ struct DiceAreaView: View {
                             let isYatzy = !values.isEmpty && values.dropFirst().allSatisfy { $0 == values[0] }
                             let yatzyBox = model.scores(for: model.currentPlayerIndex)[.yatzy]
                             if isYatzy && (yatzyBox == nil || yatzyBox == 50) {
-                                director.yatzyMoment()
+                                director.celebration()
                                 celebrationCoordinator.triggerYatzy(playerIndex: model.currentPlayerIndex)
                             }
                         }
@@ -230,37 +232,6 @@ struct DiceAreaView: View {
         }
     }
 
-    // MARK: - Actions
-
-    private func handleDiceTap(_ entity: Entity) {
-        guard isLocalTurn, let diceIndex = diceRoller.index(of: entity) else { return }
-
-        if diceRoller.hasStuckDice {
-            guard diceRoller.isStuckDie(index: diceIndex) else { return }
-            if diceRoller.isNudgeableDie(index: diceIndex) {
-                // Yellow die — nudge attempt: apply a physics push and let it try to settle.
-                director.dieNudged()
-                diceRoller.nudgeStuckDie(at: diceIndex)
-            } else {
-                // Red die — nudge already failed, reroll from scratch.
-                director.dieRerolled()
-                Task {
-                    await diceRoller.rerollStuckDie(at: diceIndex)
-                }
-            }
-            return
-        }
-
-        guard model.canScore else { return }
-        model.toggleHold(at: diceIndex)
-        diceRoller.setHeld(model.held)
-        let engaged = model.held.indices.contains(diceIndex) ? model.held[diceIndex] : false
-        if gameNight.isSessionActive && gameNight.phase == .inProgress {
-            gameNight.sendHoldToggled(dieIndex: diceIndex, isHeld: engaged)
-        }
-        director.holdToggled(engaged: engaged)
-    }
-
     // MARK: - Game Night hooks
 
     private func wireGameNightHooks() {
@@ -289,7 +260,7 @@ struct DiceAreaView: View {
             guard isYatzy else { return }
             let yatzyBox = mc.scores(for: mc.currentPlayerIndex)[.yatzy]
             guard yatzyBox == nil || yatzyBox == 50 else { return }
-            dir.yatzyMoment()
+            dir.celebration()
             cc.triggerYatzy(playerIndex: mc.currentPlayerIndex)
         }
         gn.onHoldToggled = { dieIndex, isHeld in
@@ -320,7 +291,7 @@ struct DiceAreaView: View {
     private var isLocalTurn: Bool {
         // Pre-reconnect: participant ID was restored from UserDefaults — use it
         // so the scorecard highlights the correct player while waiting.
-        if gameNight.isGuestAwaitingReconnect,
+        if gameNight.session.isGuestAwaitingReconnect,
            let localID = gameNight.localParticipantID {
             let ids = model.participantIDs
             guard model.currentPlayerIndex < ids.count else { return false }
@@ -353,7 +324,7 @@ struct DiceAreaView: View {
         if isPlayAgainButton {
             return !gameNight.isSessionActive || gameNight.role == .host
         }
-        guard !gameNight.isGuestAwaitingReconnect else { return false }
+        guard !gameNight.session.isGuestAwaitingReconnect else { return false }
         return model.playerCount > 0 && isLocalTurn && model.rollsRemaining > 0 && !model.isGameOver && !model.isRolling && !allDiceHeld
     }
 
@@ -370,7 +341,7 @@ struct DiceAreaView: View {
             }
             return "Play Again"
         }
-        if gameNight.isGuestAwaitingReconnect {
+        if gameNight.session.isGuestAwaitingReconnect {
             return "Waiting for Game Night…"
         }
         if gameNight.isSessionActive, gameNight.phase == .inProgress, !isLocalTurn {
@@ -400,70 +371,11 @@ struct DiceAreaView: View {
         return Theme(type: undoThemeType, colorScheme: colorScheme).primaryAccent
     }
 
-    // MARK: - Debug
-
-    #if DEBUG
-    /// Physics tuning sliders — only visible when `AppConfig.DebugDice.showPhysicsSliders == true`.
-    private var physicsDebugPanel: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Physics Tuning")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-
-            Group {
-                debugSlider(
-                    label: "Impulse max \(String(format: "%.2f", diceRoller.config.impulseMax))",
-                    value: Binding(
-                        get: { diceRoller.config.impulseMax },
-                        set: { diceRoller.config.impulseMax = $0 }
-                    ),
-                    in: 0.03...0.25
-                )
-                debugSlider(
-                    label: "Torque max \(String(format: "%.2f", diceRoller.config.torqueMax))",
-                    value: Binding(
-                        get: { diceRoller.config.torqueMax },
-                        set: { diceRoller.config.torqueMax = $0 }
-                    ),
-                    in: 0.02...0.35
-                )
-                debugSlider(
-                    label: "Cone angle \(String(format: "%.0f°", diceRoller.config.coneHalfAngle * 180 / .pi))",
-                    value: Binding(
-                        get: { diceRoller.config.coneHalfAngle },
-                        set: { diceRoller.config.coneHalfAngle = $0 }
-                    ),
-                    in: 0.1...1.2
-                )
-                debugSlider(
-                    label: "Spawn jitter \(String(format: "%.3f", diceRoller.config.spawnJitter))",
-                    value: Binding(
-                        get: { diceRoller.config.spawnJitter },
-                        set: { diceRoller.config.spawnJitter = $0 }
-                    ),
-                    in: 0...0.04
-                )
-            }
-        }
-        .padding(10)
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .padding(.horizontal, 12)
-    }
-
-    private func debugSlider(label: String, value: Binding<Float>, in range: ClosedRange<Float>) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text(label).font(.caption2).foregroundStyle(.secondary)
-            Slider(value: value, in: range)
-        }
-    }
-    #endif
-
 }
 
 #Preview {
     DiceAreaView(model: MatchController())
-        .environment(FeelDirector())
+        .environment(FeelDirector(catalog: .syFive))
         .environment(CelebrationCoordinator())
         .environment(GameNightController())
 }

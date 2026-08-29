@@ -1,4 +1,9 @@
 import SwiftUI
+import SyLibFeel
+import SyLibGameNight
+import SyLibScoring
+import SyLibYatzy
+import SyLibScoringData
 import SwiftData
 
 struct MatchDetailView: View {
@@ -44,8 +49,7 @@ struct MatchDetailView: View {
 
     private var playerColors: [UUID: Color] {
         Dictionary(uniqueKeysWithValues: match.participants.map { p in
-            let themeType = Theme.ThemeType(rawValue: p.displayThemeID) ?? .midnight
-            return (p.id, Theme(type: themeType, colorScheme: colorScheme).primaryAccent)
+            return (p.id, Theme.accent(forThemeID: p.displayThemeID, colorScheme: colorScheme))
         })
     }
 
@@ -217,7 +221,7 @@ private struct HistoryScorecardWidthKey: PreferenceKey {
 
     // Wayne — winner, 296 pts (upper bonus achieved: 70 upper + 35 bonus + 191 lower)
     let p1 = ParticipantModel()
-    p1.seat = 0; p1.rank = 1; p1.finalScore = 296; p1.yatzyBonus = 0
+    p1.seat = 0; p1.rank = 1; p1.finalScore = 296; p1.bonusPoints = 0
     p1.displayName = "Wayne"; p1.displayInitials = "WM"
     p1.displayThemeID = Theme.ThemeType.midnight.rawValue
     p1.scoreEntries = [
@@ -234,7 +238,7 @@ private struct HistoryScorecardWidthKey: PreferenceKey {
 
     // Sherida — runner-up, 164 pts (three scratches, no upper bonus)
     let p2 = ParticipantModel()
-    p2.seat = 1; p2.rank = 2; p2.finalScore = 164; p2.yatzyBonus = 0
+    p2.seat = 1; p2.rank = 2; p2.finalScore = 164; p2.bonusPoints = 0
     p2.displayName = "Sherida"; p2.displayInitials = "SM"
     p2.displayThemeID = Theme.ThemeType.forest.rawValue
     p2.scoreEntries = [
@@ -253,6 +257,6 @@ private struct HistoryScorecardWidthKey: PreferenceKey {
         MatchDetailView(matchModel: match)
     }
     .modelContainer(container)
-    .environment(FeelDirector())
+    .environment(FeelDirector(catalog: .syFive))
     .preferredColorScheme(.dark)
 }

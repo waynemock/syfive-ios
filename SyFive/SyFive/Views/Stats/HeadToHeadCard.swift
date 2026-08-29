@@ -1,5 +1,7 @@
 import SwiftUI
+import SyLibScoring
 import SwiftData
+import SyLibScoringData
 
 /// The "signature moment" card — shown in pre-game player cards when two roster players
 /// are about to face each other. Fetches its own completed-match data via @Query.

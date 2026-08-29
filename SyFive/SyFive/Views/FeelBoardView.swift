@@ -1,4 +1,6 @@
 import SwiftUI
+import SyLibCore
+import SyLibFeel
 
 // Debug feel board — App layer, SwiftUI, never extracted (§9).
 // Gate: AppConfig.DebugFeel.showFeelBoard
@@ -19,7 +21,7 @@ struct FeelBoardView: View {
     private static let eventOrder = [
         "settle_thunk", "hold_engage", "hold_release",
         "die_nudge", "die_reroll", "score_confirm",
-        "yatzy_moment", "game_end", "undo",
+        "celebration", "game_end", "undo",
     ]
     private static let rattleOrder = ["rattle_bed"]
 
@@ -341,5 +343,5 @@ private struct LabeledSlider: View {
 
 #Preview {
     FeelBoardView()
-        .environment(FeelDirector())
+        .environment(FeelDirector(catalog: .syFive))
 }

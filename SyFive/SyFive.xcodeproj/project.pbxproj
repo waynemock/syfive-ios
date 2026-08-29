@@ -6,6 +6,21 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		B01D8B2C303DDCCF00D0F468 /* SyLibFeel in Frameworks */ = {isa = PBXBuildFile; productRef = B01D8B2B303DDCCF00D0F468 /* SyLibFeel */; };
+		B01D8B2E303DE62A00D0F468 /* SyLibDice in Frameworks */ = {isa = PBXBuildFile; productRef = B01D8B2D303DE62A00D0F468 /* SyLibDice */; };
+		B01D8B30303F022C00D0F468 /* SyLibScoring in Frameworks */ = {isa = PBXBuildFile; productRef = B01D8B2F303F022C00D0F468 /* SyLibScoring */; };
+		B01D8B40303F81C000D0F468 /* SyLibScoringData in Frameworks */ = {isa = PBXBuildFile; productRef = B01D8B3F303F81C000D0F468 /* SyLibScoringData */; };
+		B01D8D5530405DF600D0F468 /* SyLibGameNight in Frameworks */ = {isa = PBXBuildFile; productRef = B01D8D5430405DF600D0F468 /* SyLibGameNight */; };
+		B01D8D5E30408DBE00D0F468 /* SyLibCommentary in Frameworks */ = {isa = PBXBuildFile; productRef = B01D8D5D30408DBE00D0F468 /* SyLibCommentary */; };
+		B01D8D693041227200D0F468 /* SyLibGameNightMatch in Frameworks */ = {isa = PBXBuildFile; productRef = B01D8D683041227200D0F468 /* SyLibGameNightMatch */; };
+		B02232DD30420DA400257D74 /* SyLibYatzy in Frameworks */ = {isa = PBXBuildFile; productRef = B02232DC30420DA400257D74 /* SyLibYatzy */; };
+		B024FFCD303DCE700095E1AE /* SyLibCache in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFCC303DCE700095E1AE /* SyLibCache */; };
+		B024FFCF303DCE700095E1AE /* SyLibCore in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFCE303DCE700095E1AE /* SyLibCore */; };
+		B024FFD1303DCE700095E1AE /* SyLibDSP in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFD0303DCE700095E1AE /* SyLibDSP */; };
+		B024FFD3303DCE700095E1AE /* SyLibUI in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFD2303DCE700095E1AE /* SyLibUI */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		B09DE91F2F4BBD410018F241 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -33,12 +48,6 @@
 		B09DE9302F4BBD410018F241 /* Exceptions for "SyFive" folder in "SyFive" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Dice/Docs/DICE_FAIRNESS_REPORT.txt,
-				Dice/Docs/DICE_FAIRNESS_RUN.csv,
-				Dice/Docs/DICE_FAIRNESS_TESTING.md,
-				Dice/Docs/DICE_IMPLEMENTATION_PLAN.md,
-				Dice/Docs/DICE_REQUIREMENTS.md,
-				Dice/Docs/DICE_RETROSPECTIVE.md,
 				Docs/APP_ICON_PROMPT.md,
 				Docs/ENGINEERING_GUIDELINES.md,
 				Docs/IMPLEMENTATION_STATUS.md,
@@ -58,8 +67,21 @@
 				Docs/Requirements/13_HOLD_HINT_DESIGN.md,
 				Docs/Requirements/14_APPSTORE_COPY.md,
 				Docs/Requirements/15_HELP_SCREEN.md,
+				Docs/SyLib/00_SYLIB_MIGRATION_PLAN.md,
+				Docs/SyLib/01_SYLIBDICE_STANDALONE_WAVE.md,
+				Docs/SyLib/02_SYLIBSCORINGDATA_WAVE.md,
+				Docs/SyLib/03_GAMENIGHT_BEHAVIOR_INVENTORY.md,
+				Docs/SyLib/04_GAMENIGHT_PHASE1_SPLIT.md,
+				Docs/SyLib/05_GAMENIGHT_PHASE2_STEP1.md,
+				Docs/SyLib/06_GAMENIGHT_PHASE2_STEP2.md,
+				Docs/SyLib/07_GAMENIGHT_PHASE3_VIEWS.md,
+				Docs/SyLib/08_GAMENIGHT_PHASE3B_TABLEVIEW.md,
+				Docs/SyLib/09_GAMENIGHT_PHASE4_CLOSEOUT.md,
+				Docs/SyLib/10_SYLIBCOMMENTARY_BRIEF.md,
+				Docs/SyLib/11_SYLIBGAMENIGHTMATCH_DESIGN.md,
+				Docs/SyLib/12_GAMENIGHT_SESSIONFLOW_DESIGN.md,
+				Docs/SyLib/13_SYLIB_YATZY_DESIGN.md,
 				Info.plist,
-				Utilities/analyze_dice_fairness.py,
 			);
 			target = B09DE90C2F4BBD400018F241 /* SyFive */;
 		};
@@ -91,6 +113,18 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B01D8B2C303DDCCF00D0F468 /* SyLibFeel in Frameworks */,
+				B01D8D5E30408DBE00D0F468 /* SyLibCommentary in Frameworks */,
+				B024FFD3303DCE700095E1AE /* SyLibUI in Frameworks */,
+				B01D8B40303F81C000D0F468 /* SyLibScoringData in Frameworks */,
+				B024FFCD303DCE700095E1AE /* SyLibCache in Frameworks */,
+				B024FFCF303DCE700095E1AE /* SyLibCore in Frameworks */,
+				B02232DD30420DA400257D74 /* SyLibYatzy in Frameworks */,
+				B01D8D693041227200D0F468 /* SyLibGameNightMatch in Frameworks */,
+				B024FFD1303DCE700095E1AE /* SyLibDSP in Frameworks */,
+				B01D8D5530405DF600D0F468 /* SyLibGameNight in Frameworks */,
+				B01D8B2E303DE62A00D0F468 /* SyLibDice in Frameworks */,
+				B01D8B30303F022C00D0F468 /* SyLibScoring in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -111,12 +145,20 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		B01D8B2A303DDCCF00D0F468 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		B09DE9042F4BBD400018F241 = {
 			isa = PBXGroup;
 			children = (
 				B09DE90F2F4BBD400018F241 /* SyFive */,
 				B09DE9212F4BBD410018F241 /* SyFiveTests */,
 				B09DE92B2F4BBD410018F241 /* SyFiveUITests */,
+				B01D8B2A303DDCCF00D0F468 /* Frameworks */,
 				B09DE90E2F4BBD400018F241 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -151,6 +193,18 @@
 			);
 			name = SyFive;
 			packageProductDependencies = (
+				B024FFCC303DCE700095E1AE /* SyLibCache */,
+				B024FFCE303DCE700095E1AE /* SyLibCore */,
+				B024FFD0303DCE700095E1AE /* SyLibDSP */,
+				B024FFD2303DCE700095E1AE /* SyLibUI */,
+				B01D8B2B303DDCCF00D0F468 /* SyLibFeel */,
+				B01D8B2D303DE62A00D0F468 /* SyLibDice */,
+				B01D8B2F303F022C00D0F468 /* SyLibScoring */,
+				B01D8B3F303F81C000D0F468 /* SyLibScoringData */,
+				B01D8D5430405DF600D0F468 /* SyLibGameNight */,
+				B01D8D5D30408DBE00D0F468 /* SyLibCommentary */,
+				B01D8D683041227200D0F468 /* SyLibGameNightMatch */,
+				B02232DC30420DA400257D74 /* SyLibYatzy */,
 			);
 			productName = Pentara;
 			productReference = B09DE90D2F4BBD400018F241 /* SyFive.app */;
@@ -234,6 +288,9 @@
 			);
 			mainGroup = B09DE9042F4BBD400018F241;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				B024FFCB303DCE700095E1AE /* XCLocalSwiftPackageReference "../../sylib-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = B09DE90E2F4BBD400018F241 /* Products */;
 			projectDirPath = "";
@@ -676,6 +733,65 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		B024FFCB303DCE700095E1AE /* XCLocalSwiftPackageReference "../../sylib-swift" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../../sylib-swift";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B01D8B2B303DDCCF00D0F468 /* SyLibFeel */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SyLibFeel;
+		};
+		B01D8B2D303DE62A00D0F468 /* SyLibDice */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SyLibDice;
+		};
+		B01D8B2F303F022C00D0F468 /* SyLibScoring */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SyLibScoring;
+		};
+		B01D8B3F303F81C000D0F468 /* SyLibScoringData */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SyLibScoringData;
+		};
+		B01D8D5430405DF600D0F468 /* SyLibGameNight */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SyLibGameNight;
+		};
+		B01D8D5D30408DBE00D0F468 /* SyLibCommentary */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SyLibCommentary;
+		};
+		B01D8D683041227200D0F468 /* SyLibGameNightMatch */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SyLibGameNightMatch;
+		};
+		B02232DC30420DA400257D74 /* SyLibYatzy */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B024FFCB303DCE700095E1AE /* XCLocalSwiftPackageReference "../../sylib-swift" */;
+			productName = SyLibYatzy;
+		};
+		B024FFCC303DCE700095E1AE /* SyLibCache */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SyLibCache;
+		};
+		B024FFCE303DCE700095E1AE /* SyLibCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SyLibCore;
+		};
+		B024FFD0303DCE700095E1AE /* SyLibDSP */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SyLibDSP;
+		};
+		B024FFD2303DCE700095E1AE /* SyLibUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SyLibUI;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = B09DE9052F4BBD400018F241 /* Project object */;
 }

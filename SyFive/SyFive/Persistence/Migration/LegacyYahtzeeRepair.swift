@@ -1,15 +1,21 @@
 import Foundation
+import SyLibScoring
+import SyLibYatzy
 import SwiftData
+import SyLibCore
+import SyLibScoringData
 
 // Runs on every launch to repair ParticipantModel records broken by the yahtzee → yatzy field
 // rename in the "Expunged yahtzee" commit. CloudKit treats a rename as field deletion + addition,
 // so old records arrive with the legacy names and SwiftData defaults the new fields to 0 / empty.
 //
 // Fix 1 — scoreEntries slotKey: renames "yahtzee" → "yatzy" in the JSON blob.
-// Fix 2 — yatzyBonus: infers the correct value as finalScore − cardSum − upperBonus.
-//          This is exact because finalScore was denormalized at game completion using the
-//          in-memory playerYatzyBonuses (correct at save time, stored as yahtzeeBonus then).
-//          gap = finalScore − cardSum − upperBonus = yatzyBonus exactly, so no false positives.
+// Fix 2 — bonusPoints (née yatzyBonus, née yahtzeeBonus): infers the correct value as
+//          finalScore − cardSum − upperBonus. Exact because finalScore was denormalized at
+//          completion using the in-memory bonus (correct at save time). Handles both the
+//          yahtzeeBonus→yatzyBonus rename and the yatzyBonus→bonusPoints rename; old CloudKit
+//          records arrive with the prior field name, SwiftData defaults bonusPoints to 0, and
+//          this repair reconstructs it. gap % 100 == 0 guard prevents false positives.
 //
 // Both fixes are idempotent and safe to re-run. Converges once CloudKit propagates the
 // corrected fields to all devices (subsequent runs find no candidates and exit immediately).
@@ -36,7 +42,7 @@ enum LegacyYahtzeeRepair {
             }
 
             // Fix 2: infer yatzyBonus from finalScore gap
-            guard p.yatzyBonus == 0, p.finalScore > 0 else { continue }
+            guard p.bonusPoints == 0, p.finalScore > 0 else { continue }
             let cardSum = entries.compactMap { $0.value }.reduce(Decimal(0), +)
             let upperSum = entries
                 .filter { YatzyCategory(rawValue: $0.slotKey)?.isUpperSection == true }
@@ -45,7 +51,7 @@ enum LegacyYahtzeeRepair {
             let upperBonusPts: Decimal = upperSum >= 63 ? 35 : 0
             let gap = NSDecimalNumber(decimal: p.finalScore - cardSum - upperBonusPts).intValue
             guard gap > 0, gap % 100 == 0 else { continue }
-            p.yatzyBonus = gap
+            p.bonusPoints = gap
             bonusCount += 1
         }
 

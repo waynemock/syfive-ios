@@ -1,5 +1,8 @@
 import SwiftUI
 import Observation
+import SyLibCore
+import SyLibFeel
+import SyLibYatzy
 
 struct ScorecardView: View {
     @Bindable var model: MatchController
@@ -199,5 +202,5 @@ private struct LabelWidthKey: PreferenceKey {
 
 #Preview {
     ScorecardView(model: MatchController(), availableWidth: 360)
-        .environment(FeelDirector())
+        .environment(FeelDirector(catalog: .syFive))
 }

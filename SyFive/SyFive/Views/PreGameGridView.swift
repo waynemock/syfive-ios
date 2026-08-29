@@ -1,4 +1,6 @@
 import SwiftUI
+import SyLibScoring
+import SyLibFeel
 
 struct PreGameGridView: View {
     @Bindable var model: MatchController
@@ -72,7 +74,7 @@ struct PreGameGridView: View {
         return m
     }(), onAddPlayer: {})
     .frame(width: 393)
-    .environment(FeelDirector())
+    .environment(FeelDirector(catalog: .syFive))
 }
 
 #Preview("Pre-Game Grid – Landscape / iPad") {
@@ -84,6 +86,6 @@ struct PreGameGridView: View {
         return m
     }(), onAddPlayer: {})
     .environment(\.horizontalSizeClass, .regular)
-    .environment(FeelDirector())
+    .environment(FeelDirector(catalog: .syFive))
     .frame(width: 744)
 }

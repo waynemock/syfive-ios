@@ -1,4 +1,7 @@
 import Foundation
+import SyLibScoring
+import SyLibCore
+import SyLibYatzy
 
 // App-layer, SyFive-specific. Does not enter the Domain layer or SyLib (§2.13, §6.12).
 // All values compute-on-read from completed matches. No stored aggregates (§4.1, §6.5).
@@ -337,8 +340,8 @@ struct HouseRecords {
         let base = entry?.value == 50 ? 1 : 0
 
         let effectiveBonus: Int
-        if p.yatzyBonus > 0 {
-            effectiveBonus = p.yatzyBonus
+        if p.bonusPoints > 0 {
+            effectiveBonus = p.bonusPoints
         } else {
             let cardSum = p.scoreEntries.compactMap { $0.value }.reduce(Decimal(0), +)
             let upperSum = p.scoreEntries

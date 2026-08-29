@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibScoring
 
 struct MatchHistoryRow: View {
     let match: Match
@@ -62,7 +63,7 @@ struct MatchHistoryRow: View {
                 Participant(
                     id: UUID(), seat: i,
                     finalScore: Decimal(p.score), rank: p.rank,
-                    yatzyBonus: 0, playerID: nil, teamID: nil,
+                    bonusPoints: 0, playerID: nil, teamID: nil,
                     displayName: p.name,
                     displayInitials: String(p.name.prefix(1)),
                     displayThemeID: p.theme,

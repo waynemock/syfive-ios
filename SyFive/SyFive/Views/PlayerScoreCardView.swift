@@ -1,6 +1,11 @@
 import SwiftUI
+import SyLibScoring
+import SyLibUI
+import SyLibYatzy
 import Observation
 import SwiftData
+import SyLibFeel
+import SyLibScoringData
 
 struct PlayerScoreCardView: View {
     @Bindable var model: MatchController
@@ -477,7 +482,7 @@ private struct CategoryScoreRow: View {
     PlayerScoreCardPreviewContainer()
         .padding()
         .frame(width: 320)
-        .environment(FeelDirector())
+        .environment(FeelDirector(catalog: .syFive))
 }
 
 private struct PlayerScoreCardPreviewContainer: View {
@@ -541,7 +546,7 @@ private struct PlayerScoreCardCompactPreviewContainer: View {
                 horizontalPadding: 10,
                 sectionGap: 10
             )
-            .environment(FeelDirector())
+            .environment(FeelDirector(catalog: .syFive))
         }
     }
 }

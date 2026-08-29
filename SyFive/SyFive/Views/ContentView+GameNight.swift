@@ -1,4 +1,8 @@
 import SwiftUI
+import SyLibCore
+import SyLibGameNight
+import SyLibScoring
+import SyLibScoringData
 import SwiftData
 
 // MARK: - Game Night UI
@@ -28,7 +32,7 @@ extension ContentView {
                 .tint(Color.green)
             } else if gameNight.phase == .inProgress && gameNight.role == .host {
                 Button {
-                    showsCancelGameNightAlert = true
+                    gnAlerts.showsCancelSession = true
                 } label: {
                     Image(systemName: "person.3.fill")
                 }
@@ -46,27 +50,12 @@ extension ContentView {
                 Image(systemName: "person.3.fill")
                     .foregroundStyle(Color.green)
             }
-        } else if gameNight.isEligibleForGroupSession {
+        } else if gameNight.session.isEligibleForGroupSession {
             // Active FaceTime/iMessage call — promote Game Night as the primary action.
             Button {
-                gameNight.prepareAsHost()
-                GameNightSharing.present(
-                    onRequiresConversation: {
-                        gameNight.cancelHostPreparation()
-                        showsInviteInstructions = true
-                    },
-                    onDismissed: {
-                        if gameNight.isSessionActive && gameNight.phase == .settingTable {
-                            Task { @MainActor in
-                                try? await Task.sleep(nanoseconds: 500_000_000)
-                                guard gameNight.isSessionActive && gameNight.phase == .settingTable else { return }
-                                presentGameNightSheetOrAlert()
-                            }
-                        }
-                    },
-                    onCancelled: {
-                        gameNight.cancelHostPreparation()
-                    }
+                gameNight.beginHosting(
+                    onNeedsConversation: { showsInviteInstructions = true },
+                    onReadyToSeat: { presentGameNightSheetOrAlert() }
                 )
             } label: {
                 Image(systemName: "person.3.fill")
@@ -100,31 +89,9 @@ extension ContentView {
         if !gameNight.isSessionActive && !gameNight.isSessionPending {
             // No session and no pending invite — offer to start one as host.
             Button {
-                gameNight.prepareAsHost()
-                GameNightSharing.present(
-                    onRequiresConversation: {
-                        // Sharing controller was cancelled or needs a conversation first.
-                        // Reset host preparation so a later incoming session from another
-                        // device doesn't incorrectly claim this device as host.
-                        gameNight.cancelHostPreparation()
-                        showsInviteInstructions = true
-                    },
-                    onDismissed: {
-                        logger.info(self, "gameNightMenu onDismissed: isSessionActive=\(gameNight.isSessionActive) phase=\(String(describing: gameNight.phase))")
-                        // With Messages SharePlay, the session can arrive while the UIKit modal
-                        // is on screen. Re-show the seating sheet after a brief delay so the
-                        // UIKit dismiss animation finishes before SwiftUI tries to present.
-                        if gameNight.isSessionActive && gameNight.phase == .settingTable {
-                            Task { @MainActor in
-                                try? await Task.sleep(nanoseconds: 500_000_000)
-                                guard gameNight.isSessionActive && gameNight.phase == .settingTable else { return }
-                                presentGameNightSheetOrAlert()
-                            }
-                        }
-                    },
-                    onCancelled: {
-                        gameNight.cancelHostPreparation()
-                    }
+                gameNight.beginHosting(
+                    onNeedsConversation: { showsInviteInstructions = true },
+                    onReadyToSeat: { presentGameNightSheetOrAlert() }
                 )
             } label: {
                 Label("Start Game Night", systemImage: "person.3.fill")
@@ -135,7 +102,7 @@ extension ContentView {
         } else if gameNight.isSessionPending {
             // Invite sent — waiting for recipients to accept. Block a second invite.
             Button(role: .destructive) {
-                showsCancelGameNightAlert = true
+                gnAlerts.showsCancelSession = true
             } label: {
                 Label("Cancel Game Night Invite", systemImage: "xmark.circle")
             }
@@ -152,7 +119,7 @@ extension ContentView {
             if gameNight.role == .host {
                 if gameNight.phase == .inProgress {
                     Button(role: .destructive) {
-                        showsCancelGameNightAlert = true
+                        gnAlerts.showsCancelSession = true
                     } label: {
                         Label("End Game Night", systemImage: "xmark.circle")
                     }
@@ -168,7 +135,7 @@ extension ContentView {
                 // Escape hatch: when both devices relaunch as guests with no host,
                 // let a non-host end the broken session from the menu.
                 Button(role: .destructive) {
-                    showsCancelGameNightAlert = true
+                    gnAlerts.showsCancelSession = true
                 } label: {
                     Label("End Game Night", systemImage: "xmark.circle")
                 }
@@ -188,7 +155,7 @@ extension ContentView {
     /// True when the leading area is showing a Game Night action (not the plain + / ↺ button).
     /// Controls visibility of the help (?) button that sits to the right of it.
     var showsGameNightHelpButton: Bool {
-        (gameNight.isEligibleForGroupSession && !gameNight.isSessionActive && !gameNight.isSessionPending) ||
+        (gameNight.session.isEligibleForGroupSession && !gameNight.isSessionActive && !gameNight.isSessionPending) ||
         gameNight.isSessionPending ||
         (gameNight.isSessionActive && gameNight.phase == .settingTable)
     }
@@ -269,138 +236,8 @@ extension ContentView {
 
 // MARK: - Game Night Alerts
 
-// Extracted to break an otherwise-too-long modifier chain that exceeds Swift's type-checker limit.
-struct GameNightAlertModifier: ViewModifier {
-    @Environment(GameNightController.self) private var gameNight
-    @Environment(\.modelContext) private var modelContext
-    @Binding var showsSessionEndedAlert: Bool
-    @Binding var showsGameNightGuestReconnect: Bool
-    @Binding var pendingGuestReconnectMatchID: UUID?
-    @Binding var showsGameNightReconnect: Bool
-    @Binding var pendingResumeMatchID: UUID?
-    @Binding var pendingResumeGameID: UUID?
-    @Binding var showsCancelGameNightAlert: Bool
-    @Binding var showsGameNightLocalConflictAlert: Bool
-    @Binding var showsGameNight: Bool
-
-    private let logger = AppLogger(category: "ContentView")
-
-    func body(content: Content) -> some View {
-        content
-            .alert("Game Night ended", isPresented: $showsSessionEndedAlert) {
-                if let ids = fetchHostReconnectIDs() {
-                    Button("Reconnect") {
-                        gameNight.clearSessionEndedFlag()
-                        pendingResumeMatchID = ids.matchID
-                        pendingResumeGameID = ids.gameID
-                        gameNight.prepareAsHost()
-                        GameNightSharing.present(
-                            onRequiresConversation: {
-                                gameNight.cancelHostPreparation()
-                                pendingResumeMatchID = nil
-                                pendingResumeGameID = nil
-                            },
-                            onDismissed: {
-                                if gameNight.isSessionActive && gameNight.phase == .settingTable {
-                                    Task { @MainActor in
-                                        try? await Task.sleep(nanoseconds: 500_000_000)
-                                        guard gameNight.isSessionActive && gameNight.phase == .settingTable else { return }
-                                        showsGameNight = true
-                                    }
-                                }
-                            },
-                            onCancelled: {
-                                gameNight.cancelHostPreparation()
-                                pendingResumeMatchID = nil
-                                pendingResumeGameID = nil
-                            }
-                        )
-                    }
-                }
-                Button("Dismiss", role: .cancel) { gameNight.clearSessionEndedFlag() }
-            } message: {
-                Text("Your progress has been saved.")
-            }
-            .alert("Reconnect to Game Night?", isPresented: $showsGameNightGuestReconnect) {
-                Button("Rejoin") {
-                    if let matchID = pendingGuestReconnectMatchID {
-                        gameNight.prepareForGuestReconnect(matchID: matchID)
-                    }
-                    pendingGuestReconnectMatchID = nil
-                }
-                Button("Play Locally", role: .cancel) {
-                    pendingGuestReconnectMatchID = nil
-                }
-            } message: {
-                Text("Your scores are intact. If the host restarts the session you'll rejoin automatically.")
-            }
-            .alert("Reconnect Game Night?", isPresented: $showsGameNightReconnect) {
-                Button("Resume as Host") {
-                    gameNight.prepareAsHost()
-                    GameNightSharing.present(
-                        onRequiresConversation: {
-                            gameNight.cancelHostPreparation()
-                            pendingResumeMatchID = nil
-                            pendingResumeGameID = nil
-                        },
-                        onDismissed: {
-                            logger.info(self, "reconnect onDismissed: isSessionActive=\(gameNight.isSessionActive) phase=\(String(describing: gameNight.phase))")
-                            if gameNight.isSessionActive && gameNight.phase == .settingTable {
-                                Task { @MainActor in
-                                    try? await Task.sleep(nanoseconds: 500_000_000)
-                                    guard gameNight.isSessionActive && gameNight.phase == .settingTable else { return }
-                                    showsGameNight = true
-                                }
-                            }
-                        },
-                        onCancelled: {
-                            gameNight.cancelHostPreparation()
-                            pendingResumeMatchID = nil
-                            pendingResumeGameID = nil
-                        }
-                    )
-                }
-                Button("Play Locally", role: .cancel) {
-                    pendingResumeMatchID = nil
-                    pendingResumeGameID = nil
-                }
-            } message: {
-                Text("Your scores are intact. If you were the host, tap Resume as Host — guests will rejoin automatically.")
-            }
-            .alert(
-                gameNight.isSessionPending ? "Cancel Game Night Invite?" : "End Game Night?",
-                isPresented: $showsCancelGameNightAlert
-            ) {
-                let isSessionPending = gameNight.isSessionPending
-                Button(isSessionPending ? "Cancel Invite" : "End Game Night", role: .destructive) {
-                    if gameNight.isSessionPending {
-                        gameNight.cancelHostPreparation()
-                    } else if gameNight.role == .host {
-                        gameNight.abandonSession()
-                    } else {
-                        gameNight.endSession()
-                    }
-                }
-                Button(isSessionPending ? "Keep Waiting" : "Keep Playing", role: .cancel) {}
-            } message: {
-                Text(gameNight.isSessionPending
-                     ? "Your invite will be cancelled and the other player won't be able to join."
-                     : "This will end the Game Night session for all players.")
-            }
-            .alert("Local Game in Progress", isPresented: $showsGameNightLocalConflictAlert) {
-                Button("Play Game Night") { showsGameNight = true }
-                Button("Keep Playing", role: .cancel) {}
-            } message: {
-                Text("Starting Game Night will set aside your current game. You can resume it from History later.")
-            }
-            .onChange(of: gameNight.sessionEndedDuringPlay) { _, ended in
-                if ended { showsSessionEndedAlert = true }
-            }
-    }
-
-    /// Returns match + game IDs when the local device was the host and has a game in progress,
-    /// enabling the "Reconnect" button in the session-ended alert.
-    private func fetchHostReconnectIDs() -> (matchID: UUID, gameID: UUID)? {
+extension ContentView {
+    func fetchHostReconnectIDs() -> (matchID: UUID, gameID: UUID)? {
         var matchDesc = FetchDescriptor<MatchModel>(
             predicate: #Predicate { $0.statusRaw == "inProgress" },
             sortBy: [SortDescriptor(\MatchModel.startedAt, order: .reverse)]
@@ -408,7 +245,7 @@ struct GameNightAlertModifier: ViewModifier {
         matchDesc.fetchLimit = 1
         guard let match = (try? modelContext.fetch(matchDesc))?.first,
               match.isGameNight,
-              UserDefaults.standard.gnWasHost(for: match.id) else { return nil }
+              gameNight.gnWasHost(for: match.id) else { return nil }
 
         let yatzyID = ScoringSystemID.yatzy.rawValue
         let gameDesc = FetchDescriptor<GameModel>(

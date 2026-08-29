@@ -1,4 +1,9 @@
 import SwiftUI
+import SyLibCore
+import SyLibGameNight
+import SyLibScoring
+import SyLibYatzy
+import SyLibScoringData
 import SwiftData
 
 struct UnfinishedMatchDetailView: View {
@@ -38,8 +43,7 @@ struct UnfinishedMatchDetailView: View {
 
     private var playerColors: [UUID: Color] {
         Dictionary(uniqueKeysWithValues: match.participants.map { p in
-            let themeType = Theme.ThemeType(rawValue: p.displayThemeID) ?? .midnight
-            return (p.id, Theme(type: themeType, colorScheme: colorScheme).primaryAccent)
+            return (p.id, Theme.accent(forThemeID: p.displayThemeID, colorScheme: colorScheme))
         })
     }
 
@@ -214,7 +218,7 @@ private struct UnfinishedScorecardWidthKey: PreferenceKey {
     }
 
     let p1 = ParticipantModel()
-    p1.seat = 0; p1.rank = 0; p1.finalScore = 0; p1.yatzyBonus = 0
+    p1.seat = 0; p1.rank = 0; p1.finalScore = 0; p1.bonusPoints = 0
     p1.displayName = "Wayne"; p1.displayInitials = "WM"
     p1.displayThemeID = Theme.ThemeType.midnight.rawValue
     p1.scoreEntries = [
@@ -227,7 +231,7 @@ private struct UnfinishedScorecardWidthKey: PreferenceKey {
     ctx.insert(p1)
 
     let p2 = ParticipantModel()
-    p2.seat = 1; p2.rank = 0; p2.finalScore = 0; p2.yatzyBonus = 0
+    p2.seat = 1; p2.rank = 0; p2.finalScore = 0; p2.bonusPoints = 0
     p2.displayName = "Sherida"; p2.displayInitials = "SM"
     p2.displayThemeID = Theme.ThemeType.forest.rawValue
     p2.scoreEntries = [

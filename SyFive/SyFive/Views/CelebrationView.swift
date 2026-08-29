@@ -1,18 +1,10 @@
 import SwiftUI
+import SyLibScoring
+import SyLibUI
+import SyLibYatzy
 import SwiftData
-
-// MARK: - Shared particle type
-
-private struct Mote {
-    let x: Double         // 0-1 horizontal origin (normalized to view width)
-    let y: Double         // 0-1 vertical origin (normalized to view height)
-    let vx: Double        // pts/sec horizontal wander
-    let vy: Double        // pts/sec vertical (negative = up, positive = down)
-    let color: Color
-    let size: Double      // base diameter in pts
-    let delay: Double     // seconds before appearing
-    let lifetime: Double  // seconds until fully faded
-}
+import SyLibCore
+import SyLibScoringData
 
 // MARK: - Full-screen overlay (game-over only)
 
@@ -23,7 +15,6 @@ struct CelebrationView: View {
     @Environment(CelebrationCoordinator.self) private var coordinator
     let model: MatchController
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         if coordinator.isGameOverActive {
@@ -31,7 +22,6 @@ struct CelebrationView: View {
                 winnerThemes: coordinator.winnerIndices.map {
                     Theme(type: model.themeType(for: $0), colorScheme: colorScheme)
                 },
-                reduceMotion: reduceMotion,
                 onDone: { coordinator.clearGameOver() }
             )
             .allowsHitTesting(false)
@@ -52,16 +42,13 @@ struct DiceTrayOverlayView: View {
     @Environment(CelebrationCoordinator.self) private var coordinator
     let model: MatchController
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack(alignment: .center) {
             // Full-frame particle burst — Yatzy only.
             if let event = coordinator.yatzyEvent {
-                YatzyParticleCanvas(
-                    theme: Theme(type: model.themeType(for: event.playerIndex), colorScheme: colorScheme),
-                    reduceMotion: reduceMotion
-                )
+                let theme = Theme(type: model.themeType(for: event.playerIndex), colorScheme: colorScheme)
+                ParticleBurst { makeYatzyParticles(theme: theme) }
                 .id(event.id)
                 .transition(.opacity.animation(.easeInOut(duration: 0.4)))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -186,54 +173,6 @@ struct DiceTrayOverlayView: View {
     }
 }
 
-// MARK: - Yatzy particle canvas
-
-private struct YatzyParticleCanvas: View {
-    let theme: Theme
-    let reduceMotion: Bool
-
-    @State private var startDate = Date()
-    @State private var motes: [Mote] = []
-
-    var body: some View {
-        if !reduceMotion {
-            TimelineView(.animation(minimumInterval: 1.0 / 60)) { ctx in
-                Canvas { gctx, size in
-                    let elapsed = ctx.date.timeIntervalSince(startDate)
-                    for m in motes {
-                        drawMote(m, in: gctx, size: size, elapsed: elapsed)
-                    }
-                }
-            }
-            .onAppear {
-                startDate = Date()
-                motes = makeYatzyMotes(theme: theme)
-            }
-        }
-    }
-
-    private func drawMote(_ m: Mote, in ctx: GraphicsContext, size: CGSize, elapsed: Double) {
-        let age = elapsed - m.delay
-        guard age > 0, age < m.lifetime else { return }
-        let progress = age / m.lifetime
-        // Fade in quickly (first 15%), fade out over the remainder
-        let opacity = min(1.0, max(0.0,
-            progress < 0.15 ? progress / 0.15 : 1.0 - (progress - 0.15) / 0.85
-        ))
-        let scale = 1.0 - progress * 0.55
-        let r = (m.size / 2) * scale
-        guard opacity > 0.01, r > 0.5 else { return }
-        ctx.fill(
-            Path(ellipseIn: CGRect(
-                x: m.x * size.width  + m.vx * age - r,
-                y: m.y * size.height + m.vy * age - r,
-                width: r * 2, height: r * 2
-            )),
-            with: .color(m.color.opacity(opacity))
-        )
-    }
-}
-
 // MARK: - Yatzy text card
 
 private struct YatzyTextCard: View {
@@ -250,7 +189,7 @@ private struct YatzyTextCard: View {
         VStack(spacing: 4) {
             if playerCount > 1 {
                 HStack(spacing: 6) {
-                    PlayerInitialsCircle(initials: playerInitials, themeType: theme.type)
+                    InitialsCircle(initials: playerInitials, color: theme.primaryAccent, diameter: 28)
                     Text(playerName)
                         .font(.subheadline.weight(.semibold))
                         .fontDesign(.rounded)
@@ -303,7 +242,7 @@ private struct UpperBonusTextCard: View {
         VStack(spacing: 4) {
             if playerCount > 1 {
                 HStack(spacing: 6) {
-                    PlayerInitialsCircle(initials: playerInitials, themeType: theme.type)
+                    InitialsCircle(initials: playerInitials, color: theme.primaryAccent, diameter: 28)
                     Text(playerName)
                         .font(.subheadline.weight(.semibold))
                         .fontDesign(.rounded)
@@ -364,7 +303,7 @@ private struct WinnerCardView: View {
             if isTied {
                 HStack(spacing: 6) {
                     ForEach(Array(winners.enumerated()), id: \.offset) { _, w in
-                        PlayerInitialsCircle(initials: w.initials, themeType: w.themeType)
+                        InitialsCircle(initials: w.initials, color: Theme(type: w.themeType, colorScheme: colorScheme).primaryAccent, diameter: 28)
                     }
                 }
                 Text(winnerNames)
@@ -374,7 +313,7 @@ private struct WinnerCardView: View {
                     .multilineTextAlignment(.center)
             } else if let solo = winners.first {
                 HStack(spacing: 6) {
-                    PlayerInitialsCircle(initials: solo.initials, themeType: solo.themeType)
+                    InitialsCircle(initials: solo.initials, color: Theme(type: solo.themeType, colorScheme: colorScheme).primaryAccent, diameter: 28)
                     Text(winnerNames)
                         .font(.subheadline.weight(.semibold))
                         .fontDesign(.rounded)
@@ -454,11 +393,8 @@ private struct PostMatchH2HView: View {
 
 private struct GameOverOverlayView: View {
     let winnerThemes: [Theme]
-    let reduceMotion: Bool
     let onDone: () -> Void
 
-    @State private var startDate = Date()
-    @State private var particles: [Mote] = []
     @State private var washOpacity: Double = 0
     @State private var overlayOpacity: Double = 1.0
 
@@ -468,23 +404,12 @@ private struct GameOverOverlayView: View {
                 .ignoresSafeArea()
                 .opacity(washOpacity)
 
-            if !reduceMotion {
-                TimelineView(.animation(minimumInterval: 1.0 / 60)) { ctx in
-                    Canvas { gctx, size in
-                        let elapsed = ctx.date.timeIntervalSince(startDate)
-                        for p in particles {
-                            drawParticle(p, in: gctx, size: size, elapsed: elapsed)
-                        }
-                    }
-                }
-            }
+            ParticleBurst { makeFallParticles(winnerThemes: winnerThemes) }
         }
         .opacity(overlayOpacity)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea()
         .onAppear {
-            startDate = Date()
-            particles = makeFallParticles(winnerThemes: winnerThemes)
             withAnimation(.easeIn(duration: 0.8).delay(0.3)) { washOpacity = 1.0 }
             Task {
                 try? await Task.sleep(for: .seconds(4.0))
@@ -511,26 +436,6 @@ private struct GameOverOverlayView: View {
         return colors
     }
 
-    private func drawParticle(_ p: Mote, in ctx: GraphicsContext, size: CGSize, elapsed: Double) {
-        let age = elapsed - p.delay
-        guard age > 0, age < p.lifetime else { return }
-        let progress = age / p.lifetime
-        // Fade in over first 10%, hold, fade out over last 25%
-        let opacity = min(1.0, max(0.0,
-            progress < 0.1  ? progress / 0.1 :
-            progress > 0.75 ? 1.0 - (progress - 0.75) / 0.25 : 1.0
-        ))
-        let r = p.size / 2
-        guard opacity > 0.01, r > 0.5 else { return }
-        ctx.fill(
-            Path(ellipseIn: CGRect(
-                x: p.x * size.width  + p.vx * age - r,
-                y: p.y * size.height + p.vy * age - r,
-                width: r * 2, height: r * 2
-            )),
-            with: .color(p.color.opacity(opacity))
-        )
-    }
 }
 
 // MARK: - Score announcement banner
@@ -581,7 +486,7 @@ private struct ScoreAnnouncementBannerView: View {
 
     private var scoreCard: some View {
         HStack(spacing: 10) {
-            PlayerInitialsCircle(initials: playerInitials, themeType: playerTheme.type)
+            InitialsCircle(initials: playerInitials, color: playerTheme.primaryAccent, diameter: 28)
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(playerName) scored")
                     .font(.subheadline.weight(.semibold))
@@ -604,7 +509,7 @@ private struct ScoreAnnouncementBannerView: View {
 
     private var leaderCard: some View {
         HStack(spacing: 10) {
-            PlayerInitialsCircle(initials: leaderInitials, themeType: leaderTheme.type)
+            InitialsCircle(initials: leaderInitials, color: leaderTheme.primaryAccent, diameter: 28)
             VStack(alignment: .leading, spacing: 2) {
                 Text(leaderName)
                     .font(.subheadline.weight(.semibold))
@@ -646,13 +551,13 @@ private let dieOrigins: [(x: Double, y: Double)] = [
     (0.22, 0.70), (0.78, 0.65),
 ]
 
-private func makeYatzyMotes(theme: Theme) -> [Mote] {
+private func makeYatzyParticles(theme: Theme) -> [Particle] {
     let count = Int.random(in: 15...25)
     // 2:1 primary-to-secondary ratio keeps the burst cohesive but varied.
     let colors = [theme.primaryAccent, theme.primaryAccent, theme.secondaryAccent]
     return (0..<count).map { i in
         let origin = dieOrigins[i % dieOrigins.count] 
-        return Mote(
+        return Particle(
             x: origin.x + Double.random(in: -0.06...0.06),
             y: origin.y + Double.random(in: -0.04...0.04),
             vx: Double.random(in: -20...20),
@@ -665,12 +570,12 @@ private func makeYatzyMotes(theme: Theme) -> [Mote] {
     }
 }
 
-private func makeFallParticles(winnerThemes: [Theme]) -> [Mote] {
+private func makeFallParticles(winnerThemes: [Theme]) -> [Particle] {
     let allColors: [Color] = winnerThemes.isEmpty
         ? [.accentColor]
         : winnerThemes.flatMap { [$0.primaryAccent, $0.primaryAccent, $0.secondaryAccent] }
     return (0..<55).map { i in
-        Mote(
+        Particle(
             x: Double.random(in: 0.05...0.95),
             y: -0.02,
             vx: Double.random(in: -20...20),

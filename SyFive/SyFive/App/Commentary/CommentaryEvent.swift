@@ -1,6 +1,7 @@
 import Foundation
+import SyLibCommentary
 
-enum CommentaryEventKind: Hashable {
+enum CommentaryEventKind: String, Sendable {
     case yatzyRolled
     case yatzyBonusEarned
     case winnerDeclared
@@ -12,6 +13,8 @@ enum CommentaryEventKind: Hashable {
     case turnStart
     case categoryScored
     case categoryScratched
+
+    var key: String { rawValue }
 
     var tier: CommentaryEventTier {
         switch self {
@@ -25,24 +28,4 @@ enum CommentaryEventKind: Hashable {
     }
 }
 
-enum CommentaryEventTier: Int, Comparable {
-    case celebration = 0
-    case highlight = 1
-    case playByPlay = 2
-
-    static func < (lhs: CommentaryEventTier, rhs: CommentaryEventTier) -> Bool {
-        lhs.rawValue < rhs.rawValue
-    }
-}
-
-struct CommentaryEvent {
-    let kind: CommentaryEventKind
-    var player: String? = nil
-    var winner: String? = nil
-    var runnerUp: String? = nil
-    var leader: String? = nil
-    var score: Int? = nil
-    var margin: Int? = nil
-    var category: String? = nil
-    var value: Int? = nil
-}
+extension CommentaryEventKind: SyLibCommentary.CommentaryEventKind {}

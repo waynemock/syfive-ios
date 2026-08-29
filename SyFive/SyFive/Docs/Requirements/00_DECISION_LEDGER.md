@@ -74,7 +74,7 @@ file is HEAD.*
 | ID | Current ruling | Source → chain |
 |---|---|---|
 | D-023 | CloudKit ships at 1.0. Per-app private container `iCloud.com.syzygysoftwerks.SyFive` (not a shared "Sy" container), with a one-line revert lever. *(rec.)* | `03_CLOUDKIT` |
-| D-024 | The built-in Yatzy catalog entry seeds with the fixed well-known UUID `BFB7F8F6-87D2-4700-9267-36A8ED4AC3C8` for cross-device deduplication. *(rec.)* | `03_CLOUDKIT` |
+| D-024 | The built-in Yatzy catalog entry seeds with the fixed well-known UUID `BFB7F8F6-87D2-4700-9267-36A8ED4AC3C8` for cross-device deduplication. Constant lives in `Domain/Game+BuiltIn.swift` (SyFive extension on `SyLibScoring.Game`) — kept app-side so `SyLibScoring` stays game-agnostic. *(rec.)* | `03_CLOUDKIT` |
 | D-025 | `ScoreEntryModel` is **not** registered in the CloudKit schema — scorecards travel inside the participant blob. | `03_CLOUDKIT` |
 | D-026 | **Dev → Production schema promotion is a hard gate** before any TestFlight build. | `03_CLOUDKIT` |
 | D-027 | Sync UX is calm and silent: no spinners, no toggles, no sync status chrome. | `03_CLOUDKIT` |
@@ -83,7 +83,7 @@ file is HEAD.*
 
 | ID | Current ruling | Source → chain |
 |---|---|---|
-| D-028 | Two-tier stats mirroring the scoring split: Tier 1 generic (SyLib), Tier 2 Yatzy-specific (Yatzy module). | `03_STATS` |
+| D-028 | Two-tier stats mirroring the scoring split: Tier 1 generic (`SyLibScoring`), Tier 2 Yatzy-specific (`SyLibYatzy` in sylib-swift). `legalValues(for:)` / `isLegalValue(_:for:)` added to `YatzyScoring` for manual-entry validation (ScoreIt v2 consumer). | `03_STATS` → `13_SYLIB_YATZY` |
 | D-029 | **Compute-on-read, no stored aggregates.** All stats and insights derivable retroactively with zero schema additions — a hard constraint. | `03_STATS` |
 | D-030 | `ScoreEntry.recordedAt` is always written at checkpoint flush; `nil` means legacy data only. | `03_STATS` |
 | D-031 | Dice telemetry is excluded from the stats contract. | `03_STATS` |

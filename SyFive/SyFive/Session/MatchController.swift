@@ -1,7 +1,13 @@
 import Foundation
+import SyLibCommentary
+import SyLibGameNightMatch
+import SyLibScoring
+import SyLibYatzy
 import Observation
 import SwiftUI
 import SwiftData
+import SyLibCore
+import SyLibScoringData
 
 @Observable
 final class MatchController {
@@ -52,7 +58,7 @@ final class MatchController {
     /// True while physics dice are mid-roll (between beginRoll and receiveDiceResults).
     private(set) var isRolling: Bool = false
     private var lastScoreSnapshot: LastScoreSnapshot?
-    var commentaryEventSink: ((CommentaryEvent) -> Void)?
+    var commentaryEventSink: ((CommentaryEvent<CommentaryEventKind>) -> Void)?
 
     init() {
         diceValues = Array(repeating: 1, count: diceCount)
@@ -75,6 +81,10 @@ final class MatchController {
 
     var playerCount: Int { playerScores.count }
 
+    /// Theme raw values in seat order — exposed for `GameNightMatchHost` protocol conformance
+    /// so the coordinator can build `SeatSnapshot` without importing SyFive's `Theme` type.
+    var playerDisplayThemeIDs: [String] { playerThemes.map { $0.rawValue } }
+
     var playerNames: [String] { playerDisplayNames }
 
     var currentPlayerName: String {
@@ -95,7 +105,7 @@ final class MatchController {
     var canEditPlayers: Bool { !hasStarted }
 
     var isGameOver: Bool {
-        playerCount > 0 && (0..<playerCount).allSatisfy { isComplete(scorecard: yatzyScorecard(for: $0)) }
+        playerCount > 0 && (0..<playerCount).allSatisfy { YatzyScoring.isComplete(scorecard: yatzyScorecard(for: $0)) }
     }
 
     var winnerIndices: [Int] {
@@ -186,7 +196,7 @@ final class MatchController {
     }
 
     func totalScore(for playerIndex: Int) -> Int {
-        grandTotal(scorecard: yatzyScorecard(for: playerIndex), yatzyBonus: yatzyBonus(for: playerIndex))
+        YatzyScoring.grandTotal(scorecard: yatzyScorecard(for: playerIndex), yatzyBonus: yatzyBonus(for: playerIndex))
     }
 
     func isWinner(_ playerIndex: Int) -> Bool { winnerIndices.contains(playerIndex) }
@@ -379,7 +389,7 @@ final class MatchController {
                 }
             )
             playerScores.append(scores)
-            playerYatzyBonuses.append(p.yatzyBonus)
+            playerYatzyBonuses.append(p.bonusPoints)
             playerThemes.append(themeType)
             playerDisplayNames.append(p.displayName)
             playerDisplayInitials.append(p.displayInitials)
@@ -492,7 +502,7 @@ final class MatchController {
         let scoringPlayerIndex = currentPlayerIndex
         let previousLeaderIndices = leaderIndices
         let hadUpperBonus = upperBonus(for: currentPlayerIndex) > 0
-        let earnedBonus = qualifiesForExtraYatzyBonus(dice: diceValues, scorecard: yatzyScorecard(for: currentPlayerIndex))
+        let earnedBonus = YatzyScoring.qualifiesForExtraYatzyBonus(dice: diceValues, scorecard: yatzyScorecard(for: currentPlayerIndex))
         if earnedBonus {
             playerYatzyBonuses[currentPlayerIndex] += 100
         }
@@ -512,6 +522,7 @@ final class MatchController {
                                 gameJustEnded: gameJustEnded)
         }
         onScoreApplied?(category, capturedDice)
+        onMoveApplied?()
         if !hadUpperBonus && upperBonus(for: scoringPlayerIndex) > 0 {
             onUpperBonusEarned?(scoringPlayerIndex)
         }
@@ -582,7 +593,7 @@ final class MatchController {
                 seat: i,
                 finalScore: Decimal(totalScore(for: i)),
                 rank: isGameOver ? computeRank(for: i) : 0,
-                yatzyBonus: playerYatzyBonuses[i],
+                bonusPoints: playerYatzyBonuses[i],
                 playerID: playerIDs[i],
                 teamID: nil,
                 displayName: playerDisplayNames[i],
@@ -615,18 +626,18 @@ final class MatchController {
 
     private func scoreValue(for category: YatzyCategory, playerIndex: Int) -> Int {
         let scorecard = yatzyScorecard(for: playerIndex)
-        if let joker = jokerValue(of: category, dice: diceValues, scorecard: scorecard) {
+        if let joker = YatzyScoring.jokerValue(of: category, dice: diceValues, scorecard: scorecard) {
             return joker
         }
-        return faceValue(of: category, dice: diceValues)
+        return YatzyScoring.faceValue(of: category, dice: diceValues)
     }
 
     private func legalScoreCategories(for playerIndex: Int) -> [YatzyCategory] {
-        legalCategories(dice: diceValues, scorecard: yatzyScorecard(for: playerIndex))
+        YatzyScoring.legalCategories(dice: diceValues, scorecard: yatzyScorecard(for: playerIndex))
     }
 
     private func emitCommentaryEvent(
-        sink: (CommentaryEvent) -> Void,
+        sink: (CommentaryEvent<CommentaryEventKind>) -> Void,
         category: YatzyCategory,
         scoreVal: Int,
         scoringPlayerIndex: Int,
@@ -644,46 +655,44 @@ final class MatchController {
                     .filter { $0 != w }
                     .sorted { totalScore(for: $0) > totalScore(for: $1) }
                 let secondScore = others.first.map { totalScore(for: $0) } ?? 0
-                sink(CommentaryEvent(kind: .winnerDeclared,
-                                     winner: playerDisplayNames[w],
+                sink(.winnerDeclared(winner: playerDisplayNames[w],
                                      runnerUp: others.first.map { playerDisplayNames[$0] },
                                      score: winScore,
                                      margin: winScore - secondScore))
             } else {
                 let names = winners.map { playerDisplayNames[$0] }.joined(separator: ", ")
-                sink(CommentaryEvent(kind: .winnerTie, winner: names, score: winScore))
+                sink(.winnerTie(winner: names, score: winScore))
             }
             return
         }
         // Primary event for this scoring action
         if earnedBonus {
-            sink(CommentaryEvent(kind: .yatzyBonusEarned, player: scoringPlayerName))
+            sink(.yatzyBonusEarned(player: scoringPlayerName))
         } else if category == .yatzy && scoreVal == 50 {
-            sink(CommentaryEvent(kind: .yatzyRolled, player: scoringPlayerName))
+            sink(.yatzyRolled(player: scoringPlayerName))
         } else if category == .yatzy && scoreVal == 0 {
-            sink(CommentaryEvent(kind: .yatzyScratched, player: scoringPlayerName))
+            sink(.yatzyScratched(player: scoringPlayerName))
         } else if scoreVal == 0 {
-            sink(CommentaryEvent(kind: .categoryScratched, player: scoringPlayerName, category: category.displayName))
+            sink(.categoryScratched(player: scoringPlayerName, category: category.displayName))
         } else if scoreVal >= 25 {
-            sink(CommentaryEvent(kind: .bigTurn, player: scoringPlayerName, category: category.displayName, value: scoreVal))
+            sink(.bigTurn(player: scoringPlayerName, category: category.displayName, value: scoreVal))
         } else {
-            sink(CommentaryEvent(kind: .categoryScored, player: scoringPlayerName, category: category.displayName, value: scoreVal))
+            sink(.categoryScored(player: scoringPlayerName, category: category.displayName, value: scoreVal))
         }
         // Upper bonus just earned this turn
         if !hadUpperBonus && upperBonus(for: scoringPlayerIndex) > 0 {
-            sink(CommentaryEvent(kind: .upperBonusEarned, player: scoringPlayerName))
+            sink(.upperBonusEarned(player: scoringPlayerName))
         }
         // Lead change (sole new leader different from before)
         let newLeaders = leaderIndices
         if newLeaders.count == 1 && newLeaders != previousLeaderIndices, let leader = newLeaders.first {
             let byScore = (0..<playerCount).sorted { totalScore(for: $0) > totalScore(for: $1) }
             let runnerUpIdx = byScore.first { $0 != leader }
-            sink(CommentaryEvent(kind: .leadChange,
-                                 runnerUp: runnerUpIdx.map { playerDisplayNames[$0] },
-                                 leader: playerDisplayNames[leader]))
+            sink(.leadChange(leader: playerDisplayNames[leader],
+                             runnerUp: runnerUpIdx.map { playerDisplayNames[$0] }))
         }
         // Turn start for the next player
-        sink(CommentaryEvent(kind: .turnStart, player: currentPlayerName))
+        sink(.turnStart(player: currentPlayerName))
     }
 
     static func defaultTheme(for index: Int) -> Theme.ThemeType {
@@ -697,15 +706,20 @@ final class MatchController {
 
     /// Fires after every successful `score()` application, carrying the scored
     /// category and the dice values that were live at scoring time.
-    /// GameNightController wires this: host → broadcastMatchState; guest → proposeScore.
+    /// GameNightController wires this for the guest proposal path (YatzyCategory-specific).
     var onScoreApplied: ((YatzyCategory, [Int]) -> Void)?
 
+    /// Generic "a move was applied" signal for GameNightMatchCoordinator.
+    /// Fires after `onScoreApplied` in every successful `score()`. The coordinator
+    /// wires this; `onScoreApplied` remains for Yatzy-specific proposal logic and coexists.
+    var onMoveApplied: (() -> Void)?
+
     /// Fires after a successful `undoLastScore()`.
-    /// GameNightController wires this: host → broadcastMatchState; guest → proposeUndo.
+    /// GameNightMatchCoordinator wires this for host broadcast + guest undo proposal.
     var onUndone: (() -> Void)?
 
     /// Fires when `beginRoll()` succeeds.
-    /// GameNightController wires this on the host to close the undo window.
+    /// GameNightMatchCoordinator wires this to close the undo window on all devices.
     var onRollStarted: (() -> Void)?
 
     /// Fires from `score()` when a non-Yatzy score is applied in a multi-player game,
@@ -734,7 +748,7 @@ final class MatchController {
             })
         }
         playerScoreTimestamps = sorted.map { _ in [:] }
-        playerYatzyBonuses = sorted.map { $0.yatzyBonus }
+        playerYatzyBonuses = sorted.map { $0.bonusPoints }
         playerThemes = sorted.map { Theme.ThemeType(rawValue: $0.displayThemeID) ?? .midnight }
         playerDisplayNames = sorted.map { $0.displayName }
         playerDisplayInitials = sorted.map { $0.displayInitials }
@@ -819,3 +833,9 @@ final class MatchController {
     }
 #endif
 }
+
+// MatchController satisfies all GameNightMatchHost requirements without additional code:
+// all listed properties and methods are already declared, and onMoveApplied was added
+// alongside the existing onScoreApplied hook in commit adding Phase A.
+@MainActor
+extension MatchController: GameNightMatchHost {}

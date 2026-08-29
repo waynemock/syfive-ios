@@ -1,5 +1,7 @@
 import SwiftUI
+import SyLibUI
 import SwiftData
+import SyLibScoringData
 
 struct HouseRecordsView: View {
     @Query(filter: #Predicate<MatchModel> { $0.statusRaw == "completed" },
@@ -164,7 +166,7 @@ private struct HolderRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            PlayerInitialsCircle(initials: holder.displayInitials, themeType: themeType)
+            InitialsCircle(initials: holder.displayInitials, color: Theme(type: themeType, colorScheme: colorScheme).primaryAccent, diameter: 28)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(holder.displayName)
