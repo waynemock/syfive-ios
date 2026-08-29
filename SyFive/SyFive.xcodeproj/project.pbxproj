@@ -39,6 +39,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		B02235A230426FAF00257D74 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = ../README.md; sourceTree = SOURCE_ROOT; };
 		B09DE90D2F4BBD400018F241 /* SyFive.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SyFive.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B09DE91E2F4BBD410018F241 /* SyFiveTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SyFiveTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B09DE9282F4BBD410018F241 /* SyFiveUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SyFiveUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -67,6 +68,7 @@
 				Docs/Requirements/13_HOLD_HINT_DESIGN.md,
 				Docs/Requirements/14_APPSTORE_COPY.md,
 				Docs/Requirements/15_HELP_SCREEN.md,
+				Docs/Requirements/16_GAME_NIGHT_PROXIMITY_MUTE.md,
 				Docs/SyLib/00_SYLIB_MIGRATION_PLAN.md,
 				Docs/SyLib/01_SYLIBDICE_STANDALONE_WAVE.md,
 				Docs/SyLib/02_SYLIBSCORINGDATA_WAVE.md,
@@ -155,6 +157,7 @@
 		B09DE9042F4BBD400018F241 = {
 			isa = PBXGroup;
 			children = (
+				B02235A230426FAF00257D74 /* README.md */,
 				B09DE90F2F4BBD400018F241 /* SyFive */,
 				B09DE9212F4BBD410018F241 /* SyFiveTests */,
 				B09DE92B2F4BBD410018F241 /* SyFiveUITests */,

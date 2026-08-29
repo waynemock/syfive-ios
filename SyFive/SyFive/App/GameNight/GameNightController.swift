@@ -28,14 +28,36 @@ final class GameNightController {
         appProtocolVersion: GameNightMessageKind.appProtocolVersion
     )
 
-    // commentaryEnabled/PackID/LevelRaw are deliberately NOT reset on teardown.
-    // They are the host's session-scoped preference and should carry into the next
-    // Game Night rather than silently reverting to defaults. Not an omission.
+    // commentaryEnabled/PackID/LevelRaw are not reset on teardown.
+    // Host: re-seeded from personal appSettings at each session activation (see ContentView).
+    // Guests: populated from the host's tableState broadcast; not reset so values survive reconnects.
     private var appSettings = GameNightAppSettings(
         commentaryEnabled: false,
         commentaryPackID: CommentaryPersonality.zen.id,
         commentaryLevelRaw: CommentaryLevel.celebrations.rawValue
     )
+
+    // MARK: - Proximity
+
+    let proximity = GameNightProximity()
+
+    /// Whether commentary speech is suppressed on this device. Driven by proximity verdict
+    /// or manual tap; independent of the host's commentary-enabled setting.
+    var commentaryIsSuppressed: Bool { proximity.isSuppressed }
+
+    /// Begins proximity ranging for this session if commentary is enabled (D-GNP-010).
+    /// Called by the host path in ContentView after seeding session commentary settings,
+    /// and internally for guests when a tableState with commentaryEnabled arrives.
+    func beginProximityRanging() {
+        guard commentaryEnabled else { return }
+        proximity.begin(isHost: role == .host, localSharePlayID: session.localSharePlayID)
+    }
+
+    /// Sets suppression state permanently for this match (D-GNP-008).
+    func setCommentarySuppressed(_ suppressed: Bool) {
+        proximity.overrideManually(suppressed: suppressed)
+        onCommentarySuppressedChanged?()
+    }
 
     // MARK: - Match coordinator
 
@@ -85,8 +107,45 @@ final class GameNightController {
 
     func listenForSessions() async {
         coordinator.session = session
+        // Forward autonomous proximity transitions (timeout, UWB verdict) to the app layer.
+        proximity.onSuppressedChanged = { [weak self] in self?.onCommentarySuppressedChanged?() }
+        // Host broadcasts a verdict whenever the union-find produces an election result.
+        proximity.onDecisionsElected = { [weak self] decisions in
+            self?.session.send(.proximityVerdict, payload: ProximityVerdictPayload(decisions: decisions))
+        }
+        // Proximity fires this when a UWB session token is ready to broadcast or send.
+        proximity.onReadyToSendToken = { [weak self] senderID, targetPeerID, tokenData in
+            self?.session.send(.proximityToken, payload: ProximityTokenPayload(
+                senderID: senderID, tokenData: tokenData, targetPeerID: targetPeerID))
+        }
+        // Guests fire this when they have a pairwise distance report for the host.
+        proximity.onReadyToReport = { [weak self] senderID, peerID, isNear in
+            self?.session.send(.proximityReport, payload: ProximityReportPayload(
+                senderID: senderID, peerID: peerID, isNear: isNear))
+        }
+        // Route session-layer proximity envelopes to the GameNightProximity component.
+        session.onProximityTokenReceived = { [weak self] senderID, targetPeerID, tokenData in
+            self?.proximity.handleProximityToken(senderID: senderID,
+                                                 targetPeerID: targetPeerID, tokenData: tokenData)
+        }
+        session.onProximityReportReceived = { [weak self] senderID, peerID, isNear in
+            guard let self, self.role == .host,
+                  let hostID = self.session.localSharePlayID else { return }
+            self.proximity.handleProximityReport(senderID: senderID, peerID: peerID,
+                                                 isNear: isNear, hostSharePlayID: hostID)
+        }
+        session.onProximityVerdictReceived = { [weak self] decisions in
+            guard let self, let myID = self.session.localSharePlayID else { return }
+            self.proximity.applyVerdict(decisions: decisions, localSharePlayID: myID)
+        }
         // Wire coordinator output callbacks before the session starts.
-        coordinator.onMatchStarted = { [weak self] in self?.onMatchStarted?() }
+        coordinator.onMatchStarted = { [weak self] in
+            guard let self else { return }
+            self.proximity.lockSeatMap(self.session.senderSeatMap,
+                                       allParticipantIDs: self.session.allSharePlayIDs)
+            self.proximity.openResolutionWindow()
+            self.onMatchStarted?()
+        }
         coordinator.onMatchComplete = { [weak self] match in self?.onMatchComplete?(match) }
         coordinator.onHistoryManifestNeeded = { [weak self] in self?.onHistoryManifestNeeded?() ?? [] }
         coordinator.onHistoryMatchesNeeded = { [weak self] ids in self?.onHistoryMatchesNeeded?(ids) ?? [] }
@@ -108,6 +167,11 @@ final class GameNightController {
                 self.appSettings.commentaryEnabled = settings.commentaryEnabled
                 self.appSettings.commentaryPackID = settings.commentaryPackID
                 self.appSettings.commentaryLevelRaw = settings.commentaryLevelRaw
+                // Guests: begin proximity ranging only during seat-claiming (D-GNP-010, D-GNP-023).
+                // Beginning mid-match would mute all guests with no resolution window able to unmute them.
+                if settings.commentaryEnabled, self.phase == .settingTable {
+                    self.proximity.begin(isHost: false, localSharePlayID: self.session.localSharePlayID)
+                }
             }
             self.onCommentarySettingsChanged?()
         }
@@ -182,6 +246,7 @@ final class GameNightController {
     var onOpponentScored: ((Int, YatzyCategory, Int) -> Void)?
     var onCommentaryReceived: ((String, CommentaryEventTier) -> Void)?
     var onCommentarySettingsChanged: (() -> Void)?
+    var onCommentarySuppressedChanged: (() -> Void)?
     var onUndoApplied: (() -> Void)?
     var onHistoryManifestNeeded: (() -> [UUID])?
     var onHistoryMatchesNeeded: (([UUID]) -> [Match])?
@@ -424,6 +489,11 @@ final class GameNightController {
     // MARK: - Controller-layer teardown
 
     private func performControllerTearDown() {
+        proximity.end()
+        proximity.onDecisionsElected = nil
+        proximity.onReadyToSendToken = nil
+        proximity.onReadyToReport = nil
+        proximity.onSuppressedChanged = nil
         onRollBegan = nil
         onRollResult = nil
         onHoldToggled = nil
@@ -434,6 +504,7 @@ final class GameNightController {
         onOpponentScored = nil
         onCommentaryReceived = nil
         onCommentarySettingsChanged = nil
+        onCommentarySuppressedChanged = nil
         onUndoApplied = nil
         onHistoryManifestNeeded = nil
         onHistoryMatchesNeeded = nil

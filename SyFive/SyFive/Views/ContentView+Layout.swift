@@ -1,5 +1,7 @@
 import SwiftUI
+import SyLibCommentary
 import SyLibCore
+import SyLibFeel
 
 extension ContentView {
 
@@ -21,7 +23,7 @@ extension ContentView {
             ? AnyLayout(VStackLayout(spacing: 12))
             : AnyLayout(HStackLayout(alignment: .top, spacing: 40))
         layout {
-            DiceAreaView(model: model, onPlayAgain: {
+            DiceAreaView(model: model, isCommentaryActive: isCommentaryActive, onPlayAgain: {
                 if gameNight.isSessionActive {
                     startGameNightRematch()
                 } else {
@@ -53,6 +55,13 @@ extension ContentView {
             logger.debug(self, "geometry size onChange: \(newSize.width)x\(newSize.height)")
             logger.debug(self, "scorecardAvailableWidth: \(newScorecardWidth)")
         }
+    }
+
+    /// True when the commentary mute button should be visible (D-GNP-014).
+    var isCommentaryActive: Bool {
+        guard director.soundMode != .off else { return false }
+        if gameNight.isSessionActive { return gameNight.commentaryEnabled }
+        return appSettings?.commentaryMode == .allGames
     }
 
     var navigationTitle: String {

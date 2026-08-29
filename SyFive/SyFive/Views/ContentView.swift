@@ -263,6 +263,7 @@ struct ContentView: View {
             // Warm up haptic engine before first roll to avoid first-event latency (§6.2).
             director.warmUpHaptics()
             syncCommentaryEngine()
+            gameNight.onCommentarySuppressedChanged = { handleCommentarySuppressionChanged() }
             // Wire score announcement banner for local PvP and GN host paths.
             let coordinator = celebrationCoordinator
             model.onScoreAnnounced = { playerIndex, category, value in
@@ -299,6 +300,7 @@ struct ContentView: View {
                 Task { await gameNight.broadcastTableState() }
             }
             syncCommentaryEngine()
+            gameNight.beginProximityRanging()
             gnAlerts.showsHostReconnect = false
             // Close any open sheets so the seating sheet can present immediately.
             showsHouseRecords = false
@@ -319,11 +321,6 @@ struct ContentView: View {
             }
             gameNight.onCommentarySettingsChanged = {
                 syncCommentaryEngine()
-                // Host: persist voice/personality/level so they're pre-loaded next session.
-                if gameNight.role == .host, let settings = appSettings {
-                    settings.commentaryPersonalityID = gameNight.commentaryPackID
-                    settings.commentaryLevelRaw      = gameNight.commentaryLevelRaw
-                }
             }
             let ctx = modelContext
             gameNight.onMatchStarted = {
@@ -432,10 +429,7 @@ struct ContentView: View {
         }
         .onChange(of: model.playerCount) { saveMatch() }
         .onChange(of: model.playerScores) { saveMatch() }
-        .onChange(of: appSettings?.soundModeRaw) { _, _ in
-            director.soundMode = appSettings?.soundMode ?? .mix
-            commentaryEngine?.isMuted = (director.soundMode == .off)
-        }
+        .onChange(of: appSettings?.soundModeRaw) { _, _ in handleSoundModeChanged() }
         .onChange(of: appSettings?.hapticsEnabled) { _, v in director.hapticsEnabled = v ?? true }
         .onChange(of: appSettings?.commentaryModeRaw)        { _, _ in syncCommentaryEngine() }
         .onChange(of: appSettings?.commentaryLevelRaw)      { _, _ in syncCommentaryEngine() }

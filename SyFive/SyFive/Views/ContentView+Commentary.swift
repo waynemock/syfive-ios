@@ -7,6 +7,32 @@ import SyLibScoring
 
 extension ContentView {
 
+    /// True when this device's commentary engine should be silenced.
+    /// ORs the global sound setting with the proximity/manual suppression state so
+    /// both paths resolve consistently (§5.3). Never re-runs syncCommentaryEngine().
+    var shouldMuteCommentary: Bool {
+        director.soundMode == .off || gameNight.commentaryIsSuppressed
+    }
+
+    /// Called from onChange(of: appSettings?.soundModeRaw).
+    /// Updates the sound mode, handles §5.4 suppression reset, and sets isMuted directly.
+    func handleSoundModeChanged() {
+        let wasOff = director.soundMode == .off
+        director.soundMode = appSettings?.soundMode ?? .mix
+        let isNowOff = director.soundMode == .off
+        if wasOff && !isNowOff {
+            // §5.4: button reappears unmuted — reset suppression state (D-GNP-009).
+            gameNight.setCommentarySuppressed(false)
+        }
+        commentaryEngine?.isMuted = shouldMuteCommentary
+    }
+
+    /// Called from `gameNight.onCommentarySuppressedChanged` (button tap or proximity timeout).
+    /// Sets isMuted directly — must not re-run syncCommentaryEngine() (§5.3).
+    func handleCommentarySuppressionChanged() {
+        commentaryEngine?.isMuted = shouldMuteCommentary
+    }
+
     func syncCommentaryEngine() {
         let inSession = gameNight.isSessionActive
         let isGuest   = inSession && gameNight.role != .host
@@ -56,7 +82,7 @@ extension ContentView {
             model.commentaryEventSink = nil
             let engine = commentaryEngine
             gameNight.onCommentaryReceived = { text, tier in engine?.receiveText(text, tier: tier) }
-            commentaryEngine?.isMuted = (director.soundMode == .off)
+            commentaryEngine?.isMuted = shouldMuteCommentary
             return
         }
 
@@ -79,6 +105,6 @@ extension ContentView {
         } else {
             commentaryEngine?.onWillSpeak = nil
         }
-        commentaryEngine?.isMuted = (director.soundMode == .off)
+        commentaryEngine?.isMuted = shouldMuteCommentary
     }
 }

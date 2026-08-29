@@ -17,9 +17,9 @@ import SyLibYatzy
 /// Commentary and other session-scoped app preferences, transmitted as opaque bytes
 /// in `TableStatePayload.appSettings`. The session neither reads nor interprets these.
 ///
-/// commentaryEnabled/PackID/LevelRaw are deliberately NOT reset on teardown.
-/// They are the host's session-scoped preference and should carry into the next
-/// Game Night rather than silently reverting to defaults. Not an omission.
+/// commentaryEnabled/PackID/LevelRaw are not reset on teardown.
+/// Host: re-seeded from personal appSettings at each session activation.
+/// Guests: populated from the host's tableState broadcast; not reset so values survive reconnects.
 struct GameNightAppSettings: Codable, Sendable {
     var commentaryEnabled: Bool
     var commentaryPackID: String

@@ -4,6 +4,7 @@ import SyLibDice
 import SyLibFeel
 import SyLibGameNight
 import SyLibScoring
+import SyLibUI
 import SyLibYatzy
 import Observation
 import UIKit
@@ -23,11 +24,14 @@ extension Theme {
 
 struct DiceAreaView: View {
     @Bindable var model: MatchController
+    var isCommentaryActive: Bool = false
     var onPlayAgain: () -> Void = {}
     @State private var diceRoller = DiceRoller()
     @State private var feelAdapter: DiceFeelAdapter?
     @State private var suppressNextPlayerChangeDiceClear = false
     @State private var isAwaitingInitialTurnStart = false
+    @State private var commentaryFeedback: String? = nil
+    @State private var commentaryFeedbackTask: Task<Void, Never>? = nil
     @Environment(FeelDirector.self) private var director
     @Environment(CelebrationCoordinator.self) private var celebrationCoordinator
     @Environment(GameNightController.self) private var gameNight
@@ -110,7 +114,19 @@ struct DiceAreaView: View {
 
     private var rollControls: some View {
         VStack(spacing: 8) {
-            HStack(spacing: 12) {
+            HStack(spacing: 0) {
+                IconButton(gameNight.commentaryIsSuppressed ? "quote.bubble" : "quote.bubble.fill") {
+                    let willSuppress = !gameNight.commentaryIsSuppressed
+                    gameNight.setCommentarySuppressed(willSuppress)
+                    showCommentaryFeedback(suppressed: willSuppress)
+                }
+                .frame(width: rollControlHeight + 8, height: rollControlHeight, alignment: .trailing)
+                .padding(.trailing, 8)
+                .font(Font.system(size: rollControlHeight))
+                .accessibilityLabel(gameNight.commentaryIsSuppressed ? "Commentary, off" : "Commentary, on")
+                .opacity(isCommentaryActive ? 1 : 0)
+                .disabled(!isCommentaryActive)
+                
                 Button {
                     if isPlayAgainButton {
                         onPlayAgain()
@@ -160,55 +176,55 @@ struct DiceAreaView: View {
                         .font(.headline)
                 }
                 .buttonStyle(.borderedProminent)
+                .frame(minWidth: 0)
                 .disabled(!canRoll)
 
-                if isUndoTurn {
-                    Button {
-                        if gameNight.isSessionActive && gameNight.phase == .inProgress && gameNight.role != .host {
-                            // Guest: propose undo to host before any local state changes —
-                            // undoLastScore() clears lastScoreSnapshot, making undoPlayerIndex nil
-                            // and causing proposeUndo() to fail its guard silently.
-                            gameNight.proposeUndo()
+                IconButton("arrow.uturn.backward.circle.fill") {
+                    if gameNight.isSessionActive && gameNight.phase == .inProgress && gameNight.role != .host {
+                        // Guest: propose undo to host before any local state changes —
+                        // undoLastScore() clears lastScoreSnapshot, making undoPlayerIndex nil
+                        // and causing proposeUndo() to fail its guard silently.
+                        gameNight.proposeUndo()
+                    } else {
+                        suppressNextPlayerChangeDiceClear = true
+                        if let restoration = model.undoLastScore() {
+                            diceRoller.restoreDice(values: restoration.diceValues, held: restoration.held)
                         } else {
-                            suppressNextPlayerChangeDiceClear = true
-                            if let restoration = model.undoLastScore() {
-                                diceRoller.restoreDice(values: restoration.diceValues, held: restoration.held)
-                            } else {
-                                suppressNextPlayerChangeDiceClear = false
-                            }
+                            suppressNextPlayerChangeDiceClear = false
                         }
-                    } label: {
-                        Image(systemName: "arrow.uturn.backward")
-                            .frame(width: rollControlHeight)
-                            .frame(minHeight: rollControlHeight)
                     }
-                    .buttonStyle(.bordered)
-                    .tint(undoButtonTint)
-                    .accessibilityLabel("Undo last score")
                 }
+                .frame(width: rollControlHeight + 8, height: rollControlHeight, alignment: .leading)
+                .padding(.leading, 8)
+                .font(Font.system(size: rollControlHeight))
+                .tint(undoButtonTint)
+                .accessibilityLabel("Undo last score")
+                .opacity(isUndoTurn ? 1 : 0)
+                .disabled(!isUndoTurn)
             }
 
             VStack(spacing: 4) {
                 if let stuckMessage = diceRoller.stuckDiceMessage, isLocalTurn {
                     Text(stuckMessage)
-                        .font(.footnote)
                         .foregroundStyle(.red)
+                } else if let msg = commentaryFeedback {
+                    Text(msg)
+                        .foregroundStyle(.secondary)
                 } else if model.canScore {
                     Text("Choose a category to score")
-                        .font(.footnote)
                         .foregroundStyle(.secondary)
                 } else if !model.isGameOver && model.rollsRemaining == 0 {
                     Text("No rolls remaining — choose a category")
-                        .font(.footnote)
                         .foregroundStyle(.secondary)
                 } else {
                     Text("M") // keep space for this row of text
-                        .font(.footnote)
                         .foregroundColor(.clear)
                 }
 
                 proxyModeControls
             }
+            .font(.footnote)
+            .transition(.opacity)
         }
     }
 
@@ -220,14 +236,12 @@ struct DiceAreaView: View {
 
         if gameNight.isProxyMode && gameNight.role == .host {
             Text("Playing for \(name)")
-                .font(.footnote)
                 .foregroundStyle(.secondary)
         } else if gameNight.role == .host && gameNight.isSessionActive
                     && gameNight.phase == .inProgress && !isLocalTurn && !model.isGameOver {
             Button("Play for \(name)") {
                 gameNight.enableProxyMode()
             }
-            .font(.footnote)
             .buttonStyle(.borderless)
         }
     }
@@ -277,6 +291,16 @@ struct DiceAreaView: View {
     }
 
     // MARK: - Helpers
+
+    private func showCommentaryFeedback(suppressed: Bool) {
+        commentaryFeedbackTask?.cancel()
+        commentaryFeedback = suppressed ? "Commentary off" : "Commentary on"
+        commentaryFeedbackTask = Task {
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            withAnimation { commentaryFeedback = nil }
+        }
+    }
 
     private var isUndoTurn: Bool {
         if gameNight.isSessionActive, gameNight.phase == .inProgress {
@@ -375,6 +399,31 @@ struct DiceAreaView: View {
 
 #Preview {
     DiceAreaView(model: MatchController())
+        .environment(FeelDirector(catalog: .syFive))
+        .environment(CelebrationCoordinator())
+        .environment(GameNightController())
+}
+
+#Preview("Mid-turn") {
+    let mc = MatchController()
+    mc.addPlayer()
+    mc.addPlayer()
+    mc.beginRoll()
+    mc.receiveDiceResults([3, 4, 3, 1, 3])
+    return DiceAreaView(model: mc, isCommentaryActive: true)
+        .environment(FeelDirector(catalog: .syFive))
+        .environment(CelebrationCoordinator())
+        .environment(GameNightController())
+}
+
+#Preview("After scoring — next player ready") {
+    let mc = MatchController()
+    mc.addPlayer()
+    mc.addPlayer()
+    mc.beginRoll()
+    mc.receiveDiceResults([3, 4, 3, 1, 3])
+    mc.score(category: .threes)
+    return DiceAreaView(model: mc)
         .environment(FeelDirector(catalog: .syFive))
         .environment(CelebrationCoordinator())
         .environment(GameNightController())
