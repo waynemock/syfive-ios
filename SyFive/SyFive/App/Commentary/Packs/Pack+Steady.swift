@@ -1,6 +1,7 @@
 import Foundation
+import SyLibCommentary
 
-extension CommentaryPersonality {
+extension CommentaryPersonality where Kind == CommentaryEventKind {
     static let steady = CommentaryPersonality(
         id: "steady",
         displayName: "Steady",
@@ -8,7 +9,7 @@ extension CommentaryPersonality {
         prosody: CommentaryProsody(rate: 0.50, pitchMultiplier: 1.00, preUtteranceDelay: 0.10, postUtteranceDelay: 0.10),
         previewLine: "Five of a kind. Good roll.",
         lines: [
-            .yatzyRolled: [
+            "yatzyRolled": [
                 "Yatzy for {player}. Fifty points.",
                 "{player} rolls five of a kind. That's a Yatzy.",
                 "There it is. Yatzy, {player}.",
@@ -31,7 +32,7 @@ extension CommentaryPersonality {
                 "{player} rolls a Yatzy. On the board.",
                 "There's the fifty. Well rolled, {player}."
             ],
-            .yatzyBonusEarned: [
+            "yatzyBonusEarned": [
                 "Another Yatzy for {player}. Hundred-point bonus.",
                 "{player} rolls a second five of a kind. Plus one hundred.",
                 "Bonus Yatzy, {player}. That's a hundred.",
@@ -54,7 +55,7 @@ extension CommentaryPersonality {
                 "{player} does it twice. A hundred more.",
                 "There's the bonus, {player}. Hundred points."
             ],
-            .winnerDeclared: [
+            "winnerDeclared": [
                 "{winner} wins with {score}.",
                 "Final score, {winner} on top.",
                 "That's the game. {winner} takes it.",
@@ -77,7 +78,7 @@ extension CommentaryPersonality {
                 "{winner} first, {runnerUp} close behind.",
                 "Final: {winner}, {score}. Nicely done."
             ],
-            .winnerTie: [
+            "winnerTie": [
                 "It's a tie. {winner}, both at {score}.",
                 "{winner} finish level. {score} each.",
                 "Tie game. {winner} share the top.",
@@ -93,7 +94,7 @@ extension CommentaryPersonality {
                 "{winner} finish tied. {score}.",
                 "A draw. {winner} share it."
             ],
-            .upperBonusEarned: [
+            "upperBonusEarned": [
                 "{player} earns the upper bonus. Thirty-five.",
                 "Upper bonus for {player}. Plus thirty-five.",
                 "{player} clears sixty-three. Bonus counts.",
@@ -115,7 +116,7 @@ extension CommentaryPersonality {
                 "{player} earns it. Upper bonus.",
                 "Thirty-five points. Well played, {player}."
             ],
-            .yatzyScratched: [
+            "yatzyScratched": [
                 "{player} scratches the Yatzy. Zero.",
                 "Zero on the Yatzy box for {player}.",
                 "{player} takes a zero up top. No Yatzy.",
@@ -137,7 +138,7 @@ extension CommentaryPersonality {
                 "{player} passes on the fifty. Zero.",
                 "Yatzy box, zero. {player}."
             ],
-            .bigTurn: [
+            "bigTurn": [
                 "{player} scores the {category}. {value} points.",
                 "{category} for {player}. {value}.",
                 "{player} takes {value} on the {category}.",
@@ -159,7 +160,7 @@ extension CommentaryPersonality {
                 "{player} handles the {category}. {value}.",
                 "Nice one, {player}. {category} for {value}."
             ],
-            .leadChange: [
+            "leadChange": [
                 "{leader} takes the lead. {runnerUp} to second.",
                 "New leader. {leader} in front.",
                 "{leader} moves ahead of {runnerUp}.",
@@ -181,7 +182,7 @@ extension CommentaryPersonality {
                 "{leader} in the lead now.",
                 "{leader} moves ahead. Noted."
             ],
-            .turnStart: [
+            "turnStart": [
                 "{player}'s turn.",
                 "Up next, {player}.",
                 "{player}, you're up.",
@@ -203,7 +204,7 @@ extension CommentaryPersonality {
                 "{player} steps up.",
                 "Turn goes to {player}."
             ],
-            .categoryScored: [
+            "categoryScored": [
                 "{player} scores {value} on the {category}.",
                 "{category}, {value}. {player}.",
                 "{player} puts {value} on the {category}.",
@@ -225,7 +226,7 @@ extension CommentaryPersonality {
                 "{player} writes {value} on the {category}.",
                 "{value} for {player}, {category}."
             ],
-            .categoryScratched: [
+            "categoryScratched": [
                 "{player} scratches the {category}. Zero.",
                 "Zero on the {category}, {player}.",
                 "{player} takes nothing there.",

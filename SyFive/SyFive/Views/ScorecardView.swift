@@ -2,6 +2,7 @@ import SwiftUI
 import Observation
 import SyLibCore
 import SyLibFeel
+import SyLibYatzy
 
 struct ScorecardView: View {
     @Bindable var model: MatchController

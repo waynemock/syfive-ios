@@ -1,5 +1,6 @@
 import SwiftUI
 import SyLibScoring
+import SyLibUI
 import SwiftData
 import SyLibScoringData
 
@@ -30,9 +31,10 @@ struct PlayerLinkSheet: View {
             List {
                 Section {
                     HStack(spacing: 12) {
-                        PlayerInitialsCircle(
+                        InitialsCircle(
                             initials: gameNightPlayer.initials,
-                            themeType: Theme.ThemeType(rawValue: gameNightPlayer.themeID) ?? .midnight
+                            color: Theme.accent(forThemeID: gameNightPlayer.themeID, colorScheme: colorScheme),
+                            diameter: 28
                         )
                         VStack(alignment: .leading, spacing: 2) {
                             Text(gameNightPlayer.name)
@@ -92,7 +94,7 @@ struct PlayerLinkSheet: View {
         let theme = Theme(type: themeType, colorScheme: colorScheme)
 
         return HStack(spacing: 12) {
-            PlayerInitialsCircle(initials: player.initials, themeType: themeType)
+            InitialsCircle(initials: player.initials, color: theme.primaryAccent, diameter: 28)
 
             Text(player.name)
                 .font(.body)

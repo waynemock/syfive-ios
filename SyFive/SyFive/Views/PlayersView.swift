@@ -1,5 +1,6 @@
 import SwiftUI
 import SyLibScoring
+import SyLibUI
 import SwiftData
 import SyLibScoringData
 
@@ -126,7 +127,7 @@ struct PlayersView: View {
         let theme = Theme(type: themeType, colorScheme: colorScheme)
 
         return HStack(spacing: 12) {
-            PlayerInitialsCircle(initials: player.initials, themeType: themeType)
+            InitialsCircle(initials: player.initials, color: theme.primaryAccent, diameter: 28)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(player.name)
@@ -177,7 +178,7 @@ struct PlayersView: View {
         let theme = Theme(type: themeType, colorScheme: colorScheme)
 
         return HStack(spacing: 12) {
-            PlayerInitialsCircle(initials: player.initials, themeType: themeType)
+            InitialsCircle(initials: player.initials, color: theme.primaryAccent, diameter: 28)
 
             Text(player.name)
                 .font(.body)
@@ -214,7 +215,7 @@ struct PlayersView: View {
         let theme = Theme(type: themeType, colorScheme: colorScheme)
 
         return HStack(spacing: 12) {
-            PlayerInitialsCircle(initials: player.initials, themeType: themeType, opacity: 0.4)
+            InitialsCircle(initials: player.initials, color: theme.primaryAccent, diameter: 28, opacity: 0.4)
 
             Text(player.name)
                 .font(.body)

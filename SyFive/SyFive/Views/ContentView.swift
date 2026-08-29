@@ -1,10 +1,13 @@
 import SwiftUI
-import SyLibScoring
-import SwiftData
+import SyLibCommentary
 import SyLibCore
-import SyLibFeel
 import SyLibDice
+import SyLibFeel
+import SyLibGameNight
+import SyLibScoring
 import SyLibScoringData
+import SyLibUI
+import SwiftData
 
 struct ContentView: View {
     @State var model = MatchController()
@@ -18,12 +21,9 @@ struct ContentView: View {
     @State var showsAbout = false
     @State var showsFeelBoard = false
     @State var showsGameNight = false
-    @State var showsSessionEndedAlert = false
-    @State var showsGameNightReconnect = false
-    @State var showsGameNightGuestReconnect = false
+    @State var gnAlerts = GameNightAlertState()
     @State var showsGameNightLocalConflictAlert = false
     @State var showsInviteInstructions = false
-    @State var showsCancelGameNightAlert = false
     @State var showsGameNightPendingSheet = false
     @State var showsGameNightHelp = false
     @State var showsHowToPlay = false
@@ -31,11 +31,8 @@ struct ContentView: View {
     /// can skip the seating sheet and jump straight to the in-progress match.
     @State var pendingResumeMatchID: UUID? = nil
     @State var pendingResumeGameID: UUID? = nil
-    /// Match ID held across the guest reconnect alert — passed to prepareForGuestReconnect
-    /// only if the user explicitly taps Rejoin.
-    @State var pendingGuestReconnectMatchID: UUID? = nil
     @State var celebrationCoordinator = CelebrationCoordinator()
-    @State var commentaryEngine: CommentaryEngine? = nil
+    @State var commentaryEngine: CommentaryEngine<CommentaryEventKind>? = nil
     @State var isUpdateAvailable = false
     @State var updateBadgeAcknowledged = false
     @Environment(GameNightController.self) var gameNight
@@ -140,7 +137,13 @@ struct ContentView: View {
                         }
                         #endif
                     } label: {
-                        MainMenuButton(showBadge: shouldShowUpdateBadge)
+                        IconButton(
+                            "ellipsis.circle",
+                            badge: shouldShowUpdateBadge ? 0 : nil,
+                            badgeBackground: theme.primaryAccent,
+                            badgeOutline: Color.black.opacity(0.8)
+                        )
+                        .accessibilityLabel(shouldShowUpdateBadge ? "Menu, update available" : "Menu")
                     }
                     .simultaneousGesture(TapGesture().onEnded {
                         acknowledgeUpdateBadge()
@@ -181,17 +184,49 @@ struct ContentView: View {
                      ? "Start a new Game Night game with the same players, or reset to a local game."
                      : "Pause saves the game to History so you can resume it later. Delete removes it permanently.")
             }
-            .modifier(GameNightAlertModifier(
-                showsSessionEndedAlert: $showsSessionEndedAlert,
-                showsGameNightGuestReconnect: $showsGameNightGuestReconnect,
-                pendingGuestReconnectMatchID: $pendingGuestReconnectMatchID,
-                showsGameNightReconnect: $showsGameNightReconnect,
-                pendingResumeMatchID: $pendingResumeMatchID,
-                pendingResumeGameID: $pendingResumeGameID,
-                showsCancelGameNightAlert: $showsCancelGameNightAlert,
-                showsGameNightLocalConflictAlert: $showsGameNightLocalConflictAlert,
-                showsGameNight: $showsGameNight
-            ))
+        }
+        .gameNightAlerts(
+            session: gameNight.session,
+            state: gnAlerts,
+            appName: "SyFive",
+            appStoreURL: AboutView.appStoreURL,
+            onAbandonSession: { gameNight.abandonSession() },
+            onGuestReconnect: { gameNight.prepareForGuestReconnect(matchID: $0) },
+            hostReconnectIDs: { fetchHostReconnectIDs() },
+            onHostReconnect: { matchID, gameID in
+                pendingResumeMatchID = matchID
+                pendingResumeGameID = gameID
+                gameNight.beginHosting(
+                    onNeedsConversation: {
+                        pendingResumeMatchID = nil
+                        pendingResumeGameID = nil
+                    },
+                    onReadyToSeat: { showsGameNight = true }
+                )
+            }
+        )
+        .alert("Reconnect Game Night?", isPresented: $gnAlerts.showsHostReconnect) {
+            Button("Resume as Host") {
+                gameNight.beginHosting(
+                    onNeedsConversation: {
+                        pendingResumeMatchID = nil
+                        pendingResumeGameID = nil
+                    },
+                    onReadyToSeat: { showsGameNight = true }
+                )
+            }
+            Button("Play Locally", role: .cancel) {
+                pendingResumeMatchID = nil
+                pendingResumeGameID = nil
+            }
+        } message: {
+            Text("Your scores are intact. If you were the host, tap Resume as Host — guests will rejoin automatically.")
+        }
+        .alert("Local Game in Progress", isPresented: $showsGameNightLocalConflictAlert) {
+            Button("Play Game Night") { showsGameNight = true }
+            Button("Keep Playing", role: .cancel) {}
+        } message: {
+            Text("Starting Game Night will set aside your current game. You can resume it from History later.")
         }
         .overlay {
             CelebrationView(model: model)
@@ -248,7 +283,7 @@ struct ContentView: View {
         // Keyed off sessionActivationCount rather than isSessionActive so this always fires,
         // even when tearDownSession() + reconfigure flips isSessionActive false→true in the
         // same SwiftUI render cycle (net value unchanged → onChange would otherwise be skipped).
-        .onChange(of: gameNight.sessionActivationCount) { _, count in
+        .onChange(of: gameNight.session.sessionActivationCount) { _, count in
             logger.info(self, "onChange(sessionActivationCount): count=\(count) isSessionActive=\(gameNight.isSessionActive) phase=\(String(describing: gameNight.phase))")
             guard gameNight.isSessionActive else {
                 logger.warning(self, "onChange(sessionActivationCount): isSessionActive=false, skipping")
@@ -264,7 +299,7 @@ struct ContentView: View {
                 Task { await gameNight.broadcastTableState() }
             }
             syncCommentaryEngine()
-            showsGameNightReconnect = false
+            gnAlerts.showsHostReconnect = false
             // Close any open sheets so the seating sheet can present immediately.
             showsHouseRecords = false
             showsHistory = false
@@ -484,21 +519,20 @@ struct ContentView: View {
                 .environment(\.theme, theme)
         }
         .sheet(isPresented: $showsInviteInstructions) {
-            GameNightInviteInstructions()
-                .environment(\.theme, theme)
+            GameNightInviteInstructions(accentColor: theme.primaryAccent)
         }
         .sheet(isPresented: $showsGameNightPendingSheet) {
-            GameNightPendingSheet {
+            GameNightPendingSheet(accentColor: theme.primaryAccent) {
                 gameNight.cancelHostPreparation()
             }
-            .environment(\.theme, theme)
         }
         .sheet(isPresented: $showsGameNightHelp) {
             GameNightHelpSheet(
                 context: gameNightHelpContext,
-                isEligibleForGroupSession: gameNight.isEligibleForGroupSession
+                isEligibleForGroupSession: gameNight.session.isEligibleForGroupSession,
+                appName: "SyFive",
+                accentColor: theme.primaryAccent
             )
-            .environment(\.theme, theme)
         }
         .sheet(isPresented: $showsHowToPlay) {
             HowToPlayView(settings: appSettings)

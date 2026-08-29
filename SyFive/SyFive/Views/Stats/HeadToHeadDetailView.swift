@@ -1,5 +1,6 @@
 import SwiftUI
 import SyLibScoring
+import SyLibUI
 import SwiftData
 import SyLibFeel
 import SyLibScoringData
@@ -138,7 +139,7 @@ struct HeadToHeadDetailView: View {
 
     private func winsPillar(name: String, wins: Int, isLeader: Bool, accent: Color, themeType: Theme.ThemeType) -> some View {
         VStack(spacing: 4) {
-            PlayerInitialsCircle(initials: deriveInitials(from: name), themeType: themeType)
+            InitialsCircle(initials: deriveInitials(from: name), color: Theme(type: themeType, colorScheme: colorScheme).primaryAccent, diameter: 28)
             Text("\(wins)")
                 .font(.title2.weight(.bold))
                 .foregroundStyle(isLeader ? accent : Color.primary.opacity(0.55))

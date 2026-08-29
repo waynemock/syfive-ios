@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 import SwiftUI
+import SyLibCommentary
 import SyLibFeel
 
 enum AppColorScheme: String, CaseIterable, Codable {
@@ -21,20 +22,6 @@ enum AppColorScheme: String, CaseIterable, Codable {
         case .system: nil
         case .light: .light
         case .dark: .dark
-        }
-    }
-}
-
-enum CommentaryMode: String, CaseIterable, Codable {
-    case off
-    case gameNightOnly
-    case allGames
-
-    var displayName: String {
-        switch self {
-        case .off:           "Off"
-        case .gameNightOnly: "Game Night Only"
-        case .allGames:      "All Games"
         }
     }
 }

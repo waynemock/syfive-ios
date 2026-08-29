@@ -1,5 +1,6 @@
 import SwiftUI
 import SyLibScoring
+import SyLibUI
 import SwiftData
 import SyLibScoringData
 
@@ -119,7 +120,7 @@ struct PlayerPickerSheet: View {
         let name = model.playerDisplayNames.indices.contains(index) ? model.playerDisplayNames[index] : ""
 
         return HStack(spacing: 12) {
-            PlayerInitialsCircle(initials: model.playerInitials(for: index), themeType: model.themeType(for: index))
+            InitialsCircle(initials: model.playerInitials(for: index), color: rowTheme.primaryAccent, diameter: 28)
 
             Text(name)
                 .font(.body)
@@ -172,7 +173,7 @@ struct PlayerPickerSheet: View {
         )
 
         return HStack(spacing: 12) {
-            PlayerInitialsCircle(initials: playerModel.initials, themeType: Theme.ThemeType(rawValue: playerModel.themeID) ?? .midnight)
+            InitialsCircle(initials: playerModel.initials, color: rowTheme.primaryAccent, diameter: 28)
 
             Text(playerModel.name)
                 .font(.body)
@@ -215,7 +216,7 @@ struct PlayerPickerSheet: View {
         )
 
         return HStack(spacing: 12) {
-            PlayerInitialsCircle(initials: playerModel.initials, themeType: Theme.ThemeType(rawValue: playerModel.themeID) ?? .midnight, opacity: 0.4)
+            InitialsCircle(initials: playerModel.initials, color: rowTheme.primaryAccent, diameter: 28, opacity: 0.4)
 
             Text(playerModel.name)
                 .font(.body)

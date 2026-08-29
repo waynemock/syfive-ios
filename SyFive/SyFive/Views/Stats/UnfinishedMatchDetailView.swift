@@ -1,8 +1,10 @@
 import SwiftUI
-import SyLibScoring
-import SwiftData
 import SyLibCore
+import SyLibGameNight
+import SyLibScoring
+import SyLibYatzy
 import SyLibScoringData
+import SwiftData
 
 struct UnfinishedMatchDetailView: View {
     let matchModel: MatchModel
@@ -41,8 +43,7 @@ struct UnfinishedMatchDetailView: View {
 
     private var playerColors: [UUID: Color] {
         Dictionary(uniqueKeysWithValues: match.participants.map { p in
-            let themeType = Theme.ThemeType(rawValue: p.displayThemeID) ?? .midnight
-            return (p.id, Theme(type: themeType, colorScheme: colorScheme).primaryAccent)
+            return (p.id, Theme.accent(forThemeID: p.displayThemeID, colorScheme: colorScheme))
         })
     }
 

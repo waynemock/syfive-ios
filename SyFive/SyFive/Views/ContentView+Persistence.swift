@@ -1,8 +1,9 @@
 import SwiftUI
-import SyLibScoring
-import SwiftData
 import SyLibCore
+import SyLibGameNight
+import SyLibScoring
 import SyLibScoringData
+import SwiftData
 
 extension ContentView {
 
@@ -18,10 +19,10 @@ extension ContentView {
             model.load(from: matchModel)
             ensurePlayerModels(for: matchModel.participants)
             if matchModel.isGameNight && !gameNight.isSessionActive {
-                let wasHost = UserDefaults.standard.gnWasHost(for: matchModel.id)
+                let wasHost = gameNight.gnWasHost(for: matchModel.id)
                 if wasHost {
                     // Host re-initiates the session from the reconnect alert.
-                    showsGameNightReconnect = true
+                    gnAlerts.showsHostReconnect = true
                     pendingResumeMatchID = matchModel.id
                     let yatzyID = ScoringSystemID.yatzy.rawValue
                     let gameDesc = FetchDescriptor<GameModel>(
@@ -31,8 +32,8 @@ extension ContentView {
                 } else {
                     // Guest (or host whose wasHost flag was lost): show a choice rather than
                     // silently blocking rolling. prepareForGuestReconnect is called only on opt-in.
-                    showsGameNightGuestReconnect = true
-                    pendingGuestReconnectMatchID = matchModel.id
+                    gnAlerts.showsGuestReconnect = true
+                    gnAlerts.pendingGuestReconnectMatchID = matchModel.id
                 }
             }
             return

@@ -1,7 +1,9 @@
 import SwiftUI
+import SyLibCommentary
+import SyLibGameNight
 import SyLibScoring
-import SwiftData
 import SyLibScoringData
+import SwiftData
 
 /// The pre-game seating screen shown to all players during the `settingTable` phase.
 /// Host sees reorder/remove controls and a Start button; guests see a seat-claim button.
@@ -10,7 +12,6 @@ struct TableSettingView: View {
     @Bindable var gameNight: GameNightController
     let matchModel: MatchController
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.theme) private var theme
     @State private var showsSeatClaim = false
     @State private var showsGameNightHelp = false
@@ -18,14 +19,12 @@ struct TableSettingView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                seatsSection
-                versionMismatchSection
-                if gameNight.phase == .settingTable {
-                    claimSection
-                }
-                commentarySection
-            }
+            SyFiveGameNightTableView(
+                gameNight: gameNight,
+                matchModel: matchModel,
+                onClaimSeat: { showsSeatClaim = true },
+                appSettings: { commentarySection }
+            )
             .navigationTitle("Game Night")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -66,88 +65,20 @@ struct TableSettingView: View {
                 Text("All players will be disconnected from this Game Night session.")
             }
             .sheet(isPresented: $showsSeatClaim) {
-                SeatClaimSheet(gameNight: gameNight)
+                SyFiveSeatClaimSheet(gameNight: gameNight, matchModel: matchModel)
             }
             .sheet(isPresented: $showsGameNightHelp) {
                 GameNightHelpSheet(
                     context: gameNight.role == .host ? .hosting : .joining,
-                    isEligibleForGroupSession: true
+                    isEligibleForGroupSession: true,
+                    appName: "SyFive",
+                    accentColor: theme.primaryAccent
                 )
             }
         }
     }
 
-    // MARK: - Sections
-
-    private var seatsSection: some View {
-        Section {
-            if gameNight.seats.isEmpty {
-                Text("Claim a seat to join the table")
-                    .foregroundStyle(.secondary)
-                    .italic()
-            }
-            ForEach(gameNight.seats, id: \.seatClaimID) { seat in
-                let isOwnSeat = seat.seatClaimID == gameNight.localSeatClaimID
-                SeatRow(seat: seat, colorScheme: colorScheme,
-                        isLocal: isOwnSeat,
-                        canRemove: gameNight.phase == .settingTable && (gameNight.role == .host || isOwnSeat),
-                        canReorder: gameNight.role == .host && gameNight.phase == .settingTable,
-                        matchModel: matchModel,
-                        gameNight: gameNight) {
-                    if gameNight.role == .host {
-                        gameNight.removeSeat(seatClaimID: seat.seatClaimID)
-                    } else {
-                        gameNight.leaveSession()
-                    }
-                }
-            }
-            .onMove { indices, destination in
-                gameNight.moveSeat(fromOffsets: indices, toOffset: destination)
-            }
-            .moveDisabled(gameNight.role != .host || gameNight.phase != .settingTable)
-        } header: {
-            Text("Table")
-                .foregroundStyle(theme.primaryAccent)
-        }
-    }
-
-    @ViewBuilder
-    private var versionMismatchSection: some View {
-        if gameNight.versionMismatchedCount > 0 {
-            let count = gameNight.versionMismatchedCount
-            let who = count == 1 ? "Someone on the call" : "\(count) people on the call"
-            let verb = count == 1 ? "is" : "are"
-            let message: String = {
-                if let v = gameNight.lastMismatchedProtocolVersion,
-                   v < GameNightEnvelope.currentProtocolVersion {
-                    return "\(who) \(verb) running an older version of SyFive and can't join. Ask them to update from the App Store."
-                } else {
-                    return "\(who) \(verb) running a newer version of SyFive. Update SyFive to play together."
-                }
-            }()
-            Section {
-                Label(message, systemImage: "exclamationmark.triangle")
-                    .foregroundStyle(.secondary)
-                    .font(.subheadline)
-            }
-        }
-    }
-
-    private var claimSection: some View {
-        Section {
-            if gameNight.localSeatClaimID == nil {
-                Button {
-                    showsSeatClaim = true
-                } label: {
-                    Label("Claim a seat", systemImage: "person.badge.plus")
-                }
-            }
-        } footer: {
-            if gameNight.localSeatClaimID == nil {
-                Text("Just here to watch? Skip claiming a seat — you'll spectate the game with live dice and scores.")
-            }
-        }
-    }
+    // MARK: - Commentary section (SyFive-specific, passed into the table view)
 
     private var commentarySection: some View {
         Section {
@@ -219,101 +150,5 @@ private struct StartGameButton: View {
             predicate: #Predicate { $0.scoringSystemID == yatzyID }
         )
         return (try? modelContext.fetch(descriptor))?.first?.id
-    }
-}
-
-// MARK: - Seat row
-
-private struct SeatRow: View {
-    let seat: SeatSnapshot
-    let colorScheme: ColorScheme
-    let isLocal: Bool
-    let canRemove: Bool
-    let canReorder: Bool
-    let matchModel: MatchController
-    let gameNight: GameNightController
-    let onRemove: () -> Void
-
-    @Environment(\.modelContext) private var modelContext
-    @Environment(\.editMode) private var editMode
-    @State private var showsPlayerEdit: PlayerEditSheet.Mode? = nil
-
-    private var isEditing: Bool { editMode?.wrappedValue.isEditing == true }
-
-    var body: some View {
-        HStack(spacing: 12) {
-            InitialsCircle(initials: seat.displayInitials, themeID: seat.displayThemeID, colorScheme: colorScheme)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
-                    Text(seat.displayName)
-                    if isLocal && gameNight.phase == .settingTable {
-                        Button {
-                            showsPlayerEdit = fetchPlayerEditMode()
-                        } label: {
-                            Image(systemName: "pencil")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                if isLocal {
-                    Text("You")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            Spacer()
-            if canRemove {
-                Button(action: onRemove) {
-                    Image(systemName: "minus.circle.fill")
-                        .foregroundStyle(.red)
-                }
-                .buttonStyle(.plain)
-            }
-            if canReorder && !isEditing {
-                Image(systemName: "line.3.horizontal")
-                    .foregroundStyle(.tertiary)
-                    .font(.title3)
-            }
-        }
-        .sheet(item: $showsPlayerEdit) { mode in
-            PlayerEditSheet(mode: mode, matchModel: matchModel) {
-                if case .edit(let pm, _) = mode {
-                    gameNight.updateOwnSeat(name: pm.name, initials: pm.initials, themeID: pm.themeID)
-                }
-            }
-        }
-    }
-
-    private func fetchPlayerEditMode() -> PlayerEditSheet.Mode? {
-        guard let playerID = seat.playerID else { return nil }
-        var desc = FetchDescriptor<PlayerModel>(predicate: #Predicate { $0.id == playerID })
-        desc.fetchLimit = 1
-        guard let pm = (try? modelContext.fetch(desc))?.first else { return nil }
-        return .edit(pm, matchSlot: nil)
-    }
-}
-
-// MARK: - Initials circle
-
-struct InitialsCircle: View {
-    let initials: String
-    let themeID: String
-    let colorScheme: ColorScheme
-
-    @ScaledMetric private var circleSize: CGFloat = 32
-    @ScaledMetric private var fontSize: CGFloat = 11
-
-    var body: some View {
-        let themeType = Theme.ThemeType(rawValue: themeID) ?? .midnight
-        let accent = Theme(type: themeType, colorScheme: colorScheme).primaryAccent
-        ZStack {
-            Circle().fill(accent)
-            Text(initials)
-                .font(.system(size: fontSize, weight: .bold))
-                .foregroundStyle(.white)
-        }
-        .frame(width: circleSize, height: circleSize)
     }
 }
