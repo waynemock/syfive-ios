@@ -19,6 +19,7 @@
 		B024FFCF303DCE700095E1AE /* SyLibCore in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFCE303DCE700095E1AE /* SyLibCore */; };
 		B024FFD1303DCE700095E1AE /* SyLibDSP in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFD0303DCE700095E1AE /* SyLibDSP */; };
 		B024FFD3303DCE700095E1AE /* SyLibUI in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFD2303DCE700095E1AE /* SyLibUI */; };
+		B0ABB7833044C8DE00C5854C /* SyLibScoringUI in Frameworks */ = {isa = PBXBuildFile; productRef = B0ABB7823044C8DE00C5854C /* SyLibScoringUI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -115,6 +116,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B0ABB7833044C8DE00C5854C /* SyLibScoringUI in Frameworks */,
 				B01D8B2C303DDCCF00D0F468 /* SyLibFeel in Frameworks */,
 				B01D8D5E30408DBE00D0F468 /* SyLibCommentary in Frameworks */,
 				B024FFD3303DCE700095E1AE /* SyLibUI in Frameworks */,
@@ -208,6 +210,7 @@
 				B01D8D5D30408DBE00D0F468 /* SyLibCommentary */,
 				B01D8D683041227200D0F468 /* SyLibGameNightMatch */,
 				B02232DC30420DA400257D74 /* SyLibYatzy */,
+				B0ABB7823044C8DE00C5854C /* SyLibScoringUI */,
 			);
 			productName = Pentara;
 			productReference = B09DE90D2F4BBD400018F241 /* SyFive.app */;
@@ -793,6 +796,10 @@
 		B024FFD2303DCE700095E1AE /* SyLibUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SyLibUI;
+		};
+		B0ABB7823044C8DE00C5854C /* SyLibScoringUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SyLibScoringUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

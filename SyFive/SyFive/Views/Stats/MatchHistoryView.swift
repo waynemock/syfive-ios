@@ -3,7 +3,7 @@ import SwiftData
 import SyLibGameNight
 import SyLibScoring
 import SyLibScoringData
-import SyLibUI
+import SyLibScoringUI
 
 private enum HistorySegment: CaseIterable {
     case finished, unfinished

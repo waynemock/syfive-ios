@@ -1,6 +1,6 @@
 import SwiftUI
 import SyLibScoring
-import SyLibUI
+import SyLibScoringUI
 import SwiftData
 import SyLibScoringData
 
