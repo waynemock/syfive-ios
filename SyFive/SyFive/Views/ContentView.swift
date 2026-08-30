@@ -300,6 +300,10 @@ struct ContentView: View {
                 Task { await gameNight.broadcastTableState() }
             }
             syncCommentaryEngine()
+            // D-GNP-036: host-only in practice. Guests have no commentaryEnabled until the
+            // host's tableState arrives, so this always skips with "commentary disabled" on
+            // guests. The tableState handler is the effective call site for guests. This call
+            // is load-bearing for the host (localSharePlayID is guaranteed here at activation).
             gameNight.beginProximityRanging()
             gnAlerts.showsHostReconnect = false
             // Close any open sheets so the seating sheet can present immediately.

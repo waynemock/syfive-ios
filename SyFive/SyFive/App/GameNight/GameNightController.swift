@@ -45,12 +45,20 @@ final class GameNightController {
     /// or manual tap; independent of the host's commentary-enabled setting.
     var commentaryIsSuppressed: Bool { proximity.isSuppressed }
 
-    /// Begins proximity ranging for this session if commentary is enabled (D-GNP-010).
-    /// Called by the host path in ContentView after seeding session commentary settings,
-    /// and internally for guests when a tableState with commentaryEnabled arrives.
+    /// Begins proximity ranging if commentary is enabled and the local SharePlay ID is
+    /// available (D-GNP-010, D-GNP-025). Idempotent — `GameNightProximity.begin` latches on
+    /// first success; subsequent calls are no-ops. Call from multiple lifecycle points so the
+    /// first moment the ID is available wins: session activation, first tableState, seat claim.
     func beginProximityRanging() {
-        guard commentaryEnabled else { return }
-        proximity.begin(isHost: role == .host, localSharePlayID: session.localSharePlayID)
+        guard commentaryEnabled else {
+            logger.debug(self, "beginProximityRanging: commentary disabled — skipping")
+            return
+        }
+        guard let myID = session.localSharePlayID else {
+            logger.debug(self, "beginProximityRanging: no localSharePlayID yet — deferring")
+            return
+        }
+        proximity.begin(isHost: role == .host, localSharePlayID: myID)
     }
 
     /// Sets suppression state permanently for this match (D-GNP-008).
@@ -114,19 +122,30 @@ final class GameNightController {
             self?.session.send(.proximityVerdict, payload: ProximityVerdictPayload(decisions: decisions))
         }
         // Proximity fires this when a UWB session token is ready to broadcast or send.
-        proximity.onReadyToSendToken = { [weak self] senderID, targetPeerID, tokenData in
+        proximity.onReadyToSendToken = { [weak self] senderID, targetPeerID, tokenData, supportsRanging in
             self?.session.send(.proximityToken, payload: ProximityTokenPayload(
-                senderID: senderID, tokenData: tokenData, targetPeerID: targetPeerID))
+                senderID: senderID, tokenData: tokenData, targetPeerID: targetPeerID,
+                supportsRanging: supportsRanging))
         }
         // Guests fire this when they have a pairwise distance report for the host.
         proximity.onReadyToReport = { [weak self] senderID, peerID, isNear in
             self?.session.send(.proximityReport, payload: ProximityReportPayload(
                 senderID: senderID, peerID: peerID, isNear: isNear))
         }
+        // Presence retry uses this to check NISession coverage against rangeable peers
+        // only (D-GNP-033) — excludes self and incapable peers from the coverage count.
+        proximity.allSharePlayIDsProvider = { [weak self] in
+            self?.session.allSharePlayIDs ?? []
+        }
+        // Presence retry uses this to exit when the phase advances beyond settingTable
+        // without relying solely on task cancellation — produces a searchable log entry (D-GNP-035).
+        proximity.phaseProvider = { [weak self] in
+            self?.session.phase ?? .settingTable
+        }
         // Route session-layer proximity envelopes to the GameNightProximity component.
-        session.onProximityTokenReceived = { [weak self] senderID, targetPeerID, tokenData in
-            self?.proximity.handleProximityToken(senderID: senderID,
-                                                 targetPeerID: targetPeerID, tokenData: tokenData)
+        session.onProximityTokenReceived = { [weak self] senderID, targetPeerID, tokenData, supportsRanging in
+            self?.proximity.handleProximityToken(senderID: senderID, targetPeerID: targetPeerID,
+                                                 tokenData: tokenData, supportsRanging: supportsRanging)
         }
         session.onProximityReportReceived = { [weak self] senderID, peerID, isNear in
             guard let self, self.role == .host,
@@ -167,12 +186,11 @@ final class GameNightController {
                 self.appSettings.commentaryEnabled = settings.commentaryEnabled
                 self.appSettings.commentaryPackID = settings.commentaryPackID
                 self.appSettings.commentaryLevelRaw = settings.commentaryLevelRaw
-                // Guests: begin proximity ranging only during seat-claiming (D-GNP-010, D-GNP-023).
-                // Beginning mid-match would mute all guests with no resolution window able to unmute them.
-                if settings.commentaryEnabled, self.phase == .settingTable {
-                    self.proximity.begin(isHost: false, localSharePlayID: self.session.localSharePlayID)
-                }
             }
+            // Second begin() call site (D-GNP-025): by the time tableState arrives, the
+            // GroupSession is fully established and localSharePlayID is guaranteed available.
+            // Gated inside settingTable by begin's hasBegun latch — mid-match tableState is a no-op.
+            if self.phase == .settingTable { self.beginProximityRanging() }
             self.onCommentarySettingsChanged?()
         }
         session.onAppMessage = { [weak self] kindString, envelope, senderID in
@@ -208,9 +226,13 @@ final class GameNightController {
         session.abandonSession()
     }
     func clearSessionEndedFlag() { session.clearSessionEndedFlag() }
-    func clearHostVersionMismatch() { session.clearHostVersionMismatch() }
+    func clearGuestJoinFailure() { session.clearGuestJoinFailure() }
     func claimSeat(displayName: String, displayInitials: String, themeID: String, playerID: UUID?, isLocal: Bool = false) {
         session.claimSeat(displayName: displayName, displayInitials: displayInitials, themeID: themeID, playerID: playerID, isLocal: isLocal)
+        // Third begin() call site (D-GNP-025): seat claiming is the last moment reliably inside
+        // the setting-table phase. Covers the case where tableState arrived before commentary
+        // settings were seeded. Idempotent — begin's hasBegun latch makes repeated calls no-ops.
+        beginProximityRanging()
     }
     func updateOwnSeat(name: String, initials: String, themeID: String) {
         session.updateOwnSeat(name: name, initials: initials, themeID: themeID)
@@ -490,10 +512,12 @@ final class GameNightController {
 
     private func performControllerTearDown() {
         proximity.end()
-        proximity.onDecisionsElected = nil
-        proximity.onReadyToSendToken = nil
-        proximity.onReadyToReport = nil
-        proximity.onSuppressedChanged = nil
+        // Proximity callbacks (onReadyToSendToken, onDecisionsElected, onReadyToReport,
+        // onSuppressedChanged) are intentionally NOT cleared here. They are wired once
+        // in listenForSessions() for the controller's lifetime. Clearing them on session
+        // teardown leaves them nil at the next begin(), silently dropping all token sends
+        // and making proximity completely non-functional for every session after the first.
+        // (D-GNP-030 — nine presence announcements, zero transmissions)
         onRollBegan = nil
         onRollResult = nil
         onHoldToggled = nil
