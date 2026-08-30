@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 import SyLibCore
+import SyLibGameNightMatch
 import SyLibScoringData
 
 // Runs on every launch to repair or remove stale MatchModel records.

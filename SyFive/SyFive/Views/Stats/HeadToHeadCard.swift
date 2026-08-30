@@ -1,5 +1,6 @@
 import SwiftUI
 import SyLibScoring
+import SyLibUI
 import SwiftData
 import SyLibScoringData
 
@@ -24,65 +25,13 @@ struct HeadToHeadCard: View {
     }
 
     var body: some View {
-        if h2h.sharedMatches == 0 {
-            Label("First matchup — no history yet", systemImage: "flag.checkered")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        } else {
-            VStack(alignment: .leading, spacing: 8) {
-                winsRow
-                if showsMeta {
-                    metaText
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-    }
-
-    private var winsRow: some View {
-        HStack(spacing: 0) {
-            playerPill(name: playerAName, wins: h2h.matchWinsA,
-                       isLeader: h2h.matchWinsA > h2h.matchWinsB)
-            VStack(spacing: 1) {
-                Text("–")
-                    .font(.title2.weight(.thin))
-                    .foregroundStyle(.tertiary)
-                if h2h.sharedTies > 0 {
-                    Text(h2h.sharedTies == 1 ? "1 tie" : "\(h2h.sharedTies) ties")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .frame(maxWidth: .infinity)
-            playerPill(name: playerBName, wins: h2h.matchWinsB,
-                       isLeader: h2h.matchWinsB > h2h.matchWinsA)
-        }
-    }
-
-    private func playerPill(name: String, wins: Int, isLeader: Bool) -> some View {
-        VStack(spacing: 2) {
-            Text("\(wins)")
-                .font(.title2.weight(.bold))
-                .foregroundStyle(isLeader ? theme.primaryAccent : Color.primary.opacity(0.55))
-            Text(name)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private var metaText: Text {
-        var parts: [String] = [h2h.sharedMatches == 1 ? "1 game" : "\(h2h.sharedMatches) games"]
-        if h2h.sharedTies > 0 {
-            parts.append(h2h.sharedTies == 1 ? "1 tie" : "\(h2h.sharedTies) ties")
-        }
-        if let last = h2h.lastMeeting {
-            parts.append("Last: \(last.formatted(date: .abbreviated, time: .omitted))")
-        }
-        return Text(parts.joined(separator: " · "))
+        HeadToHeadCardContent(
+            h2h: h2h,
+            playerAName: playerAName,
+            playerBName: playerBName,
+            showsMeta: showsMeta,
+            accent: theme.primaryAccent
+        )
     }
 }
 

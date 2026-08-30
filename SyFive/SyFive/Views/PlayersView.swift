@@ -1,8 +1,9 @@
 import SwiftUI
+import SyLibCore
 import SyLibScoring
 import SyLibUI
-import SwiftData
 import SyLibScoringData
+import SwiftData
 
 struct PlayersView: View {
     @State private var matchController = MatchController()
@@ -11,6 +12,7 @@ struct PlayersView: View {
     @State private var pendingArchive: PlayerModel? = nil
     @State private var pendingLink: PlayerModel? = nil
     @State private var pendingMerge: PlayerModel? = nil
+    @State private var mergeFailureMessage: String? = nil
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
@@ -18,6 +20,8 @@ struct PlayersView: View {
     @Environment(\.theme) private var theme
 
     @Query(sort: \PlayerModel.createdAt) private var allPlayers: [PlayerModel]
+
+    private let logger = AppLogger(category: "PlayersView")
 
     private var rosterPlayers: [PlayerModel] {
         allPlayers.filter { !$0.isArchived && $0.source == .local }.sorted { $0.name < $1.name }
@@ -94,12 +98,43 @@ struct PlayersView: View {
                 )
             }
             .sheet(item: $pendingLink) { gameNightPlayer in
-                PlayerLinkSheet(gameNightPlayer: gameNightPlayer)
-                    .environment(\.theme, theme)
+                let subject = rosterEntry(for: gameNightPlayer)
+                let candidates = allPlayers
+                    .filter { !$0.isArchived && $0.source == .local }
+                    .sorted { $0.name < $1.name }
+                    .map { rosterEntry(for: $0) }
+                PlayerLinkSheet(subject: subject, candidates: candidates,
+                                accentColor: theme.primaryAccent) { localID in
+                    if let local = allPlayers.first(where: { $0.id == localID }) {
+                        gameNightPlayer.source = .local
+                        do {
+                            try absorbPlayer(local, into: gameNightPlayer.id, in: modelContext)
+                        } catch {
+                            logger.error(self, "absorbPlayer (link) failed: \(error)")
+                            mergeFailureMessage = "Couldn't link those players. Please try again."
+                        }
+                    }
+                }
             }
             .sheet(item: $pendingMerge) { retiring in
-                PlayerMergeSheet(retiring: retiring)
-                    .environment(\.theme, theme)
+                let subject = rosterEntry(for: retiring)
+                // $0.id != retiring.id is redundant today — merge is only reachable from the
+                // archived-row swipe action so retiring.isArchived is always true and
+                // !$0.isArchived already excludes it. Keep as defensive: if a future path adds
+                // merge for active players it becomes load-bearing, not a no-op.
+                let candidates = allPlayers
+                    .filter { !$0.isArchived && $0.id != retiring.id }
+                    .sorted { $0.name < $1.name }
+                    .map { rosterEntry(for: $0) }
+                PlayerMergeSheet(subject: subject, candidates: candidates,
+                                 accentColor: theme.primaryAccent) { candidateID in
+                    do {
+                        try absorbPlayer(retiring, into: candidateID, in: modelContext)
+                    } catch {
+                        logger.error(self, "absorbPlayer (merge) failed: \(error)")
+                        mergeFailureMessage = "Couldn't merge those players. Please try again."
+                    }
+                }
             }
             .alert(
                 pendingArchive.map { "Archive \($0.name)?" } ?? "",
@@ -117,7 +152,33 @@ struct PlayersView: View {
             } message: { _ in
                 Text("They'll be moved to the archive and removed from your roster.")
             }
+            .alert(
+                "Player Action Failed",
+                isPresented: Binding(
+                    get: { mergeFailureMessage != nil },
+                    set: { if !$0 { mergeFailureMessage = nil } }
+                )
+            ) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(mergeFailureMessage ?? "")
+            }
         }
+    }
+
+    // MARK: - Helpers
+
+    private func rosterEntry(for player: PlayerModel) -> PlayerRosterEntry {
+        let themeType = Theme.ThemeType(rawValue: player.themeID) ?? .midnight
+        let t = Theme(type: themeType, colorScheme: colorScheme)
+        return PlayerRosterEntry(
+            id: player.id,
+            name: player.name,
+            initials: player.initials,
+            themeID: player.themeID,
+            accentColor: t.primaryAccent,
+            secondaryColor: t.secondaryAccent
+        )
     }
 
     // MARK: - Row views
@@ -193,7 +254,7 @@ struct PlayersView: View {
             .buttonStyle(.plain)
 
             Spacer()
-            
+
             Image(systemName: "list.bullet.rectangle")
                 .foregroundStyle(theme.primaryAccent)
                 .font(.title2)

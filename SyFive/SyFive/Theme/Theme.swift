@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibScoring
 
 /// Defines the color schemes and visual styling for the Sudoku app.
 ///
@@ -276,6 +277,10 @@ struct Theme {
 
     static func accent(forThemeID id: String, colorScheme: ColorScheme) -> Color {
         Theme(type: ThemeType(rawValue: id) ?? .midnight, colorScheme: colorScheme).primaryAccent
+    }
+
+    static func accent(forParticipant participant: Participant?, colorScheme: ColorScheme) -> Color {
+        accent(forThemeID: participant?.displayThemeID ?? ThemeType.midnight.rawValue, colorScheme: colorScheme)
     }
 }
 

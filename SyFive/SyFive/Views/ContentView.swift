@@ -4,6 +4,7 @@ import SyLibCore
 import SyLibDice
 import SyLibFeel
 import SyLibGameNight
+import SyLibGameNightMatch
 import SyLibScoring
 import SyLibScoringData
 import SyLibUI

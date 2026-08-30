@@ -1,7 +1,9 @@
 import SwiftUI
 import SwiftData
 import SyLibGameNight
+import SyLibScoring
 import SyLibScoringData
+import SyLibUI
 
 private enum HistorySegment: CaseIterable {
     case finished, unfinished
@@ -15,6 +17,7 @@ struct MatchHistoryView: View {
     var onResume: ((MatchModel) -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) private var modelContext
 
     @Query(filter: #Predicate<MatchModel> { $0.statusRaw == "completed" },
@@ -83,7 +86,9 @@ struct MatchHistoryView: View {
                             NavigationLink {
                                 MatchDetailView(matchModel: matchModel)
                             } label: {
-                                MatchHistoryRow(match: matchModel.toDomain())
+                                let m = matchModel.toDomain()
+                                let winner = m.participants.sorted { $0.rank < $1.rank }.first { $0.rank == 1 }
+                                MatchHistoryRow(match: m, accentColor: Theme.accent(forParticipant: winner, colorScheme: colorScheme))
                             }
                         }
                     } else {
@@ -93,7 +98,9 @@ struct MatchHistoryView: View {
                                     onResume?(m)
                                 }
                             } label: {
-                                UnfinishedMatchRow(match: matchModel.toDomain())
+                                let m = matchModel.toDomain()
+                                let leader = m.participants.sorted { $0.finalScore > $1.finalScore }.first
+                                UnfinishedMatchRow(match: m, accentColor: Theme.accent(forParticipant: leader, colorScheme: colorScheme))
                             }
                         }
                         .onDelete { indexSet in
