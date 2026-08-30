@@ -1,5 +1,6 @@
 import SwiftUI
 import SyLibScoring
+import SyLibScoringUI
 import SyLibYatzy
 import SwiftData
 import SyLibScoringData
@@ -20,6 +21,7 @@ struct PlayerProfileView: View {
 
     @State private var profileMode: ProfileMode = .pvp
     @State private var showsDeleteAlert = false
+    @State private var selectedOpponent: OpponentRecord? = nil
 
     private enum ProfileMode: Hashable { case pvp, solo }
 
@@ -45,13 +47,12 @@ struct PlayerProfileView: View {
     }
 
     private var opponentRecords: [OpponentRecord] {
-        var latestInfo: [UUID: (name: String, initials: String, themeType: Theme.ThemeType, date: Date)] = [:]
+        var latestInfo: [UUID: (name: String, initials: String, themeID: String, date: Date)] = [:]
         for match in pvpMatches {
             for p in match.participants {
                 guard let oid = p.playerID, oid != playerID else { continue }
-                let pThemeType = Theme.ThemeType(rawValue: p.displayThemeID) ?? .midnight
                 if let existing = latestInfo[oid], existing.date >= match.startedAt { continue }
-                latestInfo[oid] = (p.displayName, p.displayInitials, pThemeType, match.startedAt)
+                latestInfo[oid] = (p.displayName, p.displayInitials, p.displayThemeID, match.startedAt)
             }
         }
         return latestInfo.map { oid, info in
@@ -59,7 +60,7 @@ struct PlayerProfileView: View {
                 opponentID: oid,
                 opponentName: info.name,
                 opponentInitials: info.initials,
-                opponentThemeType: info.themeType,
+                opponentAccent: Theme.accent(forThemeID: info.themeID, colorScheme: colorScheme),
                 h2h: headToHead(playerA: playerID, playerB: oid, matches: pvpMatches)
             )
         }
@@ -137,6 +138,17 @@ struct PlayerProfileView: View {
         } message: {
             Text("This will permanently remove them from your player list.")
         }
+        .sheet(item: $selectedOpponent) { opponent in
+            HeadToHeadDetailView(
+                profilePlayerName: playerName,
+                profileAccent: theme.primaryAccent,
+                profileBackgroundColor: theme.backgroundColor,
+                profileCellBackgroundColor: theme.cellBackgroundColor,
+                opponentName: opponent.opponentName,
+                opponentAccent: opponent.opponentAccent,
+                h2h: opponent.h2h
+            )
+        }
         .tint(theme.primaryAccent)
         .environment(\.theme, theme)
     }
@@ -181,7 +193,7 @@ struct PlayerProfileView: View {
         let trendPoints = scoreTrend(playerID: playerID, matches: activeMatches)
         if !trendPoints.isEmpty {
             statsCard(title: "Score Trend") {
-                ScoreTrendChart(points: trendPoints).frame(height: 160)
+                ScoreTrendChart(points: trendPoints, markColor: theme.secondaryAccent, emptyStateColor: theme.primaryAccent).frame(height: 160)
             }
         }
 
@@ -190,7 +202,7 @@ struct PlayerProfileView: View {
         let dist = placementSeries(playerID: playerID, matches: activeMatches)
         if !showingSoloStats && !dist.bins.isEmpty {
             statsCard(title: "Placements") {
-                PlacementDistributionChart(distribution: dist).frame(height: 140)
+                PlacementDistributionChart(distribution: dist, markColor: theme.secondaryAccent, emptyStateColor: theme.primaryAccent).frame(height: 140)
             }
         }
 
@@ -344,9 +356,10 @@ struct PlayerProfileView: View {
                     .padding(.horizontal, 2)
                 ForEach(opponentRecords) { record in
                     OpponentSummaryRow(
-                        profilePlayerName: playerName,
-                        profileThemeType: themeType,
-                        record: record
+                        record: record,
+                        profileAccent: theme.primaryAccent,
+                        profileCellBackground: theme.cellBackgroundColor,
+                        onTap: { selectedOpponent = record }
                     )
                 }
             }

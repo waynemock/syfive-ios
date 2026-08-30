@@ -1,6 +1,9 @@
 import SwiftUI
 import SwiftData
+import SyLibGameNight
+import SyLibScoring
 import SyLibScoringData
+import SyLibScoringUI
 
 private enum HistorySegment: CaseIterable {
     case finished, unfinished
@@ -14,6 +17,7 @@ struct MatchHistoryView: View {
     var onResume: ((MatchModel) -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) private var modelContext
 
     @Query(filter: #Predicate<MatchModel> { $0.statusRaw == "completed" },
@@ -27,6 +31,10 @@ struct MatchHistoryView: View {
     @State private var segment: HistorySegment = .finished
     @State private var matchToDelete: MatchModel? = nil
     @State private var showsDeleteAllAlert = false
+    @State private var showsStagingLog = false
+    @State private var showsPreviousLog = false
+    @State private var stagingLogExists = false
+    @State private var previousLogExists = false
 
     var body: some View {
         NavigationStack {
@@ -41,12 +49,46 @@ struct MatchHistoryView: View {
                     .padding(.top, 8)
                 }
                 List {
+                    if AppConfig.DebugGameNight.showLogs {
+                        if stagingLogExists {
+                            Button {
+                                showsStagingLog = true
+                            } label: {
+                                Label("Staging Log (current.log)", systemImage: "doc.text.magnifyingglass")
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    GameNightLogBuffer.shared.deleteStagingLog()
+                                    stagingLogExists = false
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
+                        }
+                        if previousLogExists {
+                            Button {
+                                showsPreviousLog = true
+                            } label: {
+                                Label("Previous Log (previous.log)", systemImage: "doc.text")
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    GameNightLogBuffer.shared.deletePreviousLog()
+                                    previousLogExists = false
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
+                        }
+                    }
                     if segment == .finished {
                         ForEach(completedMatches) { matchModel in
                             NavigationLink {
                                 MatchDetailView(matchModel: matchModel)
                             } label: {
-                                MatchHistoryRow(match: matchModel.toDomain())
+                                let m = matchModel.toDomain()
+                                let winner = m.participants.sorted { $0.rank < $1.rank }.first { $0.rank == 1 }
+                                MatchHistoryRow(match: m, accentColor: Theme.accent(forParticipant: winner, colorScheme: colorScheme))
                             }
                         }
                     } else {
@@ -56,7 +98,9 @@ struct MatchHistoryView: View {
                                     onResume?(m)
                                 }
                             } label: {
-                                UnfinishedMatchRow(match: matchModel.toDomain())
+                                let m = matchModel.toDomain()
+                                let leader = m.participants.sorted { $0.finalScore > $1.finalScore }.first
+                                UnfinishedMatchRow(match: m, accentColor: Theme.accent(forParticipant: leader, colorScheme: colorScheme))
                             }
                         }
                         .onDelete { indexSet in
@@ -66,6 +110,10 @@ struct MatchHistoryView: View {
                     }
                 }
                 .animation(.default, value: segment)
+                .onAppear {
+                    stagingLogExists = GameNightLogBuffer.shared.hasStagingLog()
+                    previousLogExists = GameNightLogBuffer.shared.hasPreviousLog()
+                }
             }
             .navigationTitle("History")
             .navigationBarTitleDisplayMode(.inline)
@@ -131,6 +179,12 @@ struct MatchHistoryView: View {
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("This cannot be undone.")
+            }
+            .sheet(isPresented: $showsStagingLog) {
+                GameNightLogSheet(title: "Staging Log", content: GameNightLogBuffer.shared.stagingLogContent())
+            }
+            .sheet(isPresented: $showsPreviousLog) {
+                GameNightLogSheet(title: "Previous Log", content: GameNightLogBuffer.shared.previousLogContent())
             }
         }
     }
