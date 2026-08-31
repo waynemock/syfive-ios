@@ -21,7 +21,7 @@ A Yatzy dice game for iPhone and iPad.
 - GroupActivities (SharePlay)
 - AVAudioEngine + AVSpeechSynthesizer
 - CHHapticEngine
-- [SyLib](https://github.com/syzygyapps/sylib-swift) — shared Swift package (SyLibCore, SyLibScoring, SyLibYatzy, SyLibDice, SyLibFeel, SyLibUI, SyLibDSP, SyLibCache, SyLibGameNight, SyLibGameNightMatch, SyLibCommentary, SyLibScoringData)
+- [SyLib](https://github.com/waynemock/sylib-swift) — shared Swift package (SyLibCore, SyLibScoring, SyLibYatzy, SyLibDice, SyLibFeel, SyLibUI, SyLibDSP, SyLibCache, SyLibGameNight, SyLibGameNightMatch, SyLibCommentary, SyLibScoringData)
 
 ## Platforms
 
