@@ -140,8 +140,9 @@ struct ContentView: View {
                     } label: {
                         IconButton(
                             "ellipsis.circle",
+                            context: .toolbar,
                             badge: shouldShowUpdateBadge ? 0 : nil,
-                            badgeBackground: theme.primaryAccent,
+                            badgeBackground: theme.successColor,
                             badgeOutline: Color.black.opacity(0.8)
                         )
                         .accessibilityLabel(shouldShowUpdateBadge ? "Menu, update available" : "Menu")
