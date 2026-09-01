@@ -447,7 +447,8 @@ struct ContentView: View {
                 director.handleForeground()
                 LegacyYahtzeeRepair.run(in: modelContext)
                 LegacyRematchRepair.run(in: modelContext)
-            default: break
+            case .inactive: break
+            @unknown default: break
             }
         }
         .onChange(of: model.isGameOver) { _, isGameOver in

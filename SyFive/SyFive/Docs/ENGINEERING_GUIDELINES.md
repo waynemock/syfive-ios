@@ -166,7 +166,8 @@ Rules:
 
 - If an API accepts a `String` or `Int` but only a fixed set of values is valid, define an enum.
 - Enum `rawValue` is acceptable *only* at system boundaries where a `String` or `Int` is forced (JSON, UserDefaults, logging, external APIs). The raw value must never be used for branching inside the app.
-- `switch` on an enum must be exhaustive — no `default:` catch-alls that hide new cases.
+- `switch` on an enum **the app owns** must be exhaustive — no `default:` catch-alls that hide new cases. A case that intentionally does nothing is written out explicitly with `break`.
+- `switch` on a **non-frozen framework enum** (`ScenePhase`, `ColorScheme`, `DynamicTypeSize`, and similar) must still handle every known case explicitly, then use `@unknown default:` for future cases. `@unknown default:` is not a catch-all — the compiler still requires each known case to be listed — so it satisfies the rule rather than evading it. Add it only when the compiler asks for it.
 - Dictionary keys that form a fixed vocabulary use the enum as the key type, not `String`.
 - If a strings/numbers smell is found during a task, fix it in the same PR rather than deferring it.
 

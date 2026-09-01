@@ -734,8 +734,8 @@ final class MatchController {
     // MARK: - Game Night state loading
 
     /// Replaces all match state from a Game Night wire snapshot. Used by:
-    ///  • Host: initialise from the `matchStart` payload, preserving participantIDs.
-    ///  • All devices: apply an incoming `matchState` (authoritative; guests never argue).
+    ///  • Host: initialise from the match-start payload (`MatchStartPayload`), preserving participantIDs.
+    ///  • All devices: apply an incoming match-state payload (`MatchStatePayload`; authoritative; guests never argue).
     /// Transient dice state is not on the wire and is reset to a fresh-turn baseline.
     func loadFromGameNightMatch(_ match: Match, currentSeatIndex: Int) {
         let sorted = match.participants.sorted(by: { $0.seat < $1.seat })
