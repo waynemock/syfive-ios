@@ -79,10 +79,8 @@ struct ContentView: View {
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     if !(appSettings?.helpDismissed ?? false) {
-                        Button { showsHowToPlay = true } label: {
-                            Image(systemName: "questionmark.circle")
-                        }
-                        .accessibilityLabel("How to Play")
+                        IconButton("questionmark.circle") { showsHowToPlay = true }
+                            .accessibilityLabel("How to Play")
                     }
                     Menu {
                         if !(appSettings?.helpDismissed ?? false) {
