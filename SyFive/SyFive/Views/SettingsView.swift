@@ -84,4 +84,5 @@ private struct SettingsForm: View {
 #Preview {
     SettingsView()
         .modelContainer(for: AppSettingsModel.self, inMemory: true)
+        .environment(CommentaryVoices())
 }

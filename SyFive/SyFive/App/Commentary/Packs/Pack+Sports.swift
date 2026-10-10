@@ -171,6 +171,28 @@ extension CommentaryPersonality where Kind == CommentaryEventKind {
                 "No separation at the buzzer! {winner}!",
                 "It ends even! {winner} share the win!"
             ],
+            "soloFinished": [
+                "That's the final! {player} posts {score}!",
+                "Full card, folks! {player} finishes with {score}!",
+                "And that's time! {score} on the board for {player}!",
+                "{player} closes out the card! {score} points!",
+                "Final whistle! {player} wraps it up at {score}!",
+                "What a solo run! {player} signs off with {score}!",
+                "Thirteen boxes, all filled! {player} finishes at {score}!",
+                "That's the card, and {player} posts {score}!",
+                "Final tally for {player}, {score}!",
+                "{player} brings it home with {score}!",
+                "The card is complete! {score} for {player}!",
+                "Put it in the books! {player}, {score}!",
+                "{player} finishes the solo round at {score}!",
+                "And there it is! {score} to close it out!",
+                "That's a wrap on the card! {player} with {score}!",
+                "Last box filled! {player} ends at {score}!",
+                "{score} on the scoreboard! Nice work, {player}!",
+                "Game over, and {player} posts {score}!",
+                "The solo card is in! {player}, {score} points!",
+                "Final number, {score}! {player} takes a bow!"
+            ],
             "upperBonusEarned": [
                 "{player} locks in the upper bonus! Thirty-five more!",
                 "There's the bonus! {player} cracks sixty-three!",

@@ -10,6 +10,8 @@ The core game loop, dice system, scorecard UX, persistence, stats, feel system (
 
 **Overall progress: ~98% to 1.0 Definition of Done**
 
+**1.1.0:** Rebuilt on the post-Syderal SyLib; see `15` to `17`.
+
 ---
 
 ## Core Gameplay — COMPLETE ✅
@@ -373,4 +375,4 @@ Ordered by dependency and user impact:
 
 2. **Celebration calibration** — Four open design questions from `08` (O-3 through O-6): confetti ceiling, count-up under Reduce Motion, tie behavior confirmation, game-over audio companion.
 
-3. **Pre-submission** — Flip `AppConfig.DebugDice.showHarness = false`, `logRollDiagnostics = false`, `DebugLayout.isEnabled = false`. App Store assets (screenshots, description, metadata). Final QA pass across all device sizes.
+3. **Pre-submission** — Before shipping: `00B` §6. App Store assets (screenshots, description, metadata). Final QA pass across all device sizes.

@@ -15,7 +15,7 @@ extension ContentView {
     }
 
     /// Called from onChange(of: appSettings?.soundModeRaw).
-    /// Updates the sound mode, handles §5.4 suppression reset, and sets isMuted directly.
+    /// Updates the sound mode, handles §5.4 suppression reset, and applies the mute directly.
     func handleSoundModeChanged() {
         let wasOff = director.soundMode == .off
         director.soundMode = appSettings?.soundMode ?? .mix
@@ -24,13 +24,41 @@ extension ContentView {
             // §5.4: button reappears unmuted — reset suppression state (D-GNP-009).
             gameNight.setCommentarySuppressed(false)
         }
-        commentaryEngine?.isMuted = shouldMuteCommentary
+        applyCommentaryMute()
     }
 
-    /// Called from `gameNight.onCommentarySuppressedChanged` (button tap or proximity timeout).
-    /// Sets isMuted directly — must not re-run syncCommentaryEngine() (§5.3).
+    /// Called from `gameNight.onCommentarySuppressedChanged`: the commentary button, proximity
+    /// muting a guest when ranging begins, or its verdict or timeout unmuting it.
+    /// Applies the mute through applyCommentaryMute(), so a change to muted cuts the line in
+    /// flight (D-132). Must not re-run syncCommentaryEngine() (§5.3).
     func handleCommentarySuppressionChanged() {
-        commentaryEngine?.isMuted = shouldMuteCommentary
+        applyCommentaryMute()
+    }
+
+    /// Applies shouldMuteCommentary to the engine. On a change from unmuted to muted it also
+    /// stops the line being spoken and drops the lines queued behind it (D-132). It does not
+    /// touch onWillSpeak, so a muted host still feeds its guests (D-130).
+    func applyCommentaryMute() {
+        guard let engine = commentaryEngine else { return }
+        let wasMuted = engine.isMuted
+        engine.isMuted = shouldMuteCommentary
+        if !wasMuted && engine.isMuted { engine.stopSpeaking() }
+    }
+
+    /// Saves the engine's shuffle deck under the personality it was loaded for, then forgets
+    /// that personality, so the next host or solo sync restores a deck (D-077).
+    func saveShuffleAndForget() {
+        guard let loaded = shuffleLoadedFor else { return }
+        if let engine = commentaryEngine {
+            commentaryShuffleStore.save(engine.shuffleState, for: loaded)
+        }
+        shuffleLoadedFor = nil
+    }
+
+    /// Saves the engine's shuffle deck when the app goes to the background (D-077).
+    func saveShuffleForBackground() {
+        guard let loaded = shuffleLoadedFor, let engine = commentaryEngine else { return }
+        commentaryShuffleStore.save(engine.shuffleState, for: loaded)
     }
 
     func syncCommentaryEngine() {
@@ -57,6 +85,7 @@ extension ContentView {
         }
 
         guard enabled else {
+            saveShuffleAndForget()
             commentaryEngine?.stopSpeaking()
             commentaryEngine = nil
             model.commentaryEventSink = nil
@@ -66,14 +95,19 @@ extension ContentView {
 
         let personality = CommentaryPersonality.find(id: personalityID)
         let level = CommentaryLevel(rawValue: levelRaw) ?? .celebrations
-        let voiceID = UserDefaults.standard.commentaryVoiceID
-        let voice = voiceID.flatMap { AVSpeechSynthesisVoice(identifier: $0) }
-            ?? AVSpeechSynthesisVoice(language: Locale.current.language.languageCode?.identifier ?? "en")
+        // The saved voice while it is installed, else the best installed voice in the device's
+        // language (D-081). Nil until the first scan lands; the revision change re-runs this.
+        let savedID = UserDefaults.standard.commentaryVoiceID
+        let voice = commentaryVoices.voiceInUse(for: personality.id, savedID: savedID)
+            .flatMap { AVSpeechSynthesisVoice(identifier: $0.identifier) }
 
         if isGuest {
             // Guest: engine runs in receive-only mode. Text comes verbatim from the host
             // broadcast; local event generation is suppressed so guests never produce their
             // own lines. appSettings.commentaryEnabled is intentionally ignored here.
+            // A guest's engine speaks the host's text and draws nothing, so its deck is saved
+            // and forgotten.
+            saveShuffleAndForget()
             if let engine = commentaryEngine {
                 engine.update(personality: personality, voice: voice, level: .playByPlay)
             } else {
@@ -82,15 +116,24 @@ extension ContentView {
             model.commentaryEventSink = nil
             let engine = commentaryEngine
             gameNight.onCommentaryReceived = { text, tier in engine?.receiveText(text, tier: tier) }
-            commentaryEngine?.isMuted = shouldMuteCommentary
+            applyCommentaryMute()
             return
         }
 
         // Host or solo: generate commentary locally via the event sink.
+        // Save the outgoing personality's deck first: update clears the shuffle when the
+        // personality changes (D-077).
+        if let loaded = shuffleLoadedFor, loaded != personality.id, let engine = commentaryEngine {
+            commentaryShuffleStore.save(engine.shuffleState, for: loaded)
+        }
         if let engine = commentaryEngine {
             engine.update(personality: personality, voice: voice, level: level)
         } else {
             commentaryEngine = CommentaryEngine(personality: personality, voice: voice, level: level)
+        }
+        if shuffleLoadedFor != personality.id {
+            commentaryEngine?.restoreShuffle(commentaryShuffleStore.load(for: personality.id))
+            shuffleLoadedFor = personality.id
         }
         // Always re-wire the sink — the engine may have been reused from a guest session
         // where commentaryEventSink was intentionally nil.
@@ -105,6 +148,6 @@ extension ContentView {
         } else {
             commentaryEngine?.onWillSpeak = nil
         }
-        commentaryEngine?.isMuted = shouldMuteCommentary
+        applyCommentaryMute()
     }
 }

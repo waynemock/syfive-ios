@@ -20,9 +20,9 @@ struct AppConfig {
     }
 
     struct DebugCloudKit {
-        /// Inserts and immediately deletes one dummy row for every registered model type,
-        /// forcing CloudKit to JIT-create all record types and fields in Development.
-        /// Flip to true, run once on device, verify in CloudKit Console, then flip back.
+        /// Runs `SyFiveApp.initializeCloudKitSchema` at launch, before the store opens: pushes
+        /// every record type and field to CloudKit Development (D-026). Flip to true, run once
+        /// on a device signed into iCloud, verify in CloudKit Console, then flip back.
         static let runSchemaExercise = false
     }
 

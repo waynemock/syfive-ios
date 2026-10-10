@@ -24,6 +24,7 @@ file is HEAD.*
   isolation cannot enforce a dead rule.
 - `(rec.)` marks a ruling that entered as Claude's recommendation and was accepted
   rather than explicitly directed — same force, noted for the record per house practice.
+- `00A` (studio, canonical) and `00B` (SyFive) ship with this file in every agent prompt.
 
 ---
 
@@ -31,7 +32,18 @@ file is HEAD.*
 
 | ID | Current ruling | Source → chain |
 |---|---|---|
-| D-001 | Docs are immutable once delivered. Overrides travel via a Supersessions block in the newer doc plus a row update here. This ledger is HEAD and accompanies every agent prompt. | Session 05 · recorded here & `05 §1` |
+| D-001 | **SyFive exception to `00A` §1: documents are immutable once delivered.** Overrides travel through a Supersessions block in the newer document, plus a rewrite of the affected row here. This ledger is HEAD and accompanies every agent prompt, with `00A` and `00B`. | Session 05 · `05 §1` → `00B` E-1 (exception kept by Pops, 10 Oct 2026) |
+| D-142 | **`00A_STUDIO_CONVENTIONS.md` is canonical for how sessions run, and `00B_SYFIVE_GUARDRAILS.md` holds SyFive's own rails.** Project documents cite them rather than restate them. Where `00A` and a SyFive rule conflicted on folders and on fixing out-of-scope smells, `00A` won. | `00A` §11 → `00B` §7 |
+| D-143 | **Tests run at the deployment floor**: iPhone SE (3rd generation), iOS 18.6, pinned in `00B` §5. Both test targets are set to iOS 18.6. | `00A` §7 → `00B` §5 |
+
+## Platform & data
+
+| ID | Current ruling | Source → chain |
+|---|---|---|
+| D-128 | **1.1.0 brings SyFive onto the post-Syderal SyLib in three phases**: build and baseline (`15`), fixes (`16`), adoptions (`17`). The Syderal-style reshape (a bridge type for `GameNightMatchHost`, import boundaries, `nonisolated` default isolation) is **deferred to a later release, not rejected**. | `15 §1` *(rec.)* |
+| D-129 | **SyFive's store and catalogue seed never move into SyLib.** The container in `SyFiveApp.swift` and `seedYatzyGameIfNeeded()` stay SyFive's. `makeScoringContainer`, `makeInMemoryScoringContainer` and `seedCatalogGame` are never adopted. | `14 §3.12` (Syderal L-17) → `15 §2.4` |
+| D-131 | **Wire versions frozen for 1.1.0:** `appProtocolVersion` stays 1 and the transport stays 3, so 1.0.3 and 1.1.0 share a table. Raise either only with a doc that plans the split. | `14 §1.4` → `15 §2.3` |
+| D-139 | **The update badge** comes from SyLibCore's `AppUpdateState` and SyLibUI's `MoreMenu`. It clears when Update Available is tapped, and the acknowledgement is stored per store version. Never acknowledge on menu open: SwiftUI's `Menu` has no reliable signal for it. | `14 §3.11, §4.5` (Syderal Q-32, Q-33) → `17 §2.8` *(rec.)* |
 
 ## Product & rules
 
@@ -73,7 +85,7 @@ file is HEAD.*
 
 | ID | Current ruling | Source → chain |
 |---|---|---|
-| D-023 | CloudKit ships at 1.0. Per-app private container `iCloud.com.syzygysoftwerks.SyFive` (not a shared "Sy" container), with a one-line revert lever. *(rec.)* | `03_CLOUDKIT` |
+| D-023 | CloudKit ships at 1.0. Per-app private container `iCloud.com.syzygysoftwerksllc.SyFive` (not a shared "Sy" container), with a one-line revert lever. *(rec.)* | `03_CLOUDKIT` |
 | D-024 | The built-in Yatzy catalog entry seeds with the fixed well-known UUID `BFB7F8F6-87D2-4700-9267-36A8ED4AC3C8` for cross-device deduplication. Constant lives in `Domain/Game+BuiltIn.swift` (SyFive extension on `SyLibScoring.Game`) — kept app-side so `SyLibScoring` stays game-agnostic. *(rec.)* | `03_CLOUDKIT` |
 | D-025 | `ScoreEntryModel` is **not** registered in the CloudKit schema — scorecards travel inside the participant blob. | `03_CLOUDKIT` |
 | D-026 | **Dev → Production schema promotion is a hard gate** before any TestFlight build. | `03_CLOUDKIT` |
@@ -145,6 +157,12 @@ file is HEAD.*
 | D-121 | **Guest drop mid-turn: host plays as proxy.** When a guest drops mid-turn, host rolls and scores on their behalf. No auto-scratch; host can play the turn fairly. Returning guest rejoins from current matchState. | `06 §13.2` (open → resolved) |
 | D-126 | **Cross-device physics replay abandoned.** Replaying a `DiceRollRecipe` through each spectator's own RealityKit simulation does not converge: PhysX timestep is display-linked, solver iteration and contact ordering are not stable across devices, and float behaviour differs by chip generation. Identical impulses diverge within a few hundred ms, so spectators landed different faces than the roller and had to be corrected on-screen. Spectators now **hide the unheld dice on `rollBegan` and display the settled faces from `rollResult`.** No spectator simulation runs. | `06 §2.1, §6.2` → superseded by implementation |
 | D-127 | **Wire rule: send outcomes, never inputs a receiver must re-derive.** `rollResult` (settled faces) is authoritative and sufficient; `rollBegan`'s recipe attempted to save bandwidth by having receivers recompute the outcome, and recomputation is precisely where it broke. Any future cross-device presentation payload carries the resolved result, not the parameters that produce it. Generalised from D-126; binds SyLib consumers, not just SyFive. | implementation · generalised from `06 §2.1` |
+| D-134 | **The Game Night log keeps SyLib's lines.** SyFive configures `GameNightLogBuffer` with its own categories (`GameNightController`, `ContentView`, `MatchController`), `packageCategories` and `FeelAudioEngine`. The log stays a Debug-only tool behind `AppConfig.DebugGameNight.showLogs`. | `14 §4.2` → `16 §2.5` *(rec.)* |
+| D-135 | **The host ends Game Night with one awaited call**, `abandonSessionNotifyingGuests()`. `matchAbandoned` is sent only by a host that is ending Game Night, never to discard a match and keep the table. | `14 §3.1, §4.1` (Syderal L-14, Q-16) → `17 §2.2` |
+| D-136 | **Host reconnect is recorded and consumed by the coordinator.** Record → `beginHosting` with an empty `onReadyToSeat` → `consumePendingHostResume()` at activation. When it returns false the normal seating sheet opens. `onNeedsConversation` and Play Locally clear the recording. | `14 §3.3` (Syderal L-23) → `17 §2.3` |
+| D-137 | **Roster upsert never merges two people at one table.** SyFive uses `upsertGameNightRoster` with `seatedPlayerIDs` at both call sites; `remapOntoArchived` stays `true`. | `14 §3.5, §4.2` (Syderal L-39, L-43) → `17 §2.4` |
+| D-138 | **History sync shares only completed Game Night matches the table shares**, judged by a match's fullest row, through `GNHistoryStore`. | `14 §3.4` (Syderal L-18, L-40) → `17 §2.5` |
+| D-140 | **Game Night menu items and the leading toolbar control are SyLib's** (`GameNightMenuSection`, `GameNightLeadingControlButton`), with SyLib's titles and labels. Play Again stays SyFive's. | `14 §3.10` (Syderal L-22) → `17 §2.9` |
 
 ## Celebrations
 
@@ -168,13 +186,17 @@ file is HEAD.*
 |---|---|---|
 | D-075 | **Off by default**; no engine instantiated when off. **Adding a personality = adding one data file** (`lines` dict + prosody row + blurb + preview line); no engine code per pack. | `09 §0, §1` |
 | D-076 | Three-tier level: **Celebrations / Highlights / Play-by-Play.** Off is expressed by the master toggle, not a fourth level position. | `09 §2` |
-| D-077 | **No-immediate-repeat** selection rule: exclude the last-used line per event kind per session. Full shuffle-bag not required for 1.0. | `09 §1.4` |
-| D-078 | **Higher-tier events interrupt; same-or-lower-tier events drop.** Never build a backlog; speech must always be behind the live game. | `09 §1.5` (open §12.4 → resolved: interruptions preferred) |
+| D-077 | **No immediate repeat, and a shuffle-bag.** Each event kind draws from a shuffled deck of its lines, and a refilled deck never starts with the last line used. The deck is saved per personality across launches (`CommentaryShuffleStore`, key `com.syzygysoftwerksllc.syfive.commentaryShuffle`, never changed). | `09 §1.4` → `17 §2.7` *(rec.)* |
+| D-078 | **Higher-tier events interrupt; same-or-lower-tier events drop; never a backlog.** As SyLib's `.dropWhileSpeaking` runs it, lines come in bursts: a burst opens when a line becomes the first in flight and stays open until that line is reported started. While it is open, events append in order (up to four lines). After it closes, a more important event cuts the speaker and the queue, and anything else drops. Known narrow differences from 1.0 are in `14 §2.1`. SyFive never sets `.queue`. | `09 §1.5` (open §12.4 → resolved) → `14 §2.1` → `15 §9` |
 | D-079 | Audio session **ducks** (`.mixWithOthers + .duckOthers`). Never takes `.playback` in a way that halts other audio; respect the game-night playlist. | `09 §1.5` |
 | D-080 | **VoiceOver running = suppress commentary.** Accessibility layer wins; the engine never competes with it. | `09 §1.5` |
-| D-081 | **Voice ID is device-local** (UserDefaults). Level + personality sync (AppSettingsModel / SwiftData). Missing voice falls back to an enhanced locale voice. *(rec.)* | `09 §6.1` (open §12.2 → resolved: device-local) |
+| D-081 | **Voice ID is device-local** (UserDefaults); level and personality sync. A personality speaks the saved voice while it is installed, else the best installed voice in the device's language (premium, enhanced, default; never novelty or Personal Voice), resolved through `CommentaryVoices`. The Voice row names the voice in use. | `09 §6.1` → `14 §3.7` → `17 §2.6` *(rec.)* |
 | D-082 | **Snarky targets roll / decision / dice, never the person.** Snark never stored, transmitted, or reaches any player-facing read; never leaves the live commentary room. | `09 §11` |
 | D-083 | `yatzyRolled` utterance lands **after** the existing title-card animation, not during it. | `09 §8` (open §12.5 → resolved: after title card) |
+| D-130 | **`onWillSpeak` fires while the engine is muted, by design.** A host muted by its commentary button (D-GNP-008) or by Sound set to Off still broadcasts to its guests (D-GNP-019). SyFive does not adopt Syderal's muted-host broadcast guard, and SyLib must not move the hook below the mute. | `16_GAME_NIGHT_PROXIMITY_MUTE §2.2` (D-GNP-019) → `14 §3.12` → `15 §2.5` |
+| D-132 | **Muting cuts speech at once.** Any change from unmuted to muted stops the line being spoken and drops the queue: the commentary button, Sound set to Off, or proximity muting a guest when ranging begins. (Proximity's verdicts and timeout only unmute, D-GNP-005.) The host's broadcast to guests is unaffected (D-130). | `14 §4.5` (Syderal Q-22) → `16 §2.2` |
+| D-133 | **A solo game has no winner and no lead.** With one player, game over emits `soloFinished` (tokens `player`, `score`; celebration tier) in place of `winnerDeclared`, and `leadChange` is never emitted. Every pack carries `soloFinished` lines. | `14 §4.5` → `16 §2.3` |
+| D-141 | **Commentary on/off feedback is a SyLibUI `Toast`** that slides down out from under the Roll button (`placement: .belowBottom`, 4 pt gap), over the status row beneath it: two seconds, no taps, never over the roll controls themselves. | `14 §3.11` → `17 §2.10` *(rec.)* → Pops, 10 Oct 2026 (placement) |
 
 ## Game Night Commentary
 
@@ -198,6 +220,32 @@ file is HEAD.*
 | D-094 | **Retired — spectator dice audio is unconditionally off.** The hear-the-real-dice defaulting rule and its device-local override toggle governed a choice that no longer exists: with no spectator simulation (D-126) and no spectator dice audio (D-092), there is nothing for a default or a toggle to select between. No user-facing control ships. Do not reinstate from `11 §4`. | `11 §4` → retired by D-126, D-092 |
 | D-095 | **App-layer feel events in Game Night are actor-local** (hold / score / undo). Yatzy celebration audio is the sole sanctioned exception: it fires on every device on receipt of `rollResult`, computed locally from the settled faces, with no wire traffic and no gating setting. Suppressed when the Yatzy box was scratched to 0, per D-005. | `11 §1, §5` · wording corrected under D-126, D-092 |
 | D-096 | **`07` feel system stays Game-Night-ignorant.** The rule holds, but there is no longer a gating point: with no replay path (D-126), spectator devices run no feel code to gate. This row now constrains future work rather than describing a mechanism — any reintroduction of cross-device feel gates at the composition root, never inside `07`, mirroring `10 §3`. | `11 §2` → mechanism removed by D-126; rule retained |
+
+## Game Night proximity
+
+| ID | Current ruling | Source → chain |
+|---|---|---|
+| D-GNP-001 | Proximity mute suppresses commentary speech only; dice audio unaffected on all devices *The flam is an artifact of identical speech; percussive dice audio reads as room ambience* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
+| D-GNP-002 | Proximity resolution is host-arbitrated: guests report distances, host clusters and broadcasts the verdict *`SeatSnapshot` carries no device identity; only the host holds the device→seat mapping* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
+| D-GNP-003 | Clusters are built by union-find over sub-threshold pairs; `nil` distance never splits a cluster *Proximity is not reliably transitive; treating `nil` as "far" would fragment real rooms* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
+| D-GNP-004 | Host's cluster always speaks; every other cluster elects its lowest-seat device *Deterministic, no negotiation, no setup UI* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
+| D-GNP-005 | Guests start muted; proximity transitions are unmute-only *Going quiet mid-match is invisible; starting to speak mid-roll reads as a glitch* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
+| D-GNP-006 | One-shot resolution; no mid-match re-evaluation or re-ranging *Live re-evaluation pops audio as people shift; holds the radio open all match* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
+| D-GNP-007 | 10-second timeout from match start; expiry unmutes *False negatives self-correct with one tap; false positives are invisible* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
+| D-GNP-008 | Manual tap wins permanently for the match and cancels ranging on that device *The guess exists to save a tap; once tapped it has nothing to contribute* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
+| D-GNP-009 | Mute state is session-scoped, never persisted *A stale verdict would override a correct guess; cost of being wrong is one tap* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
+| D-GNP-010 | Ranging starts at seat claiming, gated on the table's `commentaryEnabled` *Parallel resolution with seats; keeps the permission prompt correlated with the feature* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
+| D-GNP-011 | Seat order locks at match start; verdict arrival time is irrelevant *Distances are stable, seat ordering is not until lock* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
+| D-GNP-012 | Threshold 3.0 m, four consecutive sub-threshold readings, both tunable *One stray reading must not mute a remote player* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
+| D-GNP-013 | Confident pairs resolve early; the timeout governs only ambiguous and no-signal cases *Common couch case unmutes fast* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
+| D-GNP-014 | Mute button visible only when session/solo commentary is enabled AND `soundMode != .off`; guests read the session value, never local `appSettings` *A control that does nothing is worse than none; local mode is a solo preference the relay ignores* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
+| D-GNP-015 | The button is uniform on host and guests: "commentary on this device" *Same meaning everywhere needs no explanation* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
+| D-GNP-016 | No settings surface, no alerts; the button is the only indicator *There is no silence to explain — commentary is playing from the host's phone* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
+| D-GNP-017 | Game Night commentary settings are seeded from personal settings at session start and never written back *Changing personality for one Game Night must not change the solo default* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
+| D-GNP-018 | Non-UWB devices (all iPads, some iPhones) and declined permission fall through to the timeout and unmute *Only `supportsPreciseDistanceMeasurement` is consulted; direction is inconsistent across U1/U2* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
+| D-GNP-019 | `SyLibCommentary`: `onWillSpeak` fires before the `isMuted` guard *Broadcast is a session concern, mute is a local-speaker concern; corrects a host with sound off silencing the table* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
+| D-GNP-020 | Transport version bumps to 3 for the three new proximity message kinds *Existing version-mismatch UI handles the incompatibility* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
+| D-GNP-021 | Companion-device UWB proxy for iPad participants — DEAD END, do not revisit without new hardware facts *Proxy locates the person, not the speaking device; pocketed phones give unreliable readings* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
 
 ## House Records
 

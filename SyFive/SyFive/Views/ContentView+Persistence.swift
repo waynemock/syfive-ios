@@ -1,6 +1,7 @@
 import SwiftUI
 import SyLibCore
 import SyLibGameNight
+import SyLibGameNightMatch
 import SyLibScoring
 import SyLibScoringData
 import SwiftData
@@ -23,12 +24,13 @@ extension ContentView {
                 if wasHost {
                     // Host re-initiates the session from the reconnect alert.
                     gnAlerts.showsHostReconnect = true
-                    pendingResumeMatchID = matchModel.id
                     let yatzyID = ScoringSystemID.yatzy.rawValue
                     let gameDesc = FetchDescriptor<GameModel>(
                         predicate: #Predicate { $0.scoringSystemID == yatzyID }
                     )
-                    pendingResumeGameID = (try? modelContext.fetch(gameDesc))?.first?.id
+                    if let gameID = (try? modelContext.fetch(gameDesc))?.first?.id {
+                        gameNight.coordinator.recordPendingHostResume(matchID: matchModel.id, gameID: gameID)
+                    }
                 } else {
                     // Guest (or host whose wasHost flag was lost): show a choice rather than
                     // silently blocking rolling. prepareForGuestReconnect is called only on opt-in.
@@ -65,7 +67,10 @@ extension ContentView {
     func healOrphanedParticipants() {
         let allParticipants = (try? modelContext.fetch(FetchDescriptor<ParticipantModel>())) ?? []
         let allPlayers      = (try? modelContext.fetch(FetchDescriptor<PlayerModel>())) ?? []
-        let playersByID     = Dictionary(uniqueKeysWithValues: allPlayers.map { ($0.id, $0) })
+        let playersByID     = Dictionary(allPlayers.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        if playersByID.count < allPlayers.count {
+            logger.warning(self, "heal scan: \(allPlayers.count - playersByID.count) PlayerModel row(s) share an id with another row — kept the first of each")
+        }
         let activePlayers   = allPlayers.filter { !$0.isArchived }
 
         let distinctIDs = Set(allParticipants.compactMap { $0.playerID })
@@ -105,50 +110,28 @@ extension ContentView {
     /// Safe to call for any match type — local players already have entries (skip),
     /// and anonymous participants (playerID == nil) are skipped automatically.
     /// Used to recover missing Game Night remote player roster entries on app launch.
-    /// When a Game Night UUID has no local PlayerModel but a local roster player with the
-    /// same name+initials exists, all ParticipantModel records are remapped to the canonical
-    /// local UUID instead of creating a duplicate entry.
+    /// The name-and-initials rule is SyLib's (`upsertGameNightRoster`, D-137): a participant with
+    /// no local PlayerModel but the same name and initials as a local player is remapped onto
+    /// it, except that a local player in this match never captures one, and one local player
+    /// captures at most one participant per call.
     func ensurePlayerModels(for participants: [ParticipantModel]) {
-        var changed = false
+        var players: [GameNightRosterPlayer] = []
         for p in participants {
             guard let playerID = p.playerID else { continue }
-
-            // Already have a PlayerModel for this UUID — nothing to do.
-            var byID = FetchDescriptor<PlayerModel>(predicate: #Predicate { $0.id == playerID })
-            byID.fetchLimit = 1
-            if (try? modelContext.fetch(byID))?.first != nil { continue }
-
-            // Before creating a new entry, check if a local roster player with matching
-            // name+initials already exists. Game Night sessions can carry a different UUID
-            // for the same physical person; remapping prevents identity splits in House Records.
-            let pName = p.displayName
-            let pInitials = p.displayInitials
-            let localSource = PlayerSource.local.rawValue
-            var byName = FetchDescriptor<PlayerModel>(
-                predicate: #Predicate { $0.name == pName && $0.initials == pInitials && $0.sourceRaw == localSource }
-            )
-            byName.fetchLimit = 1
-            if let canonical = (try? modelContext.fetch(byName))?.first {
-                let allParticipants = (try? modelContext.fetch(FetchDescriptor<ParticipantModel>())) ?? []
-                for participant in allParticipants where participant.playerID == playerID {
-                    participant.playerID = canonical.id
-                }
-                logger.info(self, "ensurePlayerModels: remapped '\(pName)' \(playerID) → \(canonical.id)")
-                changed = true
-                continue
-            }
-
-            // No local player found — create a gameNight-sourced PlayerModel.
-            let newPM = PlayerModel()
-            newPM.id = playerID
-            newPM.name = p.displayName
-            newPM.initials = p.displayInitials
-            newPM.themeID = p.displayThemeID
-            newPM.source = .gameNight
-            modelContext.insert(newPM)
-            changed = true
+            players.append(GameNightRosterPlayer(
+                id: playerID,
+                name: p.displayName,
+                initials: p.displayInitials,
+                themeID: p.displayThemeID))
         }
-        if changed { try? modelContext.save() }
+        // The match's participants are its table.
+        let seated = Set(participants.compactMap { $0.playerID })
+        do {
+            let changes = try upsertGameNightRoster(players, seatedPlayerIDs: seated, in: modelContext)
+            if !changes.isEmpty {
+                logger.info(self, "roster upsert: inserted \(changes.insertedIDs.count), remapped \(changes.remapped.count)")
+            }
+        } catch { logger.error(self, "roster upsert failed: \(error)") }
     }
 
     func syncPlayerThemesFromRoster() {
@@ -217,34 +200,4 @@ extension ContentView {
         game.sortOrder = 0
         modelContext.insert(game)
     }
-
-    #if DEBUG
-    /// Inserts and immediately deletes one dummy row for every registered model type so CloudKit
-    /// JIT-creates all record types and fields in the Development environment.
-    /// Only runs when `AppConfig.DebugCloudKit.runSchemaExercise == true`.
-    func runCloudKitSchemaExercise() {
-        guard AppConfig.DebugCloudKit.runSchemaExercise else { return }
-        let player = PlayerModel()
-        let team = TeamModel()
-        let game = GameModel()
-        let match = MatchModel()
-        let participant = ParticipantModel()
-        let settings = AppSettingsModel()
-        modelContext.insert(player)
-        modelContext.insert(team)
-        modelContext.insert(game)
-        modelContext.insert(match)
-        modelContext.insert(participant)
-        modelContext.insert(settings)
-        try? modelContext.save()
-        modelContext.delete(participant)
-        modelContext.delete(match)
-        modelContext.delete(player)
-        modelContext.delete(team)
-        modelContext.delete(game)
-        modelContext.delete(settings)
-        try? modelContext.save()
-        AppLogger(category: "CloudKit").info(self, "Schema exercise complete — check CloudKit Console > Development for all record types")
-    }
-    #endif
 }

@@ -59,24 +59,40 @@ Rules:
 
 ```text
 SyFive/
-  Dice/                — RealityKit dice physics, audio, and rolling logic
-    Docs/              — Dice-specific design docs and test results
-  Docs/                — Engineering guidelines and design documents
-  Domain/              — Pure value types, enums, and scoring rules
-    Enums/             — YatzyCategory, MatchStatus, etc.
-    Scoring/           — YatzyScoring rules
-    Values/            — Match, Participant, Player, ScoreEntry, etc.
+  SyFiveApp.swift      — App entry: the ModelContainer, the Yatzy seed, CloudKit schema push (Debug)
+  App/                 — App-layer features built on SyLib
+    Commentary/        — SyFive's event kinds, factories, personalities, settings screen
+      Packs/           — The four commentary packs (Sports, Zen, Steady, Snarky)
+    GameNight/         — GameNightActivity and GameNightController (the SyLib session's owner)
+      Protocol/        — SyFive's Game Night envelope kinds and payloads
+      Views/           — Game Night sheets and the table-setting view
+    HouseRecords/      — House Records title definitions (App layer, D-110)
+    CelebrationCoordinator.swift, DiceFeelAdapter.swift
+  Docs/                — Engineering guidelines, status, and design documents
+    Requirements/      — 00A, 00B, the decision ledger, and design docs 01–16
+    SyLib/             — SyLib migration and reintegration docs 00–17
+  Domain/              — SyFive's own domain additions (Game+BuiltIn: the Yatzy catalog id)
+    Enums/             — ScoringSystemID
   Extensions/          — Swift/Foundation extensions
-  Persistence/         — SwiftData models and domain↔model conversion
-    Conversion/        — GameModel+Conversion, MatchModel+Conversion, etc.
-    Models/            — GameModel, MatchModel, ParticipantModel, PlayerModel
+  Feel/                — SyFiveCatalog: SyFive's sound and haptic recipes
+  Persistence/         — SyFive-only persistence
+    Migration/         — One-off data repairs (LegacyYahtzeeRepair, LegacyRematchRepair)
+    Models/            — AppSettingsModel
   Session/             — MatchController: game state machine and scoring logic
   Theme/               — Theme struct, ThemeType enum, color definitions
-  Utilities/           — AppConfig, AppLogger, AppUpdateChecker
-  Views/               — All SwiftUI views (one per file)
+  Utilities/           — AppConfig (debug flags; pre-ship check in 00B §6)
+  Views/               — SwiftUI views (one per file), including the ContentView extensions
+    HouseRecords/      — HouseRecordsView
+    Stats/             — History, match detail, head-to-head and player profile views
+SyFiveTests/           — Unit tests (Swift Testing)
+  Commentary/          — CommentaryPackTests
+  Feel/                — FeelTests
+SyFiveUITests/         — UI tests (XCTest)
 ```
 
-New feature areas get their own subfolder. Do not add files to the root `SyFive/` target directory.
+Dice physics, scoring rules, the shared domain values (Match, Participant, Player, ScoreEntry, YatzyCategory, MatchStatus), the SwiftData scoring models and their conversions, and AppLogger and AppUpdateChecker all live in SyLib (`SyLibDice`, `SyLibScoring`, `SyLibYatzy`, `SyLibScoringData`, `SyLibCore`), not in this target.
+
+A new folder is a stop condition (`00A` §10). Do not add files to the root `SyFive/` target directory.
 
 ---
 
@@ -169,7 +185,7 @@ Rules:
 - `switch` on an enum **the app owns** must be exhaustive — no `default:` catch-alls that hide new cases. A case that intentionally does nothing is written out explicitly with `break`.
 - `switch` on a **non-frozen framework enum** (`ScenePhase`, `ColorScheme`, `DynamicTypeSize`, and similar) must still handle every known case explicitly, then use `@unknown default:` for future cases. `@unknown default:` is not a catch-all — the compiler still requires each known case to be listed — so it satisfies the rule rather than evading it. Add it only when the compiler asks for it.
 - Dictionary keys that form a fixed vocabulary use the enum as the key type, not `String`.
-- If a strings/numbers smell is found during a task, fix it in the same PR rather than deferring it.
+- A strings/numbers smell outside the task is reported, not fixed (`00A` §3).
 
 ---
 
@@ -205,7 +221,7 @@ The display string goes only into `Text(...)`. All branching uses typed values.
 
 ## Scope Control
 
-Keep refactors mechanical unless the task explicitly asks for design or behavior changes.
+Keep refactors mechanical unless the task explicitly asks for design or behavior changes. Scope: `00A` §3.
 
 When splitting files, moving folders, or renaming types:
 
@@ -230,6 +246,8 @@ When reading or searching project files, use the dedicated Xcode tools — never
 
 Bash `grep` and `find` trigger a permission prompt on every call. The Xcode tools are faster and don't have that overhead.
 
+Anything beyond one plain command is a short `python3` script (`00A` §9).
+
 ---
 
 ## Validation
@@ -240,17 +258,19 @@ Before marking any task complete:
 
 2. **Build incrementally** when touching multiple files — especially after deletions or cross-file renames. Do not accumulate edits across many files and build only at the end. If you removed a public API, build immediately to surface every broken call site.
 
-3. Use `XcodeRefreshCodeIssuesInFile` as a fast sanity check during implementation — not as a substitute for a full build.
+3. Run the suites on the pinned destination (`00B` §5).
 
-4. Confirm each new view has its own file and a `#Preview`.
+4. Use `XcodeRefreshCodeIssuesInFile` as a fast sanity check during implementation — not as a substitute for a full build.
+
+5. Confirm each new view has its own file and a `#Preview`.
+
+Warnings: `00A` §8.
 
 ---
 
 ## Testing
 
-Tests are opt-in. Add or run tests only when explicitly requested.
-
-Default validation: targeted diagnostics + a full Xcode build. Do not spend conversation time on tests unless the request explicitly makes testing the focus.
+Tests are added or run when a task names them. When they run, `00A` §7 and `00B` §5 apply.
 
 ---
 
@@ -288,8 +308,4 @@ Rules:
 
 ## AppConfig Guards
 
-Debug-only features (dice diagnostic logging, layout overlays, debug HUD) must be gated behind `AppConfig` flags. Before shipping, confirm:
-
-- `AppConfig.DebugDice.showHarness = false`
-- `AppConfig.DebugDice.logRollDiagnostics = false`
-- `AppConfig.DebugLayout.isEnabled = false`
+Debug-only features (dice diagnostic logging, layout overlays, debug HUD) must be gated behind `AppConfig` flags. Before shipping: `00B` §6.

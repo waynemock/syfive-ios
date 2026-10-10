@@ -30,8 +30,8 @@ struct DiceAreaView: View {
     @State private var feelAdapter: DiceFeelAdapter?
     @State private var suppressNextPlayerChangeDiceClear = false
     @State private var isAwaitingInitialTurnStart = false
-    @State private var commentaryFeedback: String? = nil
-    @State private var commentaryFeedbackTask: Task<Void, Never>? = nil
+    /// Commentary on/off feedback, hung just below the Roll button (D-141).
+    @State private var commentaryToast: Toast?
     @Environment(FeelDirector.self) private var director
     @Environment(CelebrationCoordinator.self) private var celebrationCoordinator
     @Environment(GameNightController.self) private var gameNight
@@ -86,8 +86,12 @@ struct DiceAreaView: View {
                 wireGameNightHooks()
             }
         }
-        .onChange(of: gameNight.isSessionActive) { _, active in
-            if active { wireGameNightHooks() }
+        // Keyed on the activation count, not isSessionActive: when one live session replaces
+        // another, isSessionActive goes true → false → true in one render pass and its onChange
+        // never fires, but the controller's teardown has already cleared the roll-theatre hooks
+        // (16 §11). The count rises on every session arrival, after that teardown.
+        .onChange(of: gameNight.session.sessionActivationCount) { _, _ in
+            if gameNight.isSessionActive { wireGameNightHooks() }
         }
         .onChange(of: model.currentPlayerIndex) { _, _ in
             if suppressNextPlayerChangeDiceClear {
@@ -118,7 +122,8 @@ struct DiceAreaView: View {
                 IconButton(gameNight.commentaryIsSuppressed ? "quote.bubble" : "quote.bubble.fill") {
                     let willSuppress = !gameNight.commentaryIsSuppressed
                     gameNight.setCommentarySuppressed(willSuppress)
-                    showCommentaryFeedback(suppressed: willSuppress)
+                    commentaryToast = Toast(willSuppress ? "Commentary off" : "Commentary on",
+                                            systemImage: willSuppress ? "quote.bubble" : "quote.bubble.fill")
                 }
                 .frame(width: rollControlHeight + 8, height: rollControlHeight, alignment: .trailing)
                 .padding(.trailing, 8)
@@ -178,6 +183,9 @@ struct DiceAreaView: View {
                 .buttonStyle(.borderedProminent)
                 .frame(minWidth: 0)
                 .disabled(!canRoll)
+                // Commentary on/off feedback slides down out from under the Roll button
+                // (D-141; placement by Pops, 10 Oct 2026).
+                .toast($commentaryToast, bottomPadding: 4, placement: .belowBottom)
 
                 IconButton("arrow.uturn.backward.circle.fill") {
                     if gameNight.isSessionActive && gameNight.phase == .inProgress && gameNight.role != .host {
@@ -202,14 +210,14 @@ struct DiceAreaView: View {
                 .opacity(isUndoTurn ? 1 : 0)
                 .disabled(!isUndoTurn)
             }
+            // Above the status row, so the commentary toast hanging from the Roll button draws
+            // over it rather than under it.
+            .zIndex(1)
 
             VStack(spacing: 4) {
                 if let stuckMessage = diceRoller.stuckDiceMessage, isLocalTurn {
                     Text(stuckMessage)
                         .foregroundStyle(.red)
-                } else if let msg = commentaryFeedback {
-                    Text(msg)
-                        .foregroundStyle(.secondary)
                 } else if model.canScore {
                     Text("Choose a category to score")
                         .foregroundStyle(.secondary)
@@ -291,16 +299,6 @@ struct DiceAreaView: View {
     }
 
     // MARK: - Helpers
-
-    private func showCommentaryFeedback(suppressed: Bool) {
-        commentaryFeedbackTask?.cancel()
-        commentaryFeedback = suppressed ? "Commentary off" : "Commentary on"
-        commentaryFeedbackTask = Task {
-            try? await Task.sleep(for: .seconds(2))
-            guard !Task.isCancelled else { return }
-            withAnimation { commentaryFeedback = nil }
-        }
-    }
 
     private var isUndoTurn: Bool {
         if gameNight.isSessionActive, gameNight.phase == .inProgress {

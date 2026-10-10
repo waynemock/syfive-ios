@@ -57,7 +57,7 @@ struct UnfinishedMatchDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 currentScoresCard
-                if let prog = matchProgression(from: match) {
+                if let prog = matchProgression(from: match, includeInProgress: true) {
                     progressionCard(prog)
                 }
                 scorecardsCard

@@ -382,11 +382,13 @@ final class MatchController {
         for p in matchModel.participants.sorted(by: { $0.seat < $1.seat }) {
             let themeType = Theme.ThemeType(rawValue: p.displayThemeID) ?? .midnight
             let scores: [YatzyCategory: Int] = Dictionary(
-                uniqueKeysWithValues: p.scoreEntries.compactMap { entry in
+                p.scoreEntries.compactMap { entry in
                     guard let cat = YatzyCategory(rawValue: entry.slotKey),
                           let val = entry.value else { return nil }
                     return (cat, NSDecimalNumber(decimal: val).intValue)
-                }
+                },
+                // Two entries for one category (a sync conflict) keep the first, not trap.
+                uniquingKeysWith: { first, _ in first }
             )
             playerScores.append(scores)
             playerYatzyBonuses.append(p.bonusPoints)
@@ -397,11 +399,13 @@ final class MatchController {
             participantIDs.append(p.id)
             slotIDs.append(UUID())
             let timestamps: [YatzyCategory: Date] = Dictionary(
-                uniqueKeysWithValues: p.scoreEntries.compactMap { entry in
+                p.scoreEntries.compactMap { entry in
                     guard let cat = YatzyCategory(rawValue: entry.slotKey),
                           let at = entry.recordedAt else { return nil }
                     return (cat, at)
-                }
+                },
+                // Two entries for one category (a sync conflict) keep the first, not trap.
+                uniquingKeysWith: { first, _ in first }
             )
             playerScoreTimestamps.append(timestamps)
         }
@@ -648,6 +652,11 @@ final class MatchController {
         gameJustEnded: Bool
     ) {
         if gameJustEnded {
+            // A solo game has no winner and no runner-up (D-133).
+            if playerCount == 1 {
+                sink(.soloFinished(player: playerDisplayNames[0], score: totalScore(for: 0)))
+                return
+            }
             guard let winScore = (0..<playerCount).map({ totalScore(for: $0) }).max() else { return }
             let winners = winnerIndices
             if winners.count == 1, let w = winners.first {
@@ -685,7 +694,8 @@ final class MatchController {
         }
         // Lead change (sole new leader different from before)
         let newLeaders = leaderIndices
-        if newLeaders.count == 1 && newLeaders != previousLeaderIndices, let leader = newLeaders.first {
+        if playerCount > 1 && newLeaders.count == 1 && newLeaders != previousLeaderIndices,
+           let leader = newLeaders.first {
             let byScore = (0..<playerCount).sorted { totalScore(for: $0) > totalScore(for: $1) }
             let runnerUpIdx = byScore.first { $0 != leader }
             sink(.leadChange(leader: playerDisplayNames[leader],
@@ -741,11 +751,11 @@ final class MatchController {
         let sorted = match.participants.sorted(by: { $0.seat < $1.seat })
 
         playerScores = sorted.map { p in
-            Dictionary(uniqueKeysWithValues: p.scoreEntries.compactMap { entry -> (YatzyCategory, Int)? in
+            Dictionary(p.scoreEntries.compactMap { entry -> (YatzyCategory, Int)? in
                 guard let cat = YatzyCategory(rawValue: entry.slotKey),
                       let val = entry.value else { return nil }
                 return (cat, NSDecimalNumber(decimal: val).intValue)
-            })
+            }, uniquingKeysWith: { first, _ in first })   // a duplicate category keeps the first, not trap
         }
         playerScoreTimestamps = sorted.map { _ in [:] }
         playerYatzyBonuses = sorted.map { $0.bonusPoints }

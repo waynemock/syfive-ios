@@ -9,58 +9,36 @@ import SwiftData
 
 extension ContentView {
 
-    /// Leading nav bar button — tracks Game Night state when a session is active or pending,
-    /// otherwise shows the standard new-game / reset button.
+    /// Where this device stands with Game Night, read from `body` so the menu and the leading
+    /// control follow the session (17 §4.8).
+    var gameNightEntry: GameNightEntryState { GameNightEntryState(session: gameNight.session) }
+
+    /// Leading nav bar button. SyLib's Game Night control when the state has one (D-140);
+    /// otherwise SyFive's Play Again for a host whose match is over, or the standard
+    /// new-game / reset button.
     @ViewBuilder
     var leadingNavButton: some View {
-        if gameNight.isSessionPending {
-            // Invite sent. With Messages SharePlay the host's session only arrives when
-            // they tap the system SharePlay banner — explain that rather than just cancelling.
+        if let control = gameNightEntry.leadingControl {
+            GameNightLeadingControlButton(control) {
+                switch control {
+                case .start:
+                    gameNight.beginHosting(
+                        onNeedsConversation: { showsInviteInstructions = true },
+                        onReadyToSeat: { presentGameNightSheetOrAlert() }
+                    )
+                case .inviteSent: showsGameNightPendingSheet = true
+                case .setup:      showsGameNight = true
+                case .end:        gnAlerts.showsCancelSession = true
+                case .active:     break   // drawn as a status; never called
+                }
+            }
+        } else if gameNight.isSessionActive && gameNight.role == .host && gameNight.phase == .completed {
             Button {
-                showsGameNightPendingSheet = true
+                startGameNightRematch()
             } label: {
-                Image(systemName: "person.3.fill")
+                Image(systemName: "arrow.clockwise.circle")
             }
-            .accessibilityLabel("Game Night Invite Sent")
-            .tint(Color.green)
-        } else if gameNight.isSessionActive {
-            if gameNight.phase == .settingTable {
-                Button { showsGameNight = true } label: {
-                    Image(systemName: "person.3.fill")
-                }
-                .accessibilityLabel("Game Night Setup")
-                .tint(Color.green)
-            } else if gameNight.phase == .inProgress && gameNight.role == .host {
-                Button {
-                    gnAlerts.showsCancelSession = true
-                } label: {
-                    Image(systemName: "person.3.fill")
-                }
-                .accessibilityLabel("End Game Night")
-                .tint(Color.green)
-            } else if gameNight.phase == .completed && gameNight.role == .host {
-                Button {
-                    startGameNightRematch()
-                } label: {
-                    Image(systemName: "arrow.clockwise.circle")
-                }
-                .accessibilityLabel("Play Again")
-            } else {
-                // Guest during active session — green indicator, non-interactive.
-                Image(systemName: "person.3.fill")
-                    .foregroundStyle(Color.green)
-            }
-        } else if gameNight.session.isEligibleForGroupSession {
-            // Active FaceTime/iMessage call — promote Game Night as the primary action.
-            Button {
-                gameNight.beginHosting(
-                    onNeedsConversation: { showsInviteInstructions = true },
-                    onReadyToSeat: { presentGameNightSheetOrAlert() }
-                )
-            } label: {
-                Image(systemName: "person.3.fill")
-            }
-            .accessibilityLabel("Game Night")
+            .accessibilityLabel("Play Again")
         } else if model.hasGameActivity && !model.isGameOver {
             // Active game — reset button opens the pause/delete alert.
             Button { showsResetAlert = true } label: {
@@ -80,84 +58,28 @@ extension ContentView {
         }
     }
 
-    /// Context-aware Game Night section for the main menu. Never calls activate()
-    /// when a session is already live — prevents the iOS "Replace?" conflict dialog
-    /// that appears when a second device tries to start while the host's session is
-    /// still propagating via GroupActivities.
+    /// The Game Night items of the main menu: SyLib's section (D-140), with SyFive's Play Again
+    /// in the app slot for a host whose match is over.
     @ViewBuilder
     var gameNightMenuSection: some View {
-        if !gameNight.isSessionActive && !gameNight.isSessionPending {
-            // No session and no pending invite — offer to start one as host.
-            Button {
+        GameNightMenuSection(
+            state: gameNightEntry,
+            onStart: {
                 gameNight.beginHosting(
                     onNeedsConversation: { showsInviteInstructions = true },
-                    onReadyToSeat: { presentGameNightSheetOrAlert() }
-                )
-            } label: {
-                Label("Start Game Night", systemImage: "person.3.fill")
-            }
-            Button { showsGameNightHelp = true } label: {
-                Label("Game Night Help", systemImage: "questionmark.circle")
-            }
-        } else if gameNight.isSessionPending {
-            // Invite sent — waiting for recipients to accept. Block a second invite.
-            Button(role: .destructive) {
-                gnAlerts.showsCancelSession = true
-            } label: {
-                Label("Cancel Game Night Invite", systemImage: "xmark.circle")
-            }
-            Button { showsGameNightHelp = true } label: {
-                Label("Game Night Help", systemImage: "questionmark.circle")
-            }
-        } else {
-            // Active session — show phase-appropriate actions; never re-activate.
-            if gameNight.phase == .settingTable {
-                Button { showsGameNight = true } label: {
-                    Label("Game Night Setup", systemImage: "person.3.fill")
+                    onReadyToSeat: { presentGameNightSheetOrAlert() })
+            },
+            onCancelInvite: { gnAlerts.showsCancelSession = true },
+            onOpenSetup: { showsGameNight = true },
+            onEnd: { gnAlerts.showsCancelSession = true },
+            onShowHelp: { showsGameNightHelp = true }
+        ) {
+            if gameNight.isSessionActive && gameNight.role == .host && gameNight.phase == .completed {
+                Button { startGameNightRematch() } label: {
+                    Label("Play Again", systemImage: "arrow.clockwise.circle")
                 }
-            }
-            if gameNight.role == .host {
-                if gameNight.phase == .inProgress {
-                    Button(role: .destructive) {
-                        gnAlerts.showsCancelSession = true
-                    } label: {
-                        Label("End Game Night", systemImage: "xmark.circle")
-                    }
-                }
-                if gameNight.phase == .completed {
-                    Button {
-                        startGameNightRematch()
-                    } label: {
-                        Label("Play Again", systemImage: "arrow.clockwise.circle")
-                    }
-                }
-            } else if gameNight.phase == .settingTable {
-                // Escape hatch: when both devices relaunch as guests with no host,
-                // let a non-host end the broken session from the menu.
-                Button(role: .destructive) {
-                    gnAlerts.showsCancelSession = true
-                } label: {
-                    Label("End Game Night", systemImage: "xmark.circle")
-                }
-            } else if gameNight.role != .host && gameNight.phase == .inProgress {
-                // Guest during active game — green status indicator, no action.
-                Button { } label: {
-                    Label("Game Night Active", systemImage: "person.3.fill")
-                }
-                .tint(Color.green)
-            }
-            Button { showsGameNightHelp = true } label: {
-                Label("Game Night Help", systemImage: "questionmark.circle")
             }
         }
-    }
-
-    /// True when the leading area is showing a Game Night action (not the plain + / ↺ button).
-    /// Controls visibility of the help (?) button that sits to the right of it.
-    var showsGameNightHelpButton: Bool {
-        (gameNight.session.isEligibleForGroupSession && !gameNight.isSessionActive && !gameNight.isSessionPending) ||
-        gameNight.isSessionPending ||
-        (gameNight.isSessionActive && gameNight.phase == .settingTable)
     }
 
     var gameNightHelpContext: GameNightHelpSheet.Context {
@@ -181,46 +103,29 @@ extension ContentView {
     /// Creates PlayerModel records for any remote participants whose playerID doesn't
     /// exist in local storage yet. Called when a Game Night match goes .inProgress so
     /// every device has a full player roster for stats and future merge UI.
-    /// Applies the same name+initials collision check as ensurePlayerModels() — if a local
-    /// roster player already exists, all participants are remapped immediately rather than
-    /// creating a duplicate gameNight-sourced entry.
+    /// The name-and-initials rule is SyLib's (`upsertGameNightRoster`, D-137): a remote player
+    /// with the same name and initials as a local one is remapped onto it, except that a local
+    /// player seated at this table never captures one, and one local player captures at most
+    /// one incoming player per call.
     func upsertGameNightPlayerModels() {
         guard gameNight.isSessionActive else { return }
-        var changed = false
+        var players: [GameNightRosterPlayer] = []
         for i in 0..<model.playerCount {
             guard let playerID = model.playerIDs[i] else { continue }
-
-            var byID = FetchDescriptor<PlayerModel>(predicate: #Predicate { $0.id == playerID })
-            byID.fetchLimit = 1
-            if (try? modelContext.fetch(byID))?.first != nil { continue }
-
-            let pName = model.playerDisplayNames[i]
-            let pInitials = model.playerDisplayInitials[i]
-            let localSource = PlayerSource.local.rawValue
-            var byName = FetchDescriptor<PlayerModel>(
-                predicate: #Predicate { $0.name == pName && $0.initials == pInitials && $0.sourceRaw == localSource }
-            )
-            byName.fetchLimit = 1
-            if let canonical = (try? modelContext.fetch(byName))?.first {
-                let allParticipants = (try? modelContext.fetch(FetchDescriptor<ParticipantModel>())) ?? []
-                for participant in allParticipants where participant.playerID == playerID {
-                    participant.playerID = canonical.id
-                }
-                logger.info(self, "upsertGameNightPlayerModels: remapped '\(pName)' \(playerID) → \(canonical.id)")
-                changed = true
-                continue
-            }
-
-            let newPM = PlayerModel()
-            newPM.id = playerID
-            newPM.name = pName
-            newPM.initials = pInitials
-            newPM.themeID = model.playerThemes[i].rawValue
-            newPM.source = PlayerSource.gameNight
-            modelContext.insert(newPM)
-            changed = true
+            players.append(GameNightRosterPlayer(
+                id: playerID,
+                name: model.playerDisplayNames[i],
+                initials: model.playerDisplayInitials[i],
+                themeID: model.playerThemes[i].rawValue))
         }
-        if changed { try? modelContext.save() }
+        let seated = Set(model.playerIDs.compactMap { $0 })
+            .union(gameNight.seats.compactMap { $0.playerID })
+        do {
+            let changes = try upsertGameNightRoster(players, seatedPlayerIDs: seated, in: modelContext)
+            if !changes.isEmpty {
+                logger.info(self, "roster upsert: inserted \(changes.insertedIDs.count), remapped \(changes.remapped.count)")
+            }
+        } catch { logger.error(self, "roster upsert failed: \(error)") }
     }
 
     func startGameNightRematch() {

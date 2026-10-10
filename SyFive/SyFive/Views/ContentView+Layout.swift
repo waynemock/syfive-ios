@@ -35,6 +35,9 @@ extension ContentView {
             })
                 .background(debugColor(Color.red.opacity(0.25)))
                 .frame(maxWidth: .infinity, maxHeight: isPortrait ? .infinity : landscapeDiceMaxHeight, alignment: .top)
+                // Above the scorecard, so the commentary toast that hangs below the roll
+                // controls draws over the scorecard's top edge rather than under it.
+                .zIndex(1)
             ScorecardView(model: model, availableWidth: scorecardAvailableWidth)
                 .padding(.horizontal, -24)
                 .background(debugColor(Color.green.opacity(0.25)))
