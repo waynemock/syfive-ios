@@ -383,7 +383,6 @@ final class GameNightController {
         case .scoreChosen:  handleScoreChosen(envelope, from: senderID)
         case .undoRequest:  handleUndoRequest(envelope, from: senderID)
         case .commentary:   handleCommentary(envelope)
-        default:            break
         }
     }
 

@@ -79,10 +79,8 @@ struct ContentView: View {
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     if !(appSettings?.helpDismissed ?? false) {
-                        Button { showsHowToPlay = true } label: {
-                            Image(systemName: "questionmark.circle")
-                        }
-                        .accessibilityLabel("How to Play")
+                        IconButton("questionmark.circle") { showsHowToPlay = true }
+                            .accessibilityLabel("How to Play")
                     }
                     Menu {
                         if !(appSettings?.helpDismissed ?? false) {
@@ -447,7 +445,8 @@ struct ContentView: View {
                 director.handleForeground()
                 LegacyYahtzeeRepair.run(in: modelContext)
                 LegacyRematchRepair.run(in: modelContext)
-            default: break
+            case .inactive: break
+            @unknown default: break
             }
         }
         .onChange(of: model.isGameOver) { _, isGameOver in

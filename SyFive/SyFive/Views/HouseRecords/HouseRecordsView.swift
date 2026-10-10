@@ -20,11 +20,11 @@ struct HouseRecordsView: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 14) {
-                    SectionHeader(title: "All Games", subtitle: "Solo and multiplayer")
+                    RecordsSectionHeader(title: "All Games", subtitle: "Solo and multiplayer")
                     ForEach(titles.filter { $0.category == .event }) { title in
                         TitleCard(title: title)
                     }
-                    SectionHeader(title: "Head-to-Head", subtitle: "Multiplayer only")
+                    RecordsSectionHeader(title: "Head-to-Head", subtitle: "Multiplayer only")
                         .padding(.top, 8)
                     ForEach(titles.filter { $0.category == .standing }) { title in
                         TitleCard(title: title)
@@ -46,7 +46,7 @@ struct HouseRecordsView: View {
 
 // MARK: - Section header
 
-private struct SectionHeader: View {
+private struct RecordsSectionHeader: View {
     @Environment(\.theme) private var theme
     
     let title: String
