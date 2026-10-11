@@ -29,6 +29,7 @@ struct SettingsView: View {
 
 private struct SettingsForm: View {
     @Environment(\.theme) private var theme
+    @Environment(CommentaryVoices.self) private var commentaryVoices
     
     @Bindable var settings: AppSettingsModel
 
@@ -67,10 +68,17 @@ private struct SettingsForm: View {
             }
 
             Section {
-                NavigationLink {
+                // Mode, Level, Personality and the voice in use, with Preview (20 §4.2, D-146).
+                let personality = CommentaryPersonality.find(id: settings.commentaryPersonalityID)
+                CommentarySettingsRows(
+                    mode: settings.commentaryMode,
+                    level: CommentaryLevel(rawValue: settings.commentaryLevelRaw) ?? .highlights,
+                    personality: personality,
+                    voice: commentaryVoices.voiceInUse(for: personality.id,
+                                                       savedID: UserDefaults.standard.commentaryVoiceID),
+                    accentColor: theme.primaryAccent
+                ) {
                     CommentaryScreen(settings: settings)
-                } label: {
-                    LabeledContent("Commentary", value: settings.commentaryMode.displayName)
                 }
             } header: {
                 Text("Commentary")

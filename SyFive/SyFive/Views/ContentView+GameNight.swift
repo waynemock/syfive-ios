@@ -13,48 +13,72 @@ extension ContentView {
     /// control follow the session (17 §4.8).
     var gameNightEntry: GameNightEntryState { GameNightEntryState(session: gameNight.session) }
 
+    /// Which control the leading nav bar shows. The conditions live here, in one place, so
+    /// leadingNavButton draws from it and its changes can be logged (18 §4.6). The order is
+    /// the order the branches have always had.
+    var leadingNavSlot: LeadingNavSlot {
+        if gameNightEntry.leadingControl != nil {
+            return .gameNight
+        } else if gameNight.isSessionActive && gameNight.role == .host && gameNight.phase == .completed {
+            return .hostRematch
+        } else if model.hasGameActivity && !model.isGameOver {
+            return .newGame
+        } else if model.isGameOver {
+            return .playAgain
+        } else {
+            return .empty
+        }
+    }
+
     /// Leading nav bar button. SyLib's Game Night control when the state has one (D-140);
     /// otherwise SyFive's Play Again for a host whose match is over, or the standard
     /// new-game / reset button.
     @ViewBuilder
     var leadingNavButton: some View {
-        if let control = gameNightEntry.leadingControl {
-            GameNightLeadingControlButton(control) {
-                switch control {
-                case .start:
-                    gameNight.beginHosting(
-                        onNeedsConversation: { showsInviteInstructions = true },
-                        onReadyToSeat: { presentGameNightSheetOrAlert() }
-                    )
-                case .inviteSent: showsGameNightPendingSheet = true
-                case .setup:      showsGameNight = true
-                case .end:        gnAlerts.showsCancelSession = true
-                case .active:     break   // drawn as a status; never called
+        switch leadingNavSlot {
+        case .gameNight:
+            if let control = gameNightEntry.leadingControl {
+                GameNightLeadingControlButton(control) {
+                    switch control {
+                    case .start:
+                        gameNight.beginHosting(
+                            onNeedsConversation: { showsInviteInstructions = true },
+                            onReadyToSeat: { presentGameNightSheetOrAlert() }
+                        )
+                    case .inviteSent: showsGameNightPendingSheet = true
+                    case .setup:      showsGameNight = true
+                    case .end:        gnAlerts.showsCancelSession = true
+                    case .active:     break   // drawn as a status; never called
+                    }
                 }
             }
-        } else if gameNight.isSessionActive && gameNight.role == .host && gameNight.phase == .completed {
+        case .hostRematch:
             Button {
                 startGameNightRematch()
             } label: {
                 Image(systemName: "arrow.clockwise.circle")
             }
             .accessibilityLabel("Play Again")
-        } else if model.hasGameActivity && !model.isGameOver {
+        case .newGame:
             // Active game — reset button opens the pause/delete alert.
             Button { showsResetAlert = true } label: {
                 Image(systemName: "arrow.clockwise")
             }
             .accessibilityLabel("New Game")
-        } else if model.isGameOver {
+        case .playAgain:
             // Game finished — one-tap play again with same players.
             Button {
+                logModelState("playAgain(toolbar) before")
                 model.abandonMatch(in: modelContext)
                 model.resetGame()
                 celebrationCoordinator.clearWinnerAnnouncement()
+                logModelState("playAgain(toolbar) after")
             } label: {
                 Image(systemName: "plus")
             }
             .accessibilityLabel("Play Again")
+        case .empty:
+            EmptyView()
         }
     }
 
@@ -159,4 +183,10 @@ extension ContentView {
         guard let gameID = (try? modelContext.fetch(gameDesc))?.first?.id else { return nil }
         return (match.id, gameID)
     }
+}
+
+/// The control in the leading nav bar slot (18 §4.6). Its changes are logged, to diagnose a
+/// restart button that went missing mid-game.
+enum LeadingNavSlot: Equatable {
+    case gameNight, hostRematch, newGame, playAgain, empty
 }

@@ -237,6 +237,10 @@ struct ContentView: View {
         .task {
             await updateState.check()
             await director.warmUp()
+        }
+        .task {
+            // Never behind the App Store check: until the scan lands, voiceInUse is nil and
+            // commentary speaks in the system voice (18 §4.1).
             await commentaryVoices.refresh()
         }
         .onReceive(NotificationCenter.default.publisher(
@@ -388,7 +392,13 @@ struct ContentView: View {
             if newPhase == .settingTable && gameNight.isSessionActive { showsGameNight = true }
         }
         .onChange(of: model.playerCount) { saveMatch() }
-        .onChange(of: model.playerScores) { saveMatch() }
+        .onChange(of: model.playerScores) {
+            logger.info(self, "playerScores changed: scored=\(model.playerScores.reduce(0) { $0 + $1.count }) hasGameActivity=\(model.hasGameActivity)")
+            saveMatch()
+        }
+        .onChange(of: leadingNavSlot) { old, new in
+            logger.info(self, "leading slot: \(old) → \(new) hasGameActivity=\(model.hasGameActivity) over=\(model.isGameOver) players=\(model.playerCount)")
+        }
         .onChange(of: appSettings?.soundModeRaw) { _, _ in handleSoundModeChanged() }
         .onChange(of: appSettings?.hapticsEnabled) { _, v in director.hapticsEnabled = v ?? true }
         .onChange(of: appSettings?.commentaryModeRaw)        { _, _ in syncCommentaryEngine() }

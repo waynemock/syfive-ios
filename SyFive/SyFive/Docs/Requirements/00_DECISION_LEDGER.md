@@ -44,6 +44,8 @@ file is HEAD.*
 | D-129 | **SyFive's store and catalogue seed never move into SyLib.** The container in `SyFiveApp.swift` and `seedYatzyGameIfNeeded()` stay SyFive's. `makeScoringContainer`, `makeInMemoryScoringContainer` and `seedCatalogGame` are never adopted. | `14 §3.12` (Syderal L-17) → `15 §2.4` |
 | D-131 | **Wire versions frozen for 1.1.0:** `appProtocolVersion` stays 1 and the transport stays 3, so 1.0.3 and 1.1.0 share a table. Raise either only with a doc that plans the split. | `14 §1.4` → `15 §2.3` |
 | D-139 | **The update badge** comes from SyLibCore's `AppUpdateState` and SyLibUI's `MoreMenu`. It clears when Update Available is tapped, and the acknowledgement is stored per store version. Never acknowledge on menu open: SwiftUI's `Menu` has no reliable signal for it. | `14 §3.11, §4.5` (Syderal Q-32, Q-33) → `17 §2.8` *(rec.)* |
+| D-144 | **The RealityKit launch assertion (`17` §11) is held for device evidence.** No SyLib dice change until it appears on hardware. Then a diagnosis task comes first, and a fix task must state how the fairness certification is kept (D-037). 1.1.0 is not held for it. | `17` §11 → `18` §2.4 (Pops, 11 Oct 2026) |
+| D-145 | **The How to Play "Got it" button is SyLibUI's `HelpDismissButton`**: a `CapsuleButton` in the `.accent` style, centred, the same in every app, saying "Got it, hide this", then the alert "Hide the help button?" with the message "How to Play stays in the Menu, in the last section with About. You can open it any time." The How to Play pages stay app-owned. SyFive adopts it in 1.1.0; Syderal in its `24`. | `19` §2 (Pops, 11 Oct 2026; wording *(rec.)*) → Pops, 11 Oct 2026 (single `CapsuleButton` look, centred; the `.link` / `.prominent` styles removed) |
 
 ## Product & rules
 
@@ -197,6 +199,7 @@ file is HEAD.*
 | D-132 | **Muting cuts speech at once.** Any change from unmuted to muted stops the line being spoken and drops the queue: the commentary button, Sound set to Off, or proximity muting a guest when ranging begins. (Proximity's verdicts and timeout only unmute, D-GNP-005.) The host's broadcast to guests is unaffected (D-130). | `14 §4.5` (Syderal Q-22) → `16 §2.2` |
 | D-133 | **A solo game has no winner and no lead.** With one player, game over emits `soloFinished` (tokens `player`, `score`; celebration tier) in place of `winnerDeclared`, and `leadChange` is never emitted. Every pack carries `soloFinished` lines. | `14 §4.5` → `16 §2.3` |
 | D-141 | **Commentary on/off feedback is a SyLibUI `Toast`** that slides down out from under the Roll button (`placement: .belowBottom`, 4 pt gap), over the status row beneath it: two seconds, no taps, never over the roll controls themselves. | `14 §3.11` → `17 §2.10` *(rec.)* → Pops, 10 Oct 2026 (placement) |
+| D-146 | **The Settings commentary section uses SyLib's `CommentarySettingsRows`**: a link showing Mode, Level, Personality and the voice in use (or "…" until the scan lands), and a Preview button that speaks the personality's preview line in that voice. All four lines and Preview show in every mode. Leaving the row stops a preview. Syderal uses the same rows with "Commentator" (Syderal `24`). | `20` §2 (Pops, 11 Oct 2026) |
 
 ## Game Night Commentary
 
@@ -246,6 +249,21 @@ file is HEAD.*
 | D-GNP-019 | `SyLibCommentary`: `onWillSpeak` fires before the `isMuted` guard *Broadcast is a session concern, mute is a local-speaker concern; corrects a host with sound off silencing the table* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
 | D-GNP-020 | Transport version bumps to 3 for the three new proximity message kinds *Existing version-mismatch UI handles the incompatibility* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
 | D-GNP-021 | Companion-device UWB proxy for iPad participants — DEAD END, do not revisit without new hardware facts *Proxy locates the person, not the speaking device; pocketed phones give unreliable readings* | `16_GAME_NIGHT_PROXIMITY_MUTE §12` |
+| D-GNP-022 | The host's election (`onDecisionsElected`) carries an explicit decision for every registered participant. *(reconstructed from code, 11 Oct 2026)* | `GameNightProximity.swift` 82 |
+| D-GNP-023 | *Not known.* No code or doc in either tree cites this ID. | — |
+| D-GNP-024 | Ranging begins at seat claiming when `commentaryEnabled` is true (extends D-GNP-010). *(reconstructed from code, 11 Oct 2026)* | `GameNightProximity.swift` 153 |
+| D-GNP-025 | `begin` needs a non-nil `localSharePlayID`; a caller without one defers. It is called from three places (session activation, the first `tableState`, seat claiming), so the first moment the id exists wins. It is idempotent once begun. *(reconstructed from code, 11 Oct 2026)* | `GameNightProximity.swift` 155; `GameNightController.swift` 49, 194, 239 |
+| D-GNP-026 | *Not known.* No code or doc in either tree cites this ID. | — |
+| D-GNP-027 | Presence is re-announced every 3 s until the resolution window opens. Directed tokens retry per peer, and each peer's retry is cancelled once a reading from it arrives. *(reconstructed from code, 11 Oct 2026)* | `GameNightProximity.swift` 104-106 |
+| D-GNP-028 | A non-UWB device announces that it cannot range (`ProximityTokenPayload.supportsRanging == false`), and the host leaves it out of `expectedPairs` so the remaining pairs can still resolve early. The field defaults to `true` for older builds. *(reconstructed from code, 11 Oct 2026)* | `GameNightPayloads.swift` 141-155; `GameNightProximity.swift` 88, 111; `GameNightSession.swift` 118 |
+| D-GNP-029 | *Not known.* No code or doc in either tree cites this ID. | — |
+| D-GNP-030 | The proximity callbacks are wired once for the controller's lifetime and never cleared at teardown. Clearing them left every session after the first sending nothing ("nine presence announcements, zero transmissions"). *(reconstructed from code, 11 Oct 2026)* | `GameNightController.swift` 510; `GameNightProximity.swift` 179 |
+| D-GNP-031 | The host runs the same match-start path as its guests (`lockSeatMap`, `openResolutionWindow`, through `onMatchStarted`). Without it the host arms no arbitration deadline and broadcasts no verdict. *(reconstructed from code, 11 Oct 2026)* | `GameNightMatchCoordinator.swift` 225-228 |
+| D-GNP-032 | Presence retry interval 3 s, at most 10 attempts (30 s in all). *(reconstructed from code, 11 Oct 2026)* | `GameNightProximity.swift` 44-47 |
+| D-GNP-033 | The presence retry checks NISession coverage against rangeable peers only (`allSharePlayIDsProvider`), leaving out this device and incapable peers. *(reconstructed from code, 11 Oct 2026)* | `GameNightProximity.swift` 114; `GameNightController.swift` 136 |
+| D-GNP-034 | A peer's presence is answered once (`answeredPresencePeers`), so repeated broadcasts produce no duplicate announcements. *(reconstructed from code, 11 Oct 2026)* | `GameNightProximity.swift` 122 |
+| D-GNP-035 | The presence retry stops when the phase moves past `.settingTable` (`phaseProvider`), not only on task cancellation, and logs a searchable line when it does. *(reconstructed from code, 11 Oct 2026)* | `GameNightProximity.swift` 118; `GameNightController.swift` 141 |
+| D-GNP-036 | The `begin` call at session activation is effectively host-only. Guests have no `commentaryEnabled` until the host's `tableState` arrives, so their effective call site is the `tableState` handler. *(reconstructed from code, 11 Oct 2026)* | `ContentView.swift` 300-303 |
 
 ## House Records
 

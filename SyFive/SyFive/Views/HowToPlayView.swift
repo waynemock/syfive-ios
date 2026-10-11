@@ -1,10 +1,10 @@
 import SwiftUI
+import SyLibUI
 
 struct HowToPlayView: View {
     var settings: AppSettingsModel?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.theme) private var theme
-    @State private var showsDismissAlert = false
 
     var body: some View {
         NavigationStack {
@@ -46,12 +46,9 @@ struct HowToPlayView: View {
                         categoriesBlock
 
                         if settings?.helpDismissed != true {
-                            Button {
-                                showsDismissAlert = true
-                            } label: {
-                                Text("Got it, hide this")
-                                    .font(.subheadline)
-                                    .foregroundStyle(theme.primaryAccent)
+                            HelpDismissButton(accentColor: theme.primaryAccent) {
+                                settings?.helpDismissed = true
+                                dismiss()
                             }
                             .padding(.top, 4)
                         }
@@ -67,15 +64,6 @@ struct HowToPlayView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                 }
-            }
-            .alert("Hide the help button?", isPresented: $showsDismissAlert) {
-                Button("Cancel", role: .cancel) {}
-                Button("Hide") {
-                    settings?.helpDismissed = true
-                    dismiss()
-                }
-            } message: {
-                Text("How to Play stays in the Menu, in the last section with About. You can open it any time.")
             }
         }
     }

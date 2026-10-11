@@ -42,15 +42,16 @@ struct MatchDetailView: View {
 
     // Keyed by participantID (p.id), which is what MatchProgressionChart uses.
     private var playerNames: [UUID: String] {
-        Dictionary(uniqueKeysWithValues: match.participants.map { p in
+        // A duplicate participant id (a sync conflict) keeps the first row, not trap (18 §4.2).
+        Dictionary(match.participants.map { p in
             (p.id, p.displayName)
-        })
+        }, uniquingKeysWith: { first, _ in first })
     }
 
     private var playerColors: [UUID: Color] {
-        Dictionary(uniqueKeysWithValues: match.participants.map { p in
+        Dictionary(match.participants.map { p in
             return (p.id, Theme.accent(forThemeID: p.displayThemeID, colorScheme: colorScheme))
-        })
+        }, uniquingKeysWith: { first, _ in first })
     }
 
     var body: some View {

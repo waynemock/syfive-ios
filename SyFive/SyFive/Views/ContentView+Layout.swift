@@ -27,10 +27,12 @@ extension ContentView {
                 if gameNight.isSessionActive {
                     startGameNightRematch()
                 } else {
+                    logModelState("playAgain(roll) before")
                     model.abandonMatch(in: modelContext)
                     model.resetGame()
                     celebrationCoordinator.clearAll()
                     celebrationCoordinator.clearWinnerAnnouncement()
+                    logModelState("playAgain(roll) after")
                 }
             })
                 .background(debugColor(Color.red.opacity(0.25)))

@@ -38,6 +38,7 @@ extension ContentView {
                     gnAlerts.pendingGuestReconnectMatchID = matchModel.id
                 }
             }
+            logModelState("launch: resumed in-progress")
             return
         }
 
@@ -58,6 +59,13 @@ extension ContentView {
             )
         }
         ensurePlayerModels(for: lastMatch.participants)
+        logModelState("launch: pre-populated from last completed")
+    }
+
+    /// One diagnostic line of the match state (18 §4.6): for the lost-restart-button and
+    /// lost-save report. Logs only; changes nothing.
+    func logModelState(_ label: String) {
+        logger.info(self, "\(label): players=\(model.playerCount) hasGameActivity=\(model.hasGameActivity) over=\(model.isGameOver) persistedMatchID=\(model.persistedMatchID?.uuidString ?? "nil") isGameNight=\(model.isGameNight) sessionActive=\(gameNight.isSessionActive)")
     }
 
     /// Detects orphaned participant UUIDs at launch and creates an archived PlayerModel for each
@@ -140,15 +148,31 @@ extension ContentView {
     }
 
     func saveMatch() {
-        guard model.hasGameActivity else { return }
-        guard model.playerCount > 0 else { return }
+        // Diagnostic lines (18 §4.6): each early return names its guard, and a failed save logs.
+        guard model.hasGameActivity else {
+            logger.info(self, "saveMatch: skipped — no score yet")
+            return
+        }
+        guard model.playerCount > 0 else {
+            logger.info(self, "saveMatch: skipped — no players")
+            return
+        }
         let yatzyID = ScoringSystemID.yatzy.rawValue
         let gameDescriptor = FetchDescriptor<GameModel>(
             predicate: #Predicate { $0.scoringSystemID == yatzyID }
         )
-        guard let gameID = (try? modelContext.fetch(gameDescriptor))?.first?.id else { return }
+        guard let gameID = (try? modelContext.fetch(gameDescriptor))?.first?.id else {
+            logger.info(self, "saveMatch: skipped — no Yatzy GameModel")
+            return
+        }
         model.save(to: modelContext, gameID: gameID)
-        try? modelContext.save()
+        do {
+            try modelContext.save()
+            let scored = model.playerScores.reduce(0) { $0 + $1.count }
+            logger.info(self, "saveMatch: saved matchID=\(model.persistedMatchID?.uuidString ?? "nil") players=\(model.playerCount) scored=\(scored) over=\(model.isGameOver)")
+        } catch {
+            logger.error(self, "saveMatch: save failed: \(error)")
+        }
         if model.isGameNight, let matchID = model.persistedMatchID {
             GameNightLogBuffer.shared.associateMatch(matchID: matchID)
         }
