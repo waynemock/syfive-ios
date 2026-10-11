@@ -209,26 +209,7 @@ None.
 
 | Item | Value |
 |---|---|
-| §4.1: SyLib total; Syderal build and total | **Done 11 Oct 2026.**
-- `PreviewSpeaker.stop()` added as given. `preview(line:prosody:voiceID:)` is unchanged.
-- New `Sources/SyLibCommentary/Views/CommentarySettingsRows.swift` (`#if os(iOS)`) with the given initialiser and body:
-  - four `LabeledContent` lines
-  - a centred Preview `Label` in `.headline` and `accentColor`
-  - `@State` `PreviewSpeaker`
-  - `.onDisappear { speaker.stop() }`
-- Two previews in a `Form` `Section`, with a stand-in personality: one with a voice, one with `voice: nil`.
-- Test `stoppingAQuietPreviewIsSafe` in a new `Tests/SyLibTests/SyLibCommentary/PreviewSpeakerTests.swift`.
-- Docs: `Commentary.md` gains a "Settings rows" section after `CommentarySettingsView`, with an example and the two adoption lines. Its `PreviewSpeaker` table gains `stop()`. The README's SyLibCommentary row lists `CommentarySettingsRows`.
-- Results:
-  - SyLib **1133 in 121 suites, passed** (19's 1132 + 1), 0 warnings.
-  - Syderal builds with no source edit; **897 / 893 passed / 4 skipped / 0 failed**, 0 warnings. This run also covers 19's later `HelpDismissButton` change.
-  - SyFive BuildProject clean |
-| §4.2: SyFive suite | **Done 11 Oct 2026.** `SettingsView.swift`, `SettingsForm`:
-- reads `@Environment(CommentaryVoices.self)`; it already had `theme`
-- the Commentary section's link is replaced with `CommentarySettingsRows` as given: personality via `CommentaryPersonality.find`, level falling back to `.highlights`, voice from `voiceInUse`, accent `theme.primaryAccent`, destination `CommentaryScreen(settings:)`
-- the header and `personalityTitle` are unchanged, at the default "Personality"
-- the §3 precondition is met: the Settings sheet gets `CommentaryVoices` (17 §4.6), and the `#Preview` injects one and builds
-
-BuildProject clean, 0 warnings; **SyFive 19/19** on the pinned destination. This run also covers 19's `HelpDismissButton` change |
+| §4.1: SyLib total; Syderal build and total | **Done 11 Oct 2026.**<br>• `PreviewSpeaker.stop()` added as given. `preview(line:prosody:voiceID:)` is unchanged.<br>• New `Sources/SyLibCommentary/Views/CommentarySettingsRows.swift` (`#if os(iOS)`) with the given initialiser and body:<br>&nbsp;&nbsp;◦ four `LabeledContent` lines<br>&nbsp;&nbsp;◦ a centred Preview `Label` in `.headline` and `accentColor`<br>&nbsp;&nbsp;◦ `@State` `PreviewSpeaker`<br>&nbsp;&nbsp;◦ `.onDisappear { speaker.stop() }`<br>• Two previews in a `Form` `Section`, with a stand-in personality: one with a voice, one with `voice: nil`.<br>• Test `stoppingAQuietPreviewIsSafe` in a new `Tests/SyLibTests/SyLibCommentary/PreviewSpeakerTests.swift`.<br>• Docs: `Commentary.md` gains a "Settings rows" section after `CommentarySettingsView`, with an example and the two adoption lines. Its `PreviewSpeaker` table gains `stop()`. The README's SyLibCommentary row lists `CommentarySettingsRows`.<br>• Results:<br>&nbsp;&nbsp;◦ SyLib **1133 in 121 suites, passed** (19's 1132 + 1), 0 warnings.<br>&nbsp;&nbsp;◦ Syderal builds with no source edit; **897 / 893 passed / 4 skipped / 0 failed**, 0 warnings. This run also covers 19's later `HelpDismissButton` change.<br>&nbsp;&nbsp;◦ SyFive BuildProject clean |
+| §4.2: SyFive suite | **Done 11 Oct 2026.** `SettingsView.swift`, `SettingsForm`:<br>• reads `@Environment(CommentaryVoices.self)`; it already had `theme`<br>• the Commentary section's link is replaced with `CommentarySettingsRows` as given: personality via `CommentaryPersonality.find`, level falling back to `.highlights`, voice from `voiceInUse`, accent `theme.primaryAccent`, destination `CommentaryScreen(settings:)`<br>• the header and `personalityTitle` are unchanged, at the default "Personality"<br>• the §3 precondition is met: the Settings sheet gets `CommentaryVoices` (17 §4.6), and the `#Preview` injects one and builds<br><br>BuildProject clean, 0 warnings; **SyFive 19/19** on the pinned destination. This run also covers 19's `HelpDismissButton` change |
 | P1 | **Pass** (confirmed by Pops on device, 11 Oct 2026) |
 | Ledger | D-146 pasted 11 Oct 2026 under Commentary, as written in §7 |

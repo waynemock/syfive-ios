@@ -10,7 +10,7 @@ The core game loop, dice system, scorecard UX, persistence, stats, feel system (
 
 **Overall progress: ~98% to 1.0 Definition of Done**
 
-**1.1.0:** Rebuilt on the post-Syderal SyLib; see `15` to `17`.
+**1.1.0:** Rebuilt on the post-Syderal SyLib; see `15` to `21`.
 
 ---
 

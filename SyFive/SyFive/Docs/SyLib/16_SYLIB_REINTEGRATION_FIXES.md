@@ -571,15 +571,26 @@ None, except Pops's approval of the copy in §5 (§2.4).
 | `SyFiveTests` (with `CommentaryPackTests`) | After §4.1: 17 total, 17 passed (14 `FeelTests` + 3 UI tests; `CommentaryPackTests` not yet added), 10 Oct 2026. After §4.2: 17 total, 17 passed. After §4.3: **two runs, each 16 of 17**. In each, a different UI launch test failed, and the app crashed inside an Apple framework. Run 1: `SyFiveUITestsLaunchTests.testLaunch` (Light, Portrait), "Lost connection to the application"; crash `SyFive-2026-10-10-111920.ips` is a SIGSEGV in `UIWindowAccessibility _accessibilityRemoteElement` during the test runner's accessibility snapshot. Run 2: `SyFiveUITests.testLaunchPerformance`, "SyFive crashed"; crash `SyFive-2026-10-10-112107.ips` is a SIGABRT in RealityKit `PhysicsSystem::ecsToSim` (the dice scene). All 14 `FeelTests` passed both times. §4.3's only SyFive reach is `matchProgression`, called from `MatchDetailView.swift:60` and `UnfinishedMatchDetailView.swift:60` alone, which a launch test never opens. Reported, not fixed. After §4.4: **17 total, 17 passed** (no crash this run). After §4.6: **19 total, 19 passed** (+2 in the new `SyFiveTests/Commentary/CommentaryPackTests.swift`: every pack has a line for every kind and at least 20 `soloFinished`; every `{token}` is one its factory supplies), 0 warnings. After §4.7: **18 of 19**. `SyFiveUITestsLaunchTests.testLaunch` (Light, Portrait) failed with "Lost connection to the application", the same failure as §4.3 run 1; crash `SyFive-2026-10-10-113227.ips` is again a SIGSEGV in `UIWindowAccessibility` during the test runner's accessibility snapshot. All unit tests passed. Tally so far: 3 of 7 SyFive runs since §4.3 lost one UI launch test. After §4.8: **19 total, 19 passed**, 0 warnings (tally now 3 of 8). After §4.5: **19 total, 19 passed**, 0 warnings (tally 3 of 9) |
 | §5 copy approved by Pops (date). §4.6 step 4 waits on this row | **Approved as written by Pops, 10 Oct 2026** (all 80 lines: 20 each for Sports, Zen, Steady, Snarky) |
 | F1 (after §4.1) | **Not run**: device check (Debug log flag). Deferred by Pops, 10 Oct 2026 |
+| F1 (11 Oct 2026) | Pass (confirmed by Pops on device, 11 Oct 2026) |
 | F2 (after §4.2) | **Not run**: two devices, mid-match relaunch. Deferred by Pops |
+| F2 (11 Oct 2026) | Pass (confirmed by Pops on device, 11 Oct 2026) |
 | F3 (after §4.7) | **Not run**: device check (paused game → History). Deferred by Pops |
+| F3 (11 Oct 2026) | Pass (confirmed by Pops on device, 11 Oct 2026) |
 | F4 (after §4.5) | **Not run**: §4.5 implemented 10 Oct 2026; device check outstanding (Pops) |
+| F4 (11 Oct 2026) | Pass (confirmed by Pops on device, 11 Oct 2026) |
 | F5 (after §4.6) | **Not run**: device check (two-player game). Deferred by Pops |
+| F5 (11 Oct 2026) | Pass (confirmed by Pops on device, 11 Oct 2026) |
 | F6 (after §4.8) | **Not run**: unit-level check. Deferred by Pops ("we will worry about the test later") |
+| F6 (11 Oct 2026) | Pass (confirmed by Pops on device, 11 Oct 2026) |
 | R19 (after §4.4) | **Not run**: devices. Deferred by Pops. Part (b) from `15` §10 is also still unrecorded |
+| R19 (a) (11 Oct 2026) | Pass (confirmed by Pops on device, 11 Oct 2026) |
+| R19 (b) (11 Oct 2026) | Pass (confirmed by Pops on device, 11 Oct 2026) |
 | R20 (after §4.5) | **Not run**: §4.5 implemented 10 Oct 2026; device check outstanding (Pops) |
+| R20 (11 Oct 2026) | Pass (confirmed by Pops on device, 11 Oct 2026) |
 | R21 (after §4.6) | **Not run**: devices. Deferred by Pops |
+| R21 (11 Oct 2026) | Pass (confirmed by Pops on device, 11 Oct 2026) |
 | R1–R3, R11 re-runs (after §4.5) | **Not run**: §4.5 implemented 10 Oct 2026; device re-runs outstanding (Pops) |
+| R1–R3, R11 re-runs (11 Oct 2026) | Pass (confirmed by Pops on device, 11 Oct 2026) |
 
 ---
 

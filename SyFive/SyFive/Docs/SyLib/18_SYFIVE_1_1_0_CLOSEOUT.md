@@ -356,32 +356,17 @@ D-GNP-022 to D-GNP-036 are in §4.5.
 | §4.1 | **Done 11 Oct 2026.** `ContentView.swift`: the first `.task` keeps `await updateState.check()` then `await director.warmUp()`; a second `.task` directly after it runs `await commentaryVoices.refresh()`, with the given comment. BuildProject clean, 0 warnings; SyFive suite on the pinned destination: see row below |
 | §4.2 | **Done 11 Oct 2026.** The four SyFive sites (`MatchDetailView.swift` 45, 51; `UnfinishedMatchDetailView.swift` 41, 45) and SyLib `MatchProgression.swift` 108 use `uniquingKeysWith: { first, _ in first }`. No `uniqueKeysWithValues` remains in SyFive or `MatchProgression.swift`. Test `matchProgression_toleratesDuplicateParticipantIDs` added and passing. Row appended to `17` §10 |
 | §4.3 | **Done 11 Oct 2026.** `Toast.swift`: `stage` applies `.padding(.bottom, placement == .overBottom ? bottomPadding : 0)` after `.padding(.horizontal, 16)` and before `.allowsHitTesting(false)`, where the original had it. The `.overBottom` overlay holds `stage` directly, with no padding outside it. `.belowBottom` is unchanged, `.clipped()` included. The default capsule chain is now `.shadow` → `.padding(.horizontal, 16)` → `.padding(.bottom, bottomPadding)` → `.allowsHitTesting(false)` → `.transition(.move(edge: .bottom)…)` (`transitionEdge` is `.bottom` for `.overBottom`) → `.id`, matching `1e2729fd` |
-| §4.4 | **Done 11 Oct 2026.** All ten lines are rewritten, each paragraph replaced whole:
-- `GAME_NIGHT_MATCH.md` 95, 255, 376, 500
-- `GAME_NIGHT_ADOPTION.md` 476, 755 (multi-line paragraphs)
-- `Commentary.md` 397, 774
-- `UI_COMPONENTS.md` 225, 387
-
-Each reads "SyFive adoption: adopted in SyFive 1.1.0 (`17` §4.n).", except UI_COMPONENTS 387, which carries the given Toast text. UI_COMPONENTS keeps its italics on both lines. No other doc text changed |
+| §4.4 | **Done 11 Oct 2026.** All ten lines are rewritten, each paragraph replaced whole:<br>• `GAME_NIGHT_MATCH.md` 95, 255, 376, 500<br>• `GAME_NIGHT_ADOPTION.md` 476, 755 (multi-line paragraphs)<br>• `Commentary.md` 397, 774<br>• `UI_COMPONENTS.md` 225, 387<br><br>Each reads "SyFive adoption: adopted in SyFive 1.1.0 (`17` §4.n).", except UI_COMPONENTS 387, which carries the given Toast text. UI_COMPONENTS keeps its italics on both lines. No other doc text changed |
 | §4.5 | **Done 11 Oct 2026.** Ledger: D-GNP-022 to D-GNP-036 appended under Game Night proximity, after D-GNP-021, as given. 023, 026 and 029 are "Not known"; the rest are tagged *(reconstructed from code, 11 Oct 2026)*. D-144 appended under Platform & data, after D-139. Script check: 16 lines added, 0 existing lines changed, no duplicate IDs. **Line check:** every cited line was located by its `D-GNP-0xx` comment. All match except **D-GNP-036**: `ContentView.swift` 296-299 is now **300-303**, moved by `18` §4.1's added `.task`, and the ledger row cites 300-303. Other citations of the same IDs exist that the rows do not list (e.g. D-GNP-022 also at `GameNightProximity.swift` 419; D-GNP-030 also at 329, 529, 618). They were left as given |
-| §4.6 | **Done 11 Oct 2026.** Logging only. Five edits:
-- `saveMatch()`: a log line before each guard return, `do`/`catch` around the save, and a saved line.
-- `LeadingNavSlot` + `leadingNavSlot`, and `leadingNavButton` as a `switch` on it, with the conditions in their original order.
-- `.onChange(of: leadingNavSlot)`.
-- A `playerScores changed` line before `saveMatch()`.
-- `logModelState(_:)` in both Play Again paths and both `loadMatchIfNeeded()` branches.
-
-BuildProject clean, 0 warnings; SyFive 19/19 |
+| §4.6 | **Done 11 Oct 2026.** Logging only. Five edits:<br>• `saveMatch()`: a log line before each guard return, `do`/`catch` around the save, and a saved line.<br>• `LeadingNavSlot` + `leadingNavSlot`, and `leadingNavButton` as a `switch` on it, with the conditions in their original order.<br>• `.onChange(of: leadingNavSlot)`.<br>• A `playerScores changed` line before `saveMatch()`.<br>• `logModelState(_:)` in both Play Again paths and both `loadMatchIfNeeded()` branches.<br><br>BuildProject clean, 0 warnings; SyFive 19/19 |
 | SyLib test total after §4.2 and after §4.3 | After §4.2: **1131 in 119 suites, passed** (1130 + 1), 0 warnings. After §4.3: **1131, passed** (unchanged), `aToastMovesForItsPlacement` included, 0 warnings |
 | Syderal build and test counts | After §4.2: builds, no source edit; **897 total, 893 passed, 4 skipped, 0 failed**; 0 warnings. After §4.3: the same |
 | SyFive suite | After §4.1: **19/19 passed** on `iPhone SE (3rd generation), OS=18.6`, 0 warnings, 11 Oct 2026. After §4.2: 19/19. After §4.3: 19/19. After §4.6: 19/19 |
-| §4.4 search report | Every "SyFive adoption" line in SyLib `Docs/` was read with its section heading. **Names one of the six APIs:**
-- `GAME_NIGHT.md:551` (Logging): "SyFive configures the buffer with its own categories, `packageCategories` and `FeelAudioEngine` (`16` §4.1)." Already accurate; written by `16` §4.1.
-
-**No adoption line exists** for `AppUpdateState`, `GameNightMenuSection`, `GameNightLeadingControlButton`, `GameNightEntryState` or `upsertGameNightRoster`.
-
-**Also stale, outside the search list, not edited:**
-- `Commentary.md:361` (Keeping the shuffle between launches) ends "SyFive adoption: optional; nothing changes unless it calls them." SyFive adopted the shuffle save/restore in `17` §4.6. |
+| §4.4 search report | Every "SyFive adoption" line in SyLib `Docs/` was read with its section heading. **Names one of the six APIs:**<br>• `GAME_NIGHT.md:551` (Logging): "SyFive configures the buffer with its own categories, `packageCategories` and `FeelAudioEngine` (`16` §4.1)." Already accurate; written by `16` §4.1.<br><br>**No adoption line exists** for `AppUpdateState`, `GameNightMenuSection`, `GameNightLeadingControlButton`, `GameNightEntryState` or `upsertGameNightRoster`.<br><br>**Also stale, outside the search list, not edited:**<br>• `Commentary.md:361` (Keeping the shuffle between launches) ends "SyFive adoption: optional; nothing changes unless it calls them." SyFive adopted the shuffle save/restore in `17` §4.6. |
 | C1 to C4 | |
-| Restart-button / lost-save report (§4.6), if reproduced: date, steps, log excerpt | |
-| RealityKit device check: device, iOS version, launches, crashes | |
+| C1 | Pass (confirmed by Pops on device, 11 Oct 2026) |
+| C2 | Pass (read at source by `18` §4.2: all four SyFive sites use `uniquingKeysWith`; the SyLib test passes) |
+| C3 | Pass (confirmed by Pops on device, 11 Oct 2026) |
+| C4 | Pass (confirmed by Pops on device, 11 Oct 2026) |
+| Restart-button / lost-save report (§4.6), if reproduced: date, steps, log excerpt | **Not reproduced as of 11 Oct 2026** |
+| RealityKit device check: device, iOS version, launches, crashes | **Not run as of 11 Oct 2026; carried forward (D-144)** |

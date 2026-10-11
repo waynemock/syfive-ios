@@ -46,6 +46,7 @@ file is HEAD.*
 | D-139 | **The update badge** comes from SyLibCore's `AppUpdateState` and SyLibUI's `MoreMenu`. It clears when Update Available is tapped, and the acknowledgement is stored per store version. Never acknowledge on menu open: SwiftUI's `Menu` has no reliable signal for it. | `14 §3.11, §4.5` (Syderal Q-32, Q-33) → `17 §2.8` *(rec.)* |
 | D-144 | **The RealityKit launch assertion (`17` §11) is held for device evidence.** No SyLib dice change until it appears on hardware. Then a diagnosis task comes first, and a fix task must state how the fairness certification is kept (D-037). 1.1.0 is not held for it. | `17` §11 → `18` §2.4 (Pops, 11 Oct 2026) |
 | D-145 | **The How to Play "Got it" button is SyLibUI's `HelpDismissButton`**: a `CapsuleButton` in the `.accent` style, centred, the same in every app, saying "Got it, hide this", then the alert "Hide the help button?" with the message "How to Play stays in the Menu, in the last section with About. You can open it any time." The How to Play pages stay app-owned. SyFive adopts it in 1.1.0; Syderal in its `24`. | `19` §2 (Pops, 11 Oct 2026; wording *(rec.)*) → Pops, 11 Oct 2026 (single `CapsuleButton` look, centred; the `.link` / `.prominent` styles removed) |
+| D-147 | **1.1.0 ships `18` §4.6's diagnostic logging at info level** (Play Again state, score changes, the leading toolbar slot, `saveMatch` outcomes and failures), to catch the lost-restart-button / lost-save report in the field. It is removed once that report is resolved. | `18` §4.6 → `21` §2.2 *(rec.)* |
 
 ## Product & rules
 

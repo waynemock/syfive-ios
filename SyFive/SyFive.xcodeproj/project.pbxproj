@@ -92,6 +92,7 @@
 				Docs/SyLib/18_SYFIVE_1_1_0_CLOSEOUT.md,
 				Docs/SyLib/19_SYLIB_HELP_DISMISS_BUTTON.md,
 				Docs/SyLib/20_SYLIB_COMMENTARY_SETTINGS_ROWS.md,
+				Docs/SyLib/21_SYFIVE_1_1_0_RELEASE.md,
 				Info.plist,
 			);
 			target = B09DE90C2F4BBD400018F241 /* SyFive */;
