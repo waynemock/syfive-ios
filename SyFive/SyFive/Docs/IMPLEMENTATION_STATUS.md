@@ -10,7 +10,7 @@ The core game loop, dice system, scorecard UX, persistence, stats, feel system (
 
 **Overall progress: ~98% to 1.0 Definition of Done**
 
-**1.1.0:** Rebuilt on the post-Syderal SyLib; see `15` to `21`.
+**1.1.0:** Rebuilt on the post-Syderal SyLib; see `15` to `23`.
 
 ---
 
@@ -44,7 +44,7 @@ The requirements recommended **Physics-Lite (Option A)** for 1.0 with full physi
 | Held dice visually distinct | ✅ Done | Held tint + kinematic arrangement by face value |
 | Held dice do not change on re-roll | ✅ Done | |
 | Stuck dice always resolve (game never hangs) | ✅ Done | Yellow nudge → Red reroll UX |
-| Fairness validated | ✅ Done | p=0.217, all 5 dice pass, serial r=0.003 |
+| Fairness validated | ✅ Done | iOS 27, five full runs pooled (250,000 results): every face within 0.175 pt of ideal, inside the ±1 pt standard at 99%. History: SyLibDice `Docs/FairnessHistory/` |
 | Original spec: SpriteKit | ➡️ Superseded | RealityKit is strictly better; no loss |
 
 ---

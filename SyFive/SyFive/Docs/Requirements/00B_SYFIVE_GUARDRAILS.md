@@ -1,7 +1,7 @@
 # SyFive — Project Guard Rails
 
 **Project-level. SyFive only.** Companion to `00A_STUDIO_CONVENTIONS.md`.
-Version 1.1 · 10 October 2026 · Ships in every agent prompt, alongside `00A`, `00_DECISION_LEDGER.md`
+Version 1.2 · 11 October 2026 · Ships in every agent prompt, alongside `00A`, `00_DECISION_LEDGER.md`
 and the task's own documents.
 
 ---
@@ -60,7 +60,7 @@ These are in addition to `00A` §4. Halt and ask; do not resolve inline.
 | Player-facing text the task does not give verbatim: UI copy, alerts, commentary lines, Help, App Store metadata | Copy is Pops's. The agent pastes it; it never writes it |
 | A change that would move `onWillSpeak` below the mute, or alter what proximity mutes | A host muted by its button or by Sound Off still broadcasts to its guests (D-130, D-GNP-019). Proximity's rules are D-GNP-001 to D-GNP-021 (`16_GAME_NIGHT_PROXIMITY_MUTE`) |
 | A scoring case not settled by D-003 to D-005 or `02_DATAMODEL_DESIGN` §4 | The rules register is the ledger plus `02`. Do not improvise a ruling |
-| A change to dice physics tuning, `DiceRoller.Config`, or the fairness certification | The certification was measured at one tuning (p = 0.217 over 10,000 rolls) and is shown to players |
+| A change to dice physics tuning, `DiceRoller.Config`, or the fairness certification | The certification (`FairnessCertification.builtIn`; every run is in SyLibDice `Docs/FairnessHistory/`, D-149) was measured at one tuning and is shown to players |
 | SyLib's or SyFive's suite total falls without a deletion the task names | A suite that silently shrinks has stopped testing something (§5) |
 | The pinned test destination (§5) is unavailable | `00A` §7. Never substitute another device or runtime |
 
@@ -259,6 +259,7 @@ D-001 replaces its row. D-142 and D-143 are new, under Governance.
 
 | Version | Decision | Rationale |
 |---|---|---|
+| 1.2 | §2's dice stop condition names `builtIn` and the history (D-149), with no figures | v1.1 quoted p = 0.217 over 10,000 rolls, from an earlier pre-SyLib run. The shipped certification is July 2026's run (p 0.602 over the last 2,161 rolls of a 10,000-roll batch), and `23` replaces it. Figures in this file would go stale with every run |
 | 1.1 | A-1 also lists `00A` in the README, pastes the series' ledger rows and the D-GNP rows, corrects D-023, and covers `IMPLEMENTATION_STATUS.md`; the Scope Control sentence is kept | The agent's first read found a README requirement in `00A` §11, rows cited before they existed, a container-name typo, and a fourth copy of the flag list. Keeping "Keep refactors mechanical…" avoids a meaning change A-1 forbids |
 | 1.1 | `00A` §8 overrides agent-side memory about warnings | The agent's own memory said to fix every warning; `00A` §8 says report those outside the task |
 | 1.0 | `00A` is adopted verbatim, with a SyFive companion rather than a SyFive rewrite | `00A` is identical in every project by its own rule; a rewritten copy would drift. Pops, 10 Oct 2026 |
