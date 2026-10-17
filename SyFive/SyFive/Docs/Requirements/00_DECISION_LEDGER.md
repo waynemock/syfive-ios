@@ -212,12 +212,12 @@ file is HEAD.*
 
 | ID | Current ruling | Source → chain |
 |---|---|---|
-| D-084 | **Game Night commentary 1.0:** single announcer on the host's seated device; host's pack, level, and voice; FaceTime call carries it to remote rooms. Zero wire changes to the `06` message table. | `10 §1` · supersedes `09` implicit single-device assumption |
-| D-085 | **Guest and spectator devices never instantiate the commentary engine** in Game Night. Gate at composition root by role; `09` engine stays Game-Night-ignorant. | `10 §3` |
+| D-084 | **Game Night commentary is host-authoritative echo.** The host's engine draws every line using the session's pack and level, and relays the text to every other device in the session (`CommentaryPayload`, envelope kind `.commentary`). Each device speaks it in its own voice (D-081). The host's personality is the whole table's voice. A FaceTime call still carries the host's audio to remote rooms. | `10 §1` → SyLib `10 §9` → `16 §1` |
+| D-085 | **Guest and spectator devices run a receive-only commentary engine** in Game Night. It is built at the composition root by role, pinned to `.playByPlay`, has no event sink, and speaks only relayed text via `receiveText(_:tier:)`. It never draws lines, and its shuffle deck is saved and forgotten. Each device's speaker follows its own mute (D-GNP-015, D-130). The `09` engine stays Game-Night-ignorant. | `10 §3` → SyLib `10 §9` → `16 §1` |
 | D-086 | **Synced Shared Booth** (cue protocol, Director/Voice split, booth roles) — designed in full (`10 §4`); **explicitly deferred to vNext.** Do not implement. Re-confirm `10 §4.4` table at scheduling. | `10 §4` |
 | D-087 | The **call device has no SyFive job** in Game Night 1.0. Unseated spectator join (stage + PiP) is optional and user-driven, never required or steered toward. | `10 §1.4` |
 | D-088 | **Two-device player pattern** (call on iPad/Mac, game on iPhone) is the recognized primary configuration; preserves full FaceTime video; iPhone joins via invite link or same-account prompt. | `10 §1.4` · extends `06 §2.1` |
-| D-089 | **Commentary half of `06 §13.1` resolved:** spectator devices produce no commentary audio in Game Night 1.0. Dice-feel half handled by `11`. | `10` Supersessions · closes `06 §13.1` commentary side |
+| D-089 | **Commentary half of `06 §13.1`: spectator devices speak relayed commentary**, like guests (D-085), subject to their own mute. `06 §13.1` stays closed, with the opposite answer to the one recorded. | `10` Supersessions · closes `06 §13.1` commentary side → **superseded** by SyLib `10 §9` / `16 §1` |
 | D-090 | **Mic mode is user-set only.** SyFive's tool: one sentence of Wide Spectrum copy, shown only when a call is active on the playing device. Never automated. | `10 §2.3, §7.2` |
 | D-091 | **Table-row commentary override is session-scoped.** Host's solo settings never rewritten by a Game Night session. | `10 §7.1` |
 

@@ -137,7 +137,7 @@ None.
 
 | Item | Value |
 |---|---|
-| §4.1 rows recorded | |
-| §4.2: the two lines; search report; SyLib total | |
-| §4.3: ledger, status line, project file; SyFive suite | |
+| §4.1 rows recorded | **Done 11 Oct 2026.** `16` §10: F1–F6, R19 (a) and (b), R20, R21 and the R1–R3/R11 re-runs, each on a new row beneath its "Not run" row. `17` §10: A1–A11, one row each, plus the Full regression row (Release, Debug-only checks on Debug). `18` §10: C1, C3, C4 pass; C2 pass, read at source; restart report not reproduced; RealityKit device check not run, carried forward (D-144). No other text changed |
+| §4.2: the two lines; search report; SyLib total | **Done 11 Oct 2026.** `COMMENTARY.md` line 361 ends "SyFive adoption: adopted in SyFive 1.1.0 (`17` §4.6)."; nothing else in the paragraph changed. `GAME_NIGHT.md` line 519 reads "(see `LOGGING.md`)". **Search:** every `.md` doc name in SyLib `Docs/` and `README.md` was checked against the files on disk; no other mixed-case reference remains. **SyLib 1133 in 121 suites, passed** (unchanged), 0 warnings |
+| §4.3: ledger, status line, project file; SyFive suite | **Done 11 Oct 2026.** D-147 pasted under Platform & data, after D-145; no other ledger row changed. `IMPLEMENTATION_STATUS.md`'s 1.1.0 line reads "Rebuilt on the post-Syderal SyLib; see `15` to `21`." `project.pbxproj` already lists `Docs/SyLib/21_SYFIVE_1_1_0_RELEASE.md` beside 15 to 20 (line 95, added when the doc was dropped in), so no edit was needed. BuildProject clean; **SyFive 19/19** on the pinned destination. Also this session: the seven multi-line results-log rows in `18`, `19` and `20` were joined onto single lines (`<br>` for breaks), formatting only, with every word unchanged |
 | §5 (Pops): archive date, build number | |

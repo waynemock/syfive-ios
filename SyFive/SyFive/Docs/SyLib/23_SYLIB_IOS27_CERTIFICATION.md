@@ -5,6 +5,8 @@
 pooled folder as `PLAN.md` (§4.2). No task had run.
 **Revision 3, 14 October 2026:** from now on, one full run certifies (§2.6, D-153). It's added to the
 history index and the ledger. No task had run.
+**Revision 4, 16 October 2026:** Claude reviewed §4.1 to §4.4 and found them correct. Revision 4 adds
+§4.5, three small fix-ups, and corrects V2's expectation (§5). Everything else is as run.
 
 **Scope:** `sylib-swift` on branch `syfive-reintegration` (§4.1 to §4.3), and `SyFive` docs and
 ledger (§4.4). Ships in 1.1.0. This is the last document before the SyLib merge (`21` §5). Syderal
@@ -430,6 +432,26 @@ The serial correlation and runs test sections are unchanged.
 
 **Done when:** the edits are in; `BuildProject` is clean with 0 warnings; the suite passes at 19/19.
 
+### 4.5 Fix-ups after review (16 Oct 2026)
+
+One session. These are docs and one ignore file; there's no code change.
+
+1. **`sylib-swift` `Docs/DICE.md` line 645** (the `DiceFairnessDeepDiveView` description). Replace
+   "Detailed statistical breakdown: the chi-square test and its derivation, serial correlation, the
+   runs test, a per-face table, and methodology notes." with "Detailed statistical breakdown: the
+   fairness standard (±1 point at 99% confidence) with its PASS/FAIL badge, the chi-square test and
+   its derivation as information, serial correlation, the runs test, a per-face table, and
+   methodology notes." The rest of the paragraph is unchanged.
+2. **`sylib-swift` `.gitignore`.** SyLib has none, and `.DS_Store` files sit in
+   `Sources/SyLibDice/Docs/` and `FairnessHistory/`. Create `.gitignore` at the package root with
+   the single line `.DS_Store`. Don't delete any `.DS_Store` file; untracking them is Pops's, in git.
+3. **`22` §8's V1 row** is still empty. Add a row beneath it, without editing it: "V1 (13 Oct 2026)
+   | Pass (confirmed by Pops on device, 13 Oct 2026). Five full runs, each 50,000 samples / 10,000
+   rolls with the Run and Tuning lines as specified. The files are in `FairnessHistory/
+   2026-10-13_iOS-27_run-1` to `run-5` (`23` §3 checks) |".
+
+**Done when:** the three edits are in, and SyLib's suite still passes at 1151.
+
 ---
 
 ## 5. Validation
@@ -438,6 +460,10 @@ The serial correlation and runs test sections are unchanged.
 |---|---|---|---|
 | V1 | 4.3 | **Pops, device, SyFive.** Open the dice fairness screen, then the Statistical Deep Dive | Main screen: "These dice are fair." and "Verified across 250,000 dice results — each face landed within 0.2% of perfectly equal." How We Test reads as §4.3.2, with "250,000 dice results", and "Tested October 2026". Deep dive, in order: Fairness Standard (pills "0.175 pp", "±1.0 pp", "99%"; PASS; "between 16.34% and 17.03%"); Chi-Square with no badge (p-value 0.0060; "0.6% of the time"); the independence tests, both PASS; Per-Face Results ending "±0.15pp"; Methodology Notes as §4.3.1(d) |
 | V2 | 4.2 | **Pops, iPad, Debug build with the harness on (as `22` V1).** Make each full run's `DIFF.md`: run 1 against `2026-10-12_iOS-27`, then each run against the one before | Five files, each saved unedited as `DIFF.md` in its run's folder. Run 1 against #3 should flag the rescued totals (windowed against full), but no face homogeneity |
+
+**V2 correction (16 Oct 2026):** the expectation that run 1 against #3 "should flag the rescued
+totals (windowed against full)" was wrong. Rescued dice are 1.34% of results in #3 and 1.20% in
+run 1, too close to flag. The DIFF files as made are correct.
 
 V1 joins `21` §5 step 1's pre-archive checks. V2 is a debug-only check, and its files can follow on
 `main` after the merge.
@@ -482,5 +508,6 @@ Carried forward, not for 1.1.0:
 | §4.2: pooled report, index, top-level report byte check, top-level CSV removed; SyLib total | **Done 14 Oct 2026** (Python). `2026-10-13_iOS-27_pooled/REPORT.txt` written word for word from §4.2 step 2 (17 lines) and copied over `Docs/DICE_FAIRNESS_REPORT.txt`: byte-identical. `FairnessHistory/README.md` replaced word for word from step 3 (81 lines). `Docs/DICE_FAIRNESS_RUN.csv` confirmed gone (removed by Pops in git); not deleted here. Pops's run folders and `PLAN.md` untouched. Checked read-only: five-run homogeneity recomputes to p 0.162 ("p 0.16"); the index's rows #4 to #8 (chi², p, serial r, runs Z, rescued (stacked), stuck rerolls, avg alignment) match the five reports. **SyLib 1151 passed**, 0 warnings from source |
 | §4.3: both views; previews; SyLib total | **Done 14 Oct 2026.** `DiceFairnessDeepDiveView`: new first section "Fairness Standard" (pills "largest gap", "standard", "confidence"; `passFailBadge(certification.passes)`; Texts 1 and 2); Chi-Square badge removed, the "A p-value of" sentence replaced; Per-Face caption and Methodology's first paragraph replaced; formula, degrees-of-freedom, second methodology paragraph, test-date line and independence sections unchanged. `DiceFairnessView` How We Test: paragraph 2's phrase and paragraph 3 replaced; headline, verification line and chart unchanged. All six paragraphs checked word for word against §4.3 by script. Previews unchanged and compile (not rendered; Pops looks, V1). BuildProject clean, 0 warnings from source. **SyLib 1151 passed** |
 | §4.4: ledger rows; status lines; project file; SyFive suite | **Done 14 Oct 2026.** Ledger, by script from §7: D-149's row replaced; D-151, D-152 and D-153 pasted under Dice system after D-150; no other row changed. `IMPLEMENTATION_STATUS.md`: line 47's notes and the 1.1.0 line ("see `15` to `23`") read as §4.4 steps 2 and 3. `project.pbxproj`: already lists `22` and `23` in the target's exception list (Pops, 14 Oct 2026); checked read-only, no edit. BuildProject clean, 0 warnings from source. **SyFive 19/19** on the pinned destination |
+| §4.5: DICE.md line; .gitignore; 22 §8 V1 row; SyLib total | **Done 16 Oct 2026.** `DICE.md` line 645: the sentence replaced word for word; the rest of the paragraph unchanged. **`.gitignore`: not created.** SyLib already has one at the package root, and its first line is `.DS_Store` (with `/.build`, `/Packages`, `xcuserdata/`, `DerivedData/` and three `.swiftpm`/`.netrc` lines); writing a one-line file would have dropped those, so it is left as is. No `.DS_Store` deleted. `22` §8: the V1 (13 Oct 2026) row added beneath the empty V1 row, word for word; that row not edited. **SyLib 1151 passed**, 0 warnings from source |
 | V1 | Pass (confirmed by Pops on device, 14 Oct 2026) |
 | V2 | Pass (confirmed by Pops on device, 16 Oct 2026) |
