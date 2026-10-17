@@ -170,7 +170,11 @@ final class GameNightController {
         coordinator.onHistoryMatchesNeeded = { [weak self] ids in self?.onHistoryMatchesNeeded?(ids) ?? [] }
         coordinator.onHistoryMatchesReceived = { [weak self] matches in self?.onHistoryMatchesReceived?(matches) }
 
-        GameNightLogBuffer.configure(keyPrefix: session.keyPrefix)
+        GameNightLogBuffer.configure(
+            keyPrefix: session.keyPrefix,
+            categories: GameNightLogBuffer.packageCategories.union(
+                ["GameNightController", "ContentView", "MatchController", "FeelAudioEngine"])
+        )
         GameNightLogBuffer.shared.isLoggingEnabled = AppConfig.DebugGameNight.showLogs
         session.onTearDown = { [weak self] in self?.performControllerTearDown() }
         session.onNeedsMatchStateBroadcast = { [weak self] in Task { await self?.broadcastMatchState() } }
@@ -220,10 +224,13 @@ final class GameNightController {
     }
 
     func playAgain() { session.playAgain() }
+    /// Ends Game Night for everyone as host: tells the guests, waits up to 1.5 s for the send,
+    /// then abandons the session (17 §4.1, D-135).
     func abandonSession() {
-        guard session.role == .host, session.isSessionActive else { return }
-        session.send(GameNightMatchKind.matchAbandoned, payload: MatchAbandonedPayload())
-        session.abandonSession()
+        Task {
+            let ran = await coordinator.abandonSessionNotifyingGuests()
+            logger.info(self, "abandonSession: ran=\(ran)")
+        }
     }
     func clearSessionEndedFlag() { session.clearSessionEndedFlag() }
     func clearGuestJoinFailure() { session.clearGuestJoinFailure() }
@@ -245,13 +252,6 @@ final class GameNightController {
     func broadcastTableState() async { await session.broadcastTableState() }
 
     func gnWasHost(for matchID: UUID) -> Bool { session.gnWasHost(for: matchID) }
-
-    func prepareForGuestReconnect(matchID: UUID) {
-        session.isGuestAwaitingReconnect = true
-        if coordinator.localParticipantID == nil {
-            coordinator.localParticipantID = session.gnParticipantID(for: matchID)
-        }
-    }
 
     // MARK: - Roll theater hooks
 
@@ -309,7 +309,6 @@ final class GameNightController {
     func broadcastMatchComplete() async { await coordinator.broadcastMatchComplete() }
     func broadcastMatchStart(gameID: UUID) { coordinator.broadcastMatchStart(gameID: gameID) }
     func broadcastRematch(gameID: UUID) { coordinator.broadcastRematch(gameID: gameID) }
-    func resumeAsHost(matchID: UUID, gameID: UUID) { coordinator.resumeAsHost(matchID: matchID, gameID: gameID) }
     func enableProxyMode() { coordinator.enableProxyMode() }
     func disableProxyMode() { coordinator.disableProxyMode() }
 
@@ -364,15 +363,11 @@ final class GameNightController {
     // MARK: - Inbound message router
 
     private func handleAppMessage(_ kindString: String, _ envelope: GameNightEnvelope, from senderID: UUID) {
-        // matchState is received by GNC, not the coordinator — it carries a Match snapshot
-        // and GNC runs Yatzy-specific opponent-score detection against mc.playerScores.
-        if kindString == GameNightMatchKind.matchState.rawValue {
-            handleMatchState(envelope)
-            return
-        }
-        // All other match-layer kinds route to the coordinator.
-        if let matchKind = GameNightMatchKind(rawValue: kindString) {
-            coordinator.handleMatchKind(matchKind, envelope: envelope, from: senderID)
+        // The coordinator routes every match-layer kind. matchState comes back here: it carries a
+        // Match snapshot and GNC runs Yatzy-specific opponent-score detection against
+        // mc.playerScores.
+        if coordinator.routeMatchMessage(kindString, envelope: envelope, from: senderID,
+                                         onMatchState: { handleMatchState($0) }) {
             return
         }
         guard let kind = GameNightMessageKind(rawValue: kindString) else { return }
@@ -419,11 +414,7 @@ final class GameNightController {
               let mc = matchController,
               let payload = try? envelope.decode(MatchStatePayload.self) else { return }
         let isReconnect = coordinator.localParticipantID == nil
-        if coordinator.localParticipantID == nil {
-            coordinator.localParticipantID = session.gnParticipantID(for: payload.match.id)
-            if coordinator.sessionMatchID == nil { coordinator.sessionMatchID = payload.match.id }
-            if coordinator.sessionGameID == nil { coordinator.sessionGameID = payload.match.gameID }
-        }
+        coordinator.restoreRejoiningGuest(from: payload)
         if payload.diceValues != nil {
             // Undo broadcast: clear undo availability before loading so the restored state is clean.
             coordinator.pendingGuestUndoAvailable = false
@@ -517,6 +508,10 @@ final class GameNightController {
         // teardown leaves them nil at the next begin(), silently dropping all token sends
         // and making proximity completely non-functional for every session after the first.
         // (D-GNP-030 — nine presence announcements, zero transmissions)
+        // onCommentarySuppressedChanged is NOT cleared either. ContentView wires it once, in onAppear,
+        // for the app's lifetime, and the session tears down at every session arrival
+        // (.adoptingNewSession). Clearing it here cut the commentary button and proximity off from
+        // the engine from the first Game Night of a launch until relaunch (16 §4.4, 15 R19).
         onRollBegan = nil
         onRollResult = nil
         onHoldToggled = nil
@@ -527,7 +522,6 @@ final class GameNightController {
         onOpponentScored = nil
         onCommentaryReceived = nil
         onCommentarySettingsChanged = nil
-        onCommentarySuppressedChanged = nil
         onUndoApplied = nil
         onHistoryManifestNeeded = nil
         onHistoryMatchesNeeded = nil

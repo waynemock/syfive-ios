@@ -25,4 +25,12 @@ A Yatzy dice game for iPhone and iPad.
 
 ## Platforms
 
-iOS 17+ / iPadOS 17+. macOS not supported.
+iOS 18.6+ / iPadOS 18.6+. macOS not supported.
+
+## Documentation
+
+In `SyFive/SyFive/Docs/Requirements/`:
+
+- [`Docs/Requirements/00A_STUDIO_CONVENTIONS.md`](SyFive/SyFive/Docs/Requirements/00A_STUDIO_CONVENTIONS.md) — studio-level and canonical; cited rather than restated
+- [`00B_SYFIVE_GUARDRAILS.md`](SyFive/SyFive/Docs/Requirements/00B_SYFIVE_GUARDRAILS.md) — SyFive's rails
+- [`00_DECISION_LEDGER.md`](SyFive/SyFive/Docs/Requirements/00_DECISION_LEDGER.md) — HEAD for design rulings

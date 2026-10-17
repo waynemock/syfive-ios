@@ -171,6 +171,28 @@ extension CommentaryPersonality where Kind == CommentaryEventKind {
                 "{winner} match exactly. Recount demanded in three, two...",
                 "A tie for {winner}. The most unsatisfying number is equal."
             ],
+            "soloFinished": [
+                "Card's full. {score}. The dice would like partial credit.",
+                "{score}. The dice did their best, and this was their best.",
+                "Game over at {score}. Every one of those decisions was a decision.",
+                "Final score, {score}. The scratch box knows what it did.",
+                "{player} finishes at {score}. Nobody to beat, and the dice still put up a fight.",
+                "That's {score}. The dice are calling it a team effort.",
+                "{score}. The dice would like it noted they were under a lot of pressure.",
+                "Final card, {score}. Somewhere, a Chance box is still recovering.",
+                "{score}, and no opponent for the dice to blame it on.",
+                "Game over. {score}. The dice have requested a rematch with themselves.",
+                "That's the card. {score}. The ones column made some choices.",
+                "{score}. The dice refuse to comment further.",
+                "{player} wraps up at {score}. The dice are taking the evening off.",
+                "Final tally, {score}. Those holds were certainly holds.",
+                "{score} points. The dice say it was the table's fault.",
+                "Card complete at {score}. The Yatzy box has opinions, and it's keeping them.",
+                "{score}. Every roll happened, which is more than the dice promised.",
+                "That's {score}. The dice are already pretending the third roll never happened.",
+                "Game over at {score}. A bold strategy, executed by dice.",
+                "Final score, {score}. Those dice will be hearing from someone."
+            ],
             "upperBonusEarned": [
                 "{player} got the upper bonus. Someone read the rules.",
                 "Thirty-five bonus points for {player}. The nerds call this strategy.",

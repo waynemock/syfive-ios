@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import SyLibCommentary
 
 // Thin binding wrapper following GameNightScreens.swift pattern.
@@ -6,6 +7,7 @@ import SyLibCommentary
 struct CommentaryScreen: View {
     @Bindable var settings: AppSettingsModel
     @Environment(\.theme) private var theme
+    @Environment(CommentaryVoices.self) private var voices
 
     var body: some View {
         CommentarySettingsView(
@@ -32,10 +34,29 @@ struct CommentaryScreen: View {
         )
     }
 
+    /// Names the voice actually in use, so the Voice row and its preview match what speaks
+    /// (D-081): the saved voice while it is installed, else the personality's automatic voice.
     private var voiceIDBinding: Binding<String?> {
         Binding(
-            get: { UserDefaults.standard.commentaryVoiceID },
+            get: {
+                let saved = UserDefaults.standard.commentaryVoiceID
+                return voices.voiceInUse(for: settings.commentaryPersonalityID, savedID: saved)?.identifier ?? saved
+            },
             set: { UserDefaults.standard.commentaryVoiceID = $0 }
         )
     }
+}
+
+#Preview {
+    let container = try! ModelContainer(
+        for: AppSettingsModel.self,
+        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+    let settings = AppSettingsModel()
+    container.mainContext.insert(settings)
+    return NavigationStack {
+        CommentaryScreen(settings: settings)
+    }
+    .modelContainer(container)
+    .environment(CommentaryVoices())
 }

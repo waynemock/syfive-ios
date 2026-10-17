@@ -13,6 +13,10 @@ extension CommentaryEvent where Kind == CommentaryEventKind {
         .init(kind: .winnerTie, tokens: ["winner": winner, "score": "\(score)"])
     }
 
+    static func soloFinished(player: String, score: Int) -> Self {
+        .init(kind: .soloFinished, tokens: ["player": player, "score": "\(score)"])
+    }
+
     static func yatzyBonusEarned(player: String) -> Self {
         .init(kind: .yatzyBonusEarned, tokens: ["player": player])
     }

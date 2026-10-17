@@ -1,4 +1,5 @@
 import SwiftUI
+import AVFoundation
 import SyLibCommentary
 import SyLibCore
 import SyLibDice
@@ -28,14 +29,18 @@ struct ContentView: View {
     @State var showsGameNightPendingSheet = false
     @State var showsGameNightHelp = false
     @State var showsHowToPlay = false
-    /// Set when the reconnect alert's "Restart as Host" is tapped, so isSessionActive handler
-    /// can skip the seating sheet and jump straight to the in-progress match.
-    @State var pendingResumeMatchID: UUID? = nil
-    @State var pendingResumeGameID: UUID? = nil
     @State var celebrationCoordinator = CelebrationCoordinator()
     @State var commentaryEngine: CommentaryEngine<CommentaryEventKind>? = nil
-    @State var isUpdateAvailable = false
-    @State var updateBadgeAcknowledged = false
+    /// The device's voices, scanned off the main actor; resolves each personality's voice (D-081).
+    @State var commentaryVoices = CommentaryVoices(
+        answeringFor: CommentaryPersonality.all.map { ($0.id, $0.voiceCriteria) }
+    )
+    /// Each personality's shuffle deck, saved across launches (D-077). Never change the key.
+    let commentaryShuffleStore = CommentaryShuffleStore(key: "com.syzygysoftwerksllc.syfive.commentaryShuffle")
+    /// The personality whose deck the engine holds, or nil when none is loaded.
+    @State var shuffleLoadedFor: String? = nil
+    /// The App Store update state: availability and the stored badge acknowledgement (D-139).
+    @State var updateState = AppUpdateState()
     @Environment(GameNightController.self) var gameNight
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) var modelContext
@@ -70,7 +75,7 @@ struct ContentView: View {
             .toolbar {
                 ToolbarItemGroup(placement: .topBarLeading) {
                     leadingNavButton
-                    if showsGameNightHelpButton {
+                    if gameNightEntry.showsLeadingHelp {
                         Button { showsGameNightHelp = true } label: {
                             Image(systemName: "questionmark.circle")
                         }
@@ -82,15 +87,19 @@ struct ContentView: View {
                         IconButton("questionmark.circle") { showsHowToPlay = true }
                             .accessibilityLabel("How to Play")
                     }
-                    Menu {
+                    MoreMenu(showsBadge: updateState.showsBadge,
+                             badgeColor: theme.successColor,
+                             accessibilityLabel: "Menu",
+                             badgedAccessibilityLabel: "Menu, update available") {
                         if !(appSettings?.helpDismissed ?? false) {
                             Button { showsHowToPlay = true } label: {
                                 Label("How to Play", systemImage: "questionmark.circle")
                             }
                             Divider()
                         }
-                        if isUpdateAvailable {
-                            Button { openAppStore() } label: {
+                        if updateState.isUpdateAvailable {
+                            // The badge clears here, never on menu open (D-139).
+                            Button { updateState.acknowledge(); openAppStore() } label: {
                                 Label("Update Available", systemImage: "arrow.down.circle")
                             }
                             Divider()
@@ -135,19 +144,7 @@ struct ContentView: View {
                             }
                         }
                         #endif
-                    } label: {
-                        IconButton(
-                            "ellipsis.circle",
-                            context: .toolbar,
-                            badge: shouldShowUpdateBadge ? 0 : nil,
-                            badgeBackground: theme.successColor,
-                            badgeOutline: Color.black.opacity(0.8)
-                        )
-                        .accessibilityLabel(shouldShowUpdateBadge ? "Menu, update available" : "Menu")
                     }
-                    .simultaneousGesture(TapGesture().onEnded {
-                        acknowledgeUpdateBadge()
-                    })
                 }
             }
             .alert("Start a new game?", isPresented: $showsResetAlert) {
@@ -191,33 +188,25 @@ struct ContentView: View {
             appName: "SyFive",
             appStoreURL: AboutView.appStoreURL,
             onAbandonSession: { gameNight.abandonSession() },
-            onGuestReconnect: { gameNight.prepareForGuestReconnect(matchID: $0) },
+            onGuestReconnect: { gameNight.coordinator.prepareForGuestReconnect(matchID: $0) },
             hostReconnectIDs: { fetchHostReconnectIDs() },
             onHostReconnect: { matchID, gameID in
-                pendingResumeMatchID = matchID
-                pendingResumeGameID = gameID
+                gameNight.coordinator.recordPendingHostResume(matchID: matchID, gameID: gameID)
                 gameNight.beginHosting(
-                    onNeedsConversation: {
-                        pendingResumeMatchID = nil
-                        pendingResumeGameID = nil
-                    },
-                    onReadyToSeat: { showsGameNight = true }
+                    onNeedsConversation: { gameNight.coordinator.clearPendingHostResume() },
+                    onReadyToSeat: {}   // a reconnect never seats (D-136)
                 )
             }
         )
         .alert("Reconnect Game Night?", isPresented: $gnAlerts.showsHostReconnect) {
             Button("Resume as Host") {
                 gameNight.beginHosting(
-                    onNeedsConversation: {
-                        pendingResumeMatchID = nil
-                        pendingResumeGameID = nil
-                    },
-                    onReadyToSeat: { showsGameNight = true }
+                    onNeedsConversation: { gameNight.coordinator.clearPendingHostResume() },
+                    onReadyToSeat: {}   // a reconnect never seats (D-136)
                 )
             }
             Button("Play Locally", role: .cancel) {
-                pendingResumeMatchID = nil
-                pendingResumeGameID = nil
+                gameNight.coordinator.clearPendingHostResume()
             }
         } message: {
             Text("Your scores are intact. If you were the host, tap Resume as Host — guests will rejoin automatically.")
@@ -243,17 +232,25 @@ struct ContentView: View {
         .environment(\.theme, theme)
         .environment(\.suggestedMoveEnabled, appSettings?.suggestedMoveEnabled ?? true)
         .environment(director)
+        .environment(commentaryVoices)
         .environment(celebrationCoordinator)
         .task {
-            isUpdateAvailable = await AppUpdateChecker.shared.isUpdateAvailable()
+            await updateState.check()
             await director.warmUp()
         }
+        .task {
+            // Never behind the App Store check: until the scan lands, voiceInUse is nil and
+            // commentary speaks in the system voice (18 §4.1).
+            await commentaryVoices.refresh()
+        }
+        .onReceive(NotificationCenter.default.publisher(
+            for: AVSpeechSynthesizer.availableVoicesDidChangeNotification)) { _ in
+            Task { await commentaryVoices.refresh() }
+        }
+        .onChange(of: commentaryVoices.revision) { _, _ in syncCommentaryEngine() }
         .onAppear {
             seedSettingsIfNeeded()
             seedYatzyGameIfNeeded()
-            #if DEBUG
-            runCloudKitSchemaExercise()
-            #endif
             loadMatchIfNeeded()
             syncPlayerThemesFromRoster()
             healOrphanedParticipants()
@@ -350,62 +347,25 @@ struct ContentView: View {
                 try? ctx.save()
             }
             gameNight.onHistoryManifestNeeded = {
-                // Only advertise matches where every participant is in the current session.
-                // Prevents sending history from games the receiving device never attended.
-                let sessionPlayerIDs = Set(gameNight.seats.compactMap { $0.playerID })
-                guard !sessionPlayerIDs.isEmpty else { return [] }
-                let completed = "completed"
-                var descriptor = FetchDescriptor<MatchModel>(
-                    predicate: #Predicate { $0.statusRaw == completed },
-                    sortBy: [SortDescriptor(\MatchModel.completedAt, order: .reverse)]
-                )
-                descriptor.fetchLimit = 40
-                let all = (try? ctx.fetch(descriptor)) ?? []
-                return all.filter { model in
-                    guard model.isGameNight else { return false }
-                    let pIDs = model.participants.compactMap { $0.playerID }
-                    return !pIDs.isEmpty && pIDs.allSatisfy { sessionPlayerIDs.contains($0) }
-                }.prefix(20).map { $0.id }
+                let seated = Set(gameNight.seats.compactMap { $0.playerID })
+                do { return try GNHistoryStore.manifestIDs(seatedPlayerIDs: seated, in: ctx) }
+                catch { logger.error(self, "history manifest failed: \(error)"); return [] }
             }
             gameNight.onHistoryMatchesNeeded = { matchIDs in
-                matchIDs.compactMap { id in
-                    var descriptor = FetchDescriptor<MatchModel>(predicate: #Predicate { $0.id == id })
-                    descriptor.fetchLimit = 1
-                    return (try? ctx.fetch(descriptor))?.first?.toDomain()
-                }
+                let seated = Set(gameNight.seats.compactMap { $0.playerID })
+                do { return try GNHistoryStore.matches(for: matchIDs, seatedPlayerIDs: seated, in: ctx) }
+                catch { logger.error(self, "history matches failed: \(error)"); return [] }
             }
             gameNight.onHistoryMatchesReceived = { matches in
-                // Build local player ID set once for the whole batch.
-                let localPlayerIDs = Set(
-                    ((try? ctx.fetch(FetchDescriptor<PlayerModel>())) ?? []).map { $0.id }
-                )
-                for match in matches {
-                    // Skip if any participant is unknown to this device.
-                    let participantIDs = match.participants.compactMap { $0.playerID }
-                    guard !participantIDs.isEmpty,
-                          participantIDs.allSatisfy({ localPlayerIDs.contains($0) }) else {
-                        logger.info(self, "onHistoryMatchesReceived: skipped foreign match id=\(match.id.uuidString.prefix(8))")
-                        continue
-                    }
-                    // Skip if an equivalent record already exists — either by wire UUID (post-fix
-                    // records) or by startedAt fingerprint within 20 min (pre-fix auto-UUID records).
-                    if GNMatchIdentity.duplicateExists(for: match, in: ctx) {
-                        logger.info(self, "onHistoryMatchesReceived: skipped duplicate id=\(match.id.uuidString.prefix(8))")
-                        continue
-                    }
-                    let newModel = MatchModel()
-                    ctx.insert(newModel)
-                    newModel.hydrate(from: match, context: ctx)
-                    newModel.isGameNight = true
-                }
-                try? ctx.save()
+                do {
+                    let stored = try GNHistoryStore.storeReceived(matches, in: ctx)
+                    logger.info(self, "history received: \(matches.count), stored \(stored)")
+                } catch { logger.error(self, "history store failed: \(error)") }
             }
-            // Reconnect path: skip the seating sheet and jump into the running match.
-            // Fresh sessions show the seating sheet normally.
-            if let matchID = pendingResumeMatchID, let gameID = pendingResumeGameID {
-                pendingResumeMatchID = nil
-                pendingResumeGameID = nil
-                gameNight.resumeAsHost(matchID: matchID, gameID: gameID)
+            // Reconnect path: the coordinator resumes a recorded match and skips the seating
+            // sheet. Fresh sessions, and a recording this session cannot resume, show it normally.
+            if gameNight.coordinator.consumePendingHostResume() {
+                // Resumed: guests follow from the matchState it sent. No seating sheet.
             } else {
                 // Delay sheet presentation so the UIKit GroupActivitySharingController
                 // dismiss animation (~0.35s) fully completes before SwiftUI presents.
@@ -413,7 +373,7 @@ struct ContentView: View {
                 // the animation finishes. Without the delay, showsGameNight = true silently
                 // fails and gets stuck at true (making subsequent taps no-ops).
                 Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    try? await Task.sleep(for: GameNightSession<GameNightActivity>.seatingSheetDelay)
                     guard gameNight.isSessionActive else { return }
                     // Don't show the seating sheet when the game is already running —
                     // the host's matchState arrives during the 500ms window on reconnect.
@@ -432,7 +392,13 @@ struct ContentView: View {
             if newPhase == .settingTable && gameNight.isSessionActive { showsGameNight = true }
         }
         .onChange(of: model.playerCount) { saveMatch() }
-        .onChange(of: model.playerScores) { saveMatch() }
+        .onChange(of: model.playerScores) {
+            logger.info(self, "playerScores changed: scored=\(model.playerScores.reduce(0) { $0 + $1.count }) hasGameActivity=\(model.hasGameActivity)")
+            saveMatch()
+        }
+        .onChange(of: leadingNavSlot) { old, new in
+            logger.info(self, "leading slot: \(old) → \(new) hasGameActivity=\(model.hasGameActivity) over=\(model.isGameOver) players=\(model.playerCount)")
+        }
         .onChange(of: appSettings?.soundModeRaw) { _, _ in handleSoundModeChanged() }
         .onChange(of: appSettings?.hapticsEnabled) { _, v in director.hapticsEnabled = v ?? true }
         .onChange(of: appSettings?.commentaryModeRaw)        { _, _ in syncCommentaryEngine() }
@@ -440,7 +406,9 @@ struct ContentView: View {
         .onChange(of: appSettings?.commentaryPersonalityID) { _, _ in syncCommentaryEngine() }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
-            case .background: director.stopAudioForBackground()
+            case .background:
+                director.stopAudioForBackground()
+                saveShuffleForBackground()
             case .active:
                 director.handleForeground()
                 LegacyYahtzeeRepair.run(in: modelContext)
@@ -492,6 +460,7 @@ struct ContentView: View {
         .sheet(isPresented: $showsSettings, onDismiss: { syncCommentaryEngine() }) {
             SettingsView()
                 .environment(\.theme, theme)
+                .environment(commentaryVoices)
         }
         .sheet(isPresented: $showsDiceFairness) {
             NavigationStack {
@@ -537,15 +506,6 @@ struct ContentView: View {
             HowToPlayView(settings: appSettings)
                 .environment(\.theme, theme)
         }
-    }
-
-    private var shouldShowUpdateBadge: Bool {
-        isUpdateAvailable && !updateBadgeAcknowledged
-    }
-
-    private func acknowledgeUpdateBadge() {
-        guard shouldShowUpdateBadge else { return }
-        updateBadgeAcknowledged = true
     }
 
     private func openAppStore() {

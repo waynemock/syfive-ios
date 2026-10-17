@@ -171,6 +171,28 @@ extension CommentaryPersonality where Kind == CommentaryEventKind {
                 "A quiet draw for {winner}. {score} each.",
                 "The game ends level. {winner}, together."
             ],
+            "soloFinished": [
+                "The card is full. {player} rests at {score}.",
+                "Every box filled. {score}, and nothing left to chase.",
+                "{player} completes the journey. {score} points.",
+                "The dice are still. {player} arrives at {score}.",
+                "One player, one path. It ends at {score}.",
+                "The game exhales. {player} finishes with {score}.",
+                "Thirteen boxes, thirteen moments. {score}.",
+                "Nothing left to roll. {player} settles at {score}.",
+                "The card closes softly. {score} for {player}.",
+                "{player} reaches the end of the path. {score}.",
+                "All turns complete. {score}, held lightly.",
+                "The final box is filled. {player}, {score}.",
+                "A quiet finish. {player} arrives at {score}.",
+                "{score}. A number, and a game well walked.",
+                "The dice rest. So does {player}. {score}.",
+                "Completion. {player} finishes at {score}.",
+                "The circle closes at {score}.",
+                "{player} lets the last roll go. {score}.",
+                "Every choice made, every box filled. {score}.",
+                "The game is whole. {player}, {score}."
+            ],
             "upperBonusEarned": [
                 "Patience rewarded. {player} earns the upper bonus.",
                 "{player} tended the small numbers, and the bonus arrived.",

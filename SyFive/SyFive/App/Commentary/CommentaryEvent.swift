@@ -1,11 +1,12 @@
 import Foundation
 import SyLibCommentary
 
-enum CommentaryEventKind: String, Sendable {
+enum CommentaryEventKind: String, Sendable, CaseIterable {
     case yatzyRolled
     case yatzyBonusEarned
     case winnerDeclared
     case winnerTie
+    case soloFinished
     case upperBonusEarned
     case yatzyScratched
     case bigTurn
@@ -18,7 +19,7 @@ enum CommentaryEventKind: String, Sendable {
 
     var tier: CommentaryEventTier {
         switch self {
-        case .yatzyRolled, .yatzyBonusEarned, .winnerDeclared, .winnerTie:
+        case .yatzyRolled, .yatzyBonusEarned, .winnerDeclared, .winnerTie, .soloFinished:
             return .celebration
         case .upperBonusEarned, .yatzyScratched, .bigTurn, .leadChange:
             return .highlight
