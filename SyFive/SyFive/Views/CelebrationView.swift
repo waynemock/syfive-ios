@@ -48,7 +48,9 @@ struct DiceTrayOverlayView: View {
             // Full-frame particle burst — Yatzy only.
             if let event = coordinator.yatzyEvent {
                 let theme = Theme(type: model.themeType(for: event.playerIndex), colorScheme: colorScheme)
-                ParticleBurst { makeYatzyParticles(theme: theme) }
+                // Same motes under Reduce Motion: they are already the calm form (D-073).
+                ParticleBurst(particles: { makeYatzyParticles(theme: theme) },
+                              reducedMotion: { makeYatzyParticles(theme: theme) })
                 .id(event.id)
                 .transition(.opacity.animation(.easeInOut(duration: 0.4)))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -404,7 +406,9 @@ private struct GameOverOverlayView: View {
                 .ignoresSafeArea()
                 .opacity(washOpacity)
 
-            ParticleBurst { makeFallParticles(winnerThemes: winnerThemes) }
+            // Same slow-fall under Reduce Motion: it is already the calm form (D-073).
+            ParticleBurst(particles: { makeFallParticles(winnerThemes: winnerThemes) },
+                          reducedMotion: { makeFallParticles(winnerThemes: winnerThemes) })
         }
         .opacity(overlayOpacity)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -4,7 +4,4 @@
    <FileRef
       location = "group:SyFive.xcodeproj">
    </FileRef>
-   <FileRef
-      location = "absolute:/Users/wayne/Documents/Syzygy/Projects/sylib-swift">
-   </FileRef>
 </Workspace>

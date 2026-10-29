@@ -196,17 +196,19 @@ Full SwiftUI particle overlay system (`08_CELEBRATIONS_DESIGN.md`). App-layer on
 | Requirement | Status | Notes |
 |---|---|---|
 | Yatzy: rising accent motes | ✅ Done | 15–25 motes from die positions; 2:1 primary/secondary ratio |
-| Yatzy: title card ("YATZY / +50") | ✅ Done | Fade in after 200 ms; auto-dismissed at ~1.8 s |
+| Yatzy: title card ("YATZY / +50") | ✅ Done | Fade in after 200 ms; auto-dismissed at 10 s |
 | Game-over: slow-fall particles | ✅ Done | 55 motes from top; staggered 0.3–2.0 s delays; 4 s total |
 | Game-over: theme-gradient wash | ✅ Done | Winner accent gradient; fades in at 0.3 s |
 | Tie support | ✅ Done | Interleaved winner accents in both motes and wash |
-| Reduce Motion: particles skipped | ✅ Done | `@Environment(\.accessibilityReduceMotion)` guard on both Canvas paths |
+| Reduce Motion: particles play unchanged (D-073, `24`) | ✅ Done | Each `ParticleBurst` passes its factory as both `particles:` and `reducedMotion:` |
 | Hit-testing disabled | ✅ Done | All taps pass through to game content |
 | Rapid Yatzy: no accumulation | ✅ Done | `yatzyEvent` replaced not stacked; `.id(event.id)` forces fresh view |
 | Game-over: winner scorecard pulse effect | ✅ Done | Rainbow/accent pulse ring around winning card |
 | Game-over: grand-total count-up | ✅ Done | Winning score animates up on game end |
 
 ### Open celebrations decisions
+
+**Resolved:** O-3 to O-6 are ruled in D-122 to D-125 (`00_DECISION_LEDGER.md`).
 
 From `08` — implementation is done; these are device/feel calibrations:
 - **O-3** — Game-over confetti: is the slow-fall the right ceiling, or is wash + glow + pulse the calm answer?
@@ -373,6 +375,6 @@ Ordered by dependency and user impact:
 
 1. **Guest drop mid-turn** (`06 §13.2`) — wait-only vs. host "play on" skip control. Only remaining Game Night policy decision.
 
-2. **Celebration calibration** — Four open design questions from `08` (O-3 through O-6): confetti ceiling, count-up under Reduce Motion, tie behavior confirmation, game-over audio companion.
+2. ~~**Celebration calibration**~~ — **Resolved:** O-3 to O-6 are ruled in D-122 to D-125; Reduce Motion in D-073 (`24`).
 
 3. **Pre-submission** — Before shipping: `00B` §6. App Store assets (screenshots, description, metadata). Final QA pass across all device sizes.
