@@ -81,11 +81,8 @@ struct PlayerProfileView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     if showsModePicker {
-                        Picker("Mode", selection: $profileMode) {
-                            Text("PvP").tag(ProfileMode.pvp)
-                            Text("Solo").tag(ProfileMode.solo)
-                        }
-                        .pickerStyle(.segmented)
+                        SegmentedPicker("Mode", selection: $profileMode,
+                                        segments: [(.pvp, "PvP"), (.solo, "Solo")])
                     }
 
                     if summary != nil || insights != nil {

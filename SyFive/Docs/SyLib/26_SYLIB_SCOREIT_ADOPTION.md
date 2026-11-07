@@ -1,6 +1,6 @@
 # SyLib adoption, round 2: what Score It \* added to SyLib, into SyFive 1.2.0
 
-**Status:** **Ready for the agent.** Version 2.0, 6 November 2026. All rulings by Pops, 6 November
+**Status:** **Tasks complete (26.1 to 26.14, with 26.9b), 6 November 2026; ship steps open (§5 Ship, and the deferred Game Night pass in §12).** Version 2.0, 6 November 2026. All rulings by Pops, 6 November
 2026 (§2). Version 1 (5–6 November) was a design for review and was never given to the agent, so
 this version replaces it in place (`00B` E-1 covers delivered documents only).
 
@@ -11,7 +11,7 @@ this version replaces it in place (`00B` E-1 covers delivered documents only).
   integration (#15)"). Its tree is byte-identical to `scoreit-integration` at `6c76367`, which is
   what version 1 reviewed. Against SyLib's previous `main` (`8f9ec06`) the merge changes 164 files,
   77 of them under `Sources/`.
-- **SyLib edits** are made only by the two SyLib tasks, 26.9 and 26.12, which also edit the SyLib docs
+- **SyLib edits** are made only by the three SyLib tasks, 26.9, 26.9b and 26.12, which also edit the SyLib docs
   they name. Each one adds to a public API without changing a default. Every other SyLib change is a
   stop condition (`00B` §2).
 - **Syderal** is out of scope (§10).
@@ -110,6 +110,12 @@ silently overrides it. A difference that is a defect in either app is fixed, not
   (`PlayerScoreCardView.swift` 355, `model.canScore(category:for:)`), which is what enforces joker
   forced-scoring and the strict-poison rule (D-003 to D-005). The SyLib card's single
   `canScore: Bool` would let a five-of-a-kind be scored into a category that isn't legal.
+- **SyLib addition (26.9b, Pops, 6 Nov 2026):** `YatzyScorecardCard` gains
+  `pulsesBestSuggestion: Bool = true`. With it false, open cells still show their suggested
+  values but nothing pulses. SyFive passes its Suggested Move setting there. *Rationale:* in
+  SyFive the setting has only ever controlled the pulse (`ScoreRow.swift` 56); a legal cell always
+  shows what it would score (91–93). SyLib's card ties values and pulse together, so without this
+  the setting turned off would hide the values as well.
 - **The pre-game card stays SyFive's** this round: the edit pencil, the remove button, the
   head-to-head card and View profile (`model.canEditPlayers`, `MatchController.swift` 105). It is
   restyled to match in `28` (§11).
@@ -341,16 +347,25 @@ four things read `\.syTheme`: `paletteBarBackground` (which `DiceFairnessView` u
 
 - **Inputs:** §2.5, §2.6; SyLib `Docs/FEEL.md`, `Docs/THEME.md`.
 - **Change, feel rows:** in `Views/SettingsView.swift` 49–61, the section's two rows become
-  `FeelSettingsRows(soundMode: soundModeBinding, hapticsEnabled: $settings.hapticsEnabled,
+  `FeelSettingsRows(soundMode: $settings.soundMode, hapticsEnabled: $settings.hapticsEnabled,
   hapticsSupported: director.hapticSupported)`. Its footer becomes `Text(FeelSettingsRows.footer)`,
-  which is word for word today's footer. The header stays SyFive's. `soundModeBinding` maps
-  `settings.soundModeRaw` through `AppSoundMode(rawValue:) ?? .mix`, the model's own fallback
-  (`AppSettingsModel.swift`). `director` is the `FeelDirector` in the environment. Its
-  `hapticSupported` is the property `FeelBoardView.swift` 76 reads.
+  which is word for word today's footer. The header stays SyFive's. `$settings.soundMode` binds
+  the model's existing computed `soundMode` (get and set through `soundModeRaw`, falling back to
+  `.mix`). `director` is the `FeelDirector`, read with `@Environment(FeelDirector.self)` in
+  `SettingsForm`. Its `hapticSupported` is the property `FeelBoardView.swift` 76 reads. **The Settings
+  sheet doesn't pass the director today** (`ContentView.swift` 460–464 passes only `\.syTheme` and
+  `commentaryVoices`), and sheets here don't inherit the root's environment, so add
+  `.environment(director)` there, as the Feel Board's sheet does (480–484). Without it, opening
+  Settings crashes.
 - **Change, appearance:**
-  - Delete `enum AppColorScheme` (`AppSettingsModel.swift` 7) and its environment extension. Retype
-    `colorScheme` as `AppearanceSetting`, keeping `colorSchemeRaw` and its default `"dark"`.
-  - Settings' Color Scheme picker (`SettingsView.swift` 39) iterates `AppearanceSetting.allCases`.
+  - Delete `enum AppColorScheme` (`AppSettingsModel.swift` 7–26, including its
+    `preferredColorScheme`). Leave the file's environment extension alone: it is
+    `suggestedMoveEnabled`'s. Retype the **computed** `colorScheme` property (44–47) as
+    `AppearanceSetting` (`AppearanceSetting(rawValue: colorSchemeRaw) ?? .dark`). The stored
+    `colorSchemeRaw` and its default stay exactly as they are, written as
+    `AppearanceSetting.dark.rawValue` (the same `"dark"`). No stored attribute changes, so this is
+    not `00B` §2's schema stop.
+  - Settings' Color Scheme picker (`SettingsView.swift` 40) iterates `AppearanceSetting.allCases`.
   - In `ContentView.swift`, remove `.preferredColorScheme(…)` (line 230). In its place, call
     `WindowAppearance.apply(appSettings?.colorScheme ?? .dark)` in `.onAppear` and in an
     `.onChange(of: appSettings?.colorSchemeRaw)`, as `THEME.md` shows.
@@ -362,64 +377,143 @@ four things read `\.syTheme`: `paletteBarBackground` (which `DiceFairnessView` u
 
 #### Task 26.9 · SyLib: per-category scorability on `YatzyScorecardCard`
 
-- **Inputs:** §2.8; SyLib `Docs/YATZY.md` (Scorecard views).
-- **Change (SyLib):** `YatzyScorecardCard.init` gains `scorableCategories: Set<YatzyCategory>? =
-  nil`, after `canScore`. The card passes it to `YatzyScorecardContent`. An open category is
-  tappable, and draws its suggested value, only when `canScore` is true **and**
-  (`scorableCategories == nil` or the set contains it). Otherwise it draws as an open cell that
-  can't be scored. That is the same state the card draws today when `canScore` is false, for that
-  cell only. `YATZY.md`'s `YatzyScorecardCard` section documents the parameter.
-- **Tests (SyLib):** with `nil`, the tappable set is every open category (today's behavior). With a
-  set, it is the open categories in the set. With `canScore` false, it is none, whatever the set.
-  Total + 3.
-- **Must not touch:** any other parameter or default; Score It \* (which passes nothing and is
+- **Inputs:** §2.8; SyLib `Docs/YATZY.md` (Scorecard views); `Sources/SyLibYatzyUI/YatzyScorecardTotals.swift`
+  (`YatzyScorecardContent`) and `YatzyScorecardCard.swift`.
+- **Change (SyLib):**
+  - `YatzyScorecardContent` (`YatzyScorecardTotals.swift` 42) gains
+    `var scorableCategories: Set<YatzyCategory>? = nil`, after `suggestedValues`. The default
+    keeps every existing call site and test compiling unchanged.
+  - Its `isScorable(_:)` (53–55) becomes
+    `canScore && scorecard[category] == nil && (scorableCategories?.contains(category) ?? true)`.
+    That one predicate already drives `isTappable`, `cellText` (a suggested value only where
+    scorable, otherwise the placeholder) and `bestSuggestedCategory` (the pulse only among
+    scorable cells), so nothing else in the type changes.
+  - `YatzyScorecardCard.init` gains `scorableCategories: Set<YatzyCategory>? = nil`, right after
+    `canScore`, stores it, and passes it to `YatzyScorecardContent` in `content` (94–95). Its doc
+    comment: "the open categories that can be scored this turn; nil means every open one (the
+    default). A host enforcing rules (SyFive's joker and strict-poison placement) passes its legal
+    set."
+  - `YATZY.md`'s `YatzyScorecardCard` section documents the parameter with that sentence.
+- **Tests (SyLib), in `Tests/SyLibTests/SyLibYatzyUI/YatzyScorecardTotalsTests.swift`, total + 3:**
+  1. With `scorableCategories: nil`, `isScorable` is true for exactly the open categories (today's
+     behavior).
+  2. With a set (e.g. `[.sixes, .chance]`, both open, plus `.ones` open but not in the set):
+     `isScorable` and `isTappable` are true only for the set; `cellText(.ones)` is `.placeholder`
+     with suggestions present; `bestSuggestedCategory` is in the set even when `.ones` has the
+     highest suggested value.
+  3. With `canScore: false`, nothing is scorable, whatever the set.
+- **Must not touch:** any other parameter or default; Score It \* (it passes nothing and is
   unchanged).
-- **Done when:** SyLib's suite is at its previous total + 3; Syderal builds and passes (`00B` §5.4).
+- **Done when:** SyLib's suite is at 1548 + 3 = 1551 (1 skipped, as before); Syderal builds and
+  passes (`00B` §5.4); SyFive builds.
+
+#### Task 26.9b · SyLib: values without the pulse on `YatzyScorecardCard`
+
+- **Inputs:** §2.8; SyLib `Docs/YATZY.md`; `YatzyScorecardTotals.swift`, `YatzyScorecardCard.swift`.
+- **Change (SyLib):**
+  - `YatzyScorecardContent` gains `var pulsesBestSuggestion: Bool = true`, after
+    `scorableCategories`. `bestSuggestedCategory` (`guard canScore, let suggestedValues`) becomes
+    `guard canScore, pulsesBestSuggestion, let suggestedValues`. Nothing else in the type changes,
+    so `cellText` still shows the suggested values.
+  - `YatzyScorecardCard.init` gains `pulsesBestSuggestion: Bool = true`, right after
+    `suggestedValues`, stores it and passes it into `content`. Doc comment: "whether the best
+    suggested value pulses; false still shows the values (SyFive's Suggested Move setting off).
+    True, the default, is the behavior without it."
+  - `YATZY.md` documents it with that sentence, beside `suggestedValues`.
+- **Tests (SyLib), in `YatzyScorecardTotalsTests.swift`, total + 2:**
+  1. With suggestions and `pulsesBestSuggestion: false`: `bestSuggestedCategory` is nil, and
+     `cellText` for an open scorable category is still `.suggested(value)`.
+  2. With the default: `bestSuggestedCategory` is as before (the highest scorable suggestion).
+- **Must not touch:** any other parameter or default; Score It \*.
+- **Done when:** SyLib's suite is at 1551 + 2 = 1553 (1 skipped); Syderal builds and passes; SyFive
+  builds.
 
 #### Task 26.10 · The in-play scorecard
 
-- **Inputs:** §2.8; SyLib `Docs/YATZY.md`. `SyLibYatzyUI` is linked (§4). Runs after 26.9.
-- **Change:**
-  - While a game is in play (`!model.canEditPlayers`), each player's card is a
-    `YatzyScorecardCard`. Its inputs come from `MatchController`:
-    - `name`, `initials` and `palette` (`themeType(for:)`)
-    - `scorecard` (`scores(for:)`)
-    - `yatzyBonus` (`yatzyBonus(for:)`)
-    - `isCurrentTurn`, `isWinner` and `isLeading`, as `PlayerScoreCardView` computes them today
-    - `canScore` (the controller's turn-level `canScore`)
-    - `scorableCategories: model.legalScoreCategories(for: playerIndex)`
-    - `suggestedValues: suggestedMoveEnabled ? model.suggestedScores(for: playerIndex) : nil`
-  - `onSelect` is the cell action of `PlayerScoreCardView.swift` 365–368, unchanged:
-    `model.score(category:)`, then `director.gameEnded()` or `director.scoreConfirmed()`.
-  - `ScorecardView`'s paging becomes `YatzyScorecardPager(cards:currentIndex:onPageChange:)`, with
-    today's index and today's scroll-to-player behavior.
-  - Before the game starts (`model.canEditPlayers`), `PlayerScoreCardView` and `ScorecardView`
-    behave exactly as today. Delete the in-play branches they no longer reach. Keep the pre-game
-    branches.
-- **Report, don't decide:** if `YatzyScorecardCard`'s pulse on the highest suggested value can pick
-  a different cell from `model.suggestedCategory(for:)` (for example, on a tie), report the
-  difference with a case.
-- **Done when:** the build and suites pass; the summary names every `PlayerScoreCardView` property
-  that has no `YatzyScorecardCard` input. Pops checks V5.
+- **Inputs:** §2.8; SyLib `Docs/YATZY.md` and `Sources/SyLibYatzyUI/YatzyScorecardPager.swift`.
+  `SyLibYatzyUI` is linked (§4). Runs after 26.9 and 26.9b.
+- **What the tree has (read 6 November 2026):** `ScorecardView` (`Views/ScorecardView.swift`)
+  shows `PreGameGridView` while `model.canEditPlayers`, and otherwise its own `inGameView` (57–112):
+  a vertical and a horizontal `ScrollView` of `PlayerScoreCardView`s, with `singleCardWidth`, a
+  label-width probe, scroll-to-current-player, scroll-to-top on a player change, and a scroll to
+  the winner at game over. `YatzyScorecardPager` is that same layout, with the iPad width cap, but
+  it only follows `currentIndex`. `PlayerScoreCardView` is used in play by `ScorecardView` and
+  before the game by `PreGameGridView` (29).
+- **Change, `ScorecardView`:** the in-play branch becomes
+  `YatzyScorecardPager(cards: cards, currentIndex: pagerIndex)`, where:
+  - `pagerIndex` is `model.isGameOver ? (model.winnerIndices.first ?? model.currentPlayerIndex) :
+    model.currentPlayerIndex`. That keeps today's scroll to the winner at game over (the pager
+    scrolls whenever `currentIndex` changes).
+  - `cards` holds one `YatzyScorecardCard` per seat (`model.slotIDs.indices`), with player `i`'s
+    inputs from `MatchController`:
+
+    | Card input | Value |
+    |---|---|
+    | `name` | `model.playerNames[i]` |
+    | `initials` | `model.playerInitials(for: i)` |
+    | `palette` | `model.themeType(for: i)` |
+    | `scorecard` | `model.scores(for: i)` |
+    | `yatzyBonus` | `model.yatzyBonus(for: i)` |
+    | `isCurrentTurn` | `i == model.currentPlayerIndex && model.playerCount > 1 && model.hasStarted && !model.isGameOver` (today's turn-icon rule, `PlayerScoreCardView` header) |
+    | `isWinner` | `model.isWinner(i) && model.isGameOver` |
+    | `isLeading` | `model.playerCount > 1 && model.leaderIndices.contains(i)` |
+    | `canScore` | `model.canScore && i == model.currentPlayerIndex`. **Only the current player's card can score**; without this every card would be tappable |
+    | `scorableCategories` | `Set(YatzyCategory.allCases.filter { model.canScore(category: $0, for: i) })`, which is today's per-cell rule (joker and strict-poison placement included). `MatchController` doesn't change |
+    | `suggestedValues` | `model.suggestedScores(for: i)` (always, as today) |
+    | `pulsesBestSuggestion` | the `\.suggestedMoveEnabled` environment value |
+    | `onSelect` | `{ category in model.score(category: category); if model.isGameOver { director.gameEnded() } else { director.scoreConfirmed() } }`, today's cell action (`PlayerScoreCardView.swift` 365–368) |
+
+  - Delete what only `inGameView` used: `inGameView`, `scrollToCurrentPlayer`,
+    `celebrateWinningPlayer`, `singleCardWidth`, `cardMetrics`, `sectionLabelProbe` and its
+    `.background` probe, `LabelWidthKey`, `measuredLabelWidth`, and the layout constants. List each
+    deletion in the summary. Keep the pre-game branch, the player-picker sheet and `showsPlayerPicker`.
+  - Add `@Environment(FeelDirector.self) private var director` and
+    `@Environment(\.suggestedMoveEnabled) private var suggestedMoveEnabled`.
+- **`PlayerScoreCardView` is not changed in this task.** It still serves `PreGameGridView`. Its
+  in-play code becomes unreachable, and `28` removes it with the pre-game restyle.
+- **Also (from 26.8):** `SettingsView`'s `#Preview` adds `.environment(FeelDirector(catalog: .syFive))`.
+- **Done when:** the build and suites pass; the summary lists the deletions, and any
+  `PlayerScoreCardView` in-play behavior (in its header or cell code) that has no card input above.
+  Pops checks V5.
 
 #### Task 26.11 · Player edit with palette chips
 
-- **Inputs:** §2.9; SyLib `Docs/THEME.md` (`PaletteChips`), `Docs/ROSTER.md` (or wherever
-  `PalettePlayerEditSheet` is documented).
-- **Change:** `Views/PlayerEditSheet.swift`'s form becomes
-  `PalettePlayerEditSheet(existing:themeID:nameLimit:initialsLimit:deriveInitials:onSave:)`, with:
-  - SyFive's existing name and initials limits
-  - SyLib's `deriveInitials`
-  - the player's `themeID` (a new player's comes from today's default)
-  - SyFive's existing save logic in `onSave`, including `onCreated`, `matchSlot` and the
-    initials-follow-rename rule at line 73
+- **Inputs:** §2.9; SyLib `Docs/THEME.md` (`PaletteChips`), `Docs/UI_COMPONENTS.md`
+  (`PalettePlayerEditSheet`); `Sources/SyLibUI/Roster/PalettePlayerEditSheet.swift`,
+  `PlayerEditSheet.swift` and `PlayerEditRules.swift`.
+- **What the tree has (read 6 November 2026):** SyFive's `Views/PlayerEditSheet.swift` is a form
+  with Name, Initials and a swatch `themePicker` (118–150), and a `save()` that writes the
+  `PlayerModel` and the match. SyLib's sheet has the same fields, title, Cancel and Save, the same
+  initials-follow rule (`PlayerEditRules.nameChanged`: follow while the initials are empty or equal
+  the derived ones) and the same blank-initials fallback. SyFive has **no** name or initials limits
+  today. `PalettePlayerEditSheet` dismisses itself after calling `onSave`.
+- **Change, `Views/PlayerEditSheet.swift`:**
+  - The type keeps its name, `Mode`, init, `matchModel`, `onSave` and `onCreated`, so its five call
+    sites don't change.
+  - Its `body` becomes `PalettePlayerEditSheet(existing:themeID:nameLimit:initialsLimit:deriveInitials:onSave:)`:
 
-  `themePicker` (lines 118–150) is deleted. The sheet's modes and presentation are unchanged.
-- **Stop if:** a behavior of today's sheet (a mode, a validation, a Game Night case) has no place in
-  `PalettePlayerEditSheet`'s parameters or `onSave`. Report it.
+    | Parameter | Value |
+    |---|---|
+    | `existing` | `nil` for `.create`; `(pm.name, pm.initials)` for `.edit(pm, _)` |
+    | `themeID` | `matchModel.nextPlayerThemeType.rawValue` for `.create`; `pm.themeID` for `.edit` |
+    | `nameLimit`, `initialsLimit` | `nil` (SyFive has none) |
+    | `deriveInitials` | `{ deriveInitials(from: $0) }` (SyLibScoring) |
+    | `onSave` | `{ name, initials, themeID in … }`: today's `save()` writes, with `name` and `initials` already trimmed and resolved by SyLib, `themeType = SyTheme.ThemeType(themeID: themeID)`, then `onSave?()`. **No `dismiss()`**, because the SyLib sheet dismisses itself |
+
+  - Delete `themePicker`, `save()`, the `@State` name, initials and theme, and the environment
+    values and `swatchSize` nothing uses any more.
+  - The two previews keep working, with any needed `syTheme`.
+- **Change, presentation sites:** `PalettePlayerEditSheet` reads `\.syTheme`. `PlayersView` 89,
+  `PlayerScoreCardView` 117 and `PlayerPickerSheet` 92 already pass it. The two Game Night sites in
+  `App/GameNight/Views/GameNightScreens.swift` (39 and 154) don't: add `.environment(\.syTheme, theme)`
+  to each, reading the enclosing view's `@Environment(\.syTheme) private var theme` (add it if the
+  view has none). This is 26.3's recheck for the edit sheet.
+- **Visible (D-160):** chips instead of swatches, a plain "Color" section header, and the form on the
+  palette's background with the palette's tint, as Score It \* has them.
+- **Stop if:** any behavior of today's sheet (a mode, a validation, a Game Night case) has no place
+  in these parameters or `onSave`. Report it.
 - **Done when:** the build and suites pass; the summary lists each of today's sheet behaviors and
-  where it now lives; and 26.3's check is repeated for the edit sheet: report the presentation
-  site(s) by file and line, and whether `\.syTheme` reaches it (add it there if not).
+  where it now lives, and the syTheme status of all five presentation sites.
 
 #### Task 26.12 · SyLib: `RecordCard` with several holders, an unclaimed state, and the grid
 
@@ -477,7 +571,7 @@ four things read `\.syTheme`: `paletteBarBackground` (which `DiceFairnessView` u
 
   ```swift
   extension RecordCard {
-      public static let gridSpacing: CGFloat = 12
+      nonisolated public static let gridSpacing: CGFloat = 12
       public nonisolated static func gridColumnCount(width: CGFloat, minimum: CGFloat) -> Int {
           max(1, Int(((width + gridSpacing) / (minimum + gridSpacing)).rounded(.down)))
       }
@@ -512,17 +606,20 @@ four things read `\.syTheme`: `paletteBarBackground` (which `DiceFairnessView` u
   initializer and the grid. The paragraph that sends readers to Score It \*'s `RecordCardView.grid`
   sends them to `RecordCard.grid` instead. Replace the line "*SyFive adoption: … what it needs
   beyond this card is for then.*" with "SyFive's House Records uses it (SyFive `26`)."
-- **Tests (SyLib):**
-  - `gridColumnCount`: width 0 → 1; 375 at 160 → 2; 800 at 160 → 4.
-  - `sharedDate` is true for one holder, true for two holders with equal dates, and false when two
-    holders' dates differ.
-  - The old initializer's `Content` equals `.claimed` with one holder and no caption.
+- **Tests (SyLib)**, a new `Tests/SyLibTests/SyLibScoringUI/RecordCardTests.swift`
+  (`@testable import SyLibScoringUI`), **total + 5**:
+  1. `gridColumnCount`: width 0 → 1; 375 at 160 → 2; 800 at 160 → 4.
+  2. `sharedDate` is true for one holder.
+  3. `sharedDate` is true for two holders with equal dates.
+  4. `sharedDate` is false when two holders' dates differ.
+  5. The old initializer's `content` equals `.claimed(holders: [one holder with no caption], value:)`.
 
-  Expose `sharedDate` as `internal static func sharedDate(_ holders: [Holder]) -> Bool` so it can be
-  tested. Total + 6.
+  `sharedDate` is `internal static func sharedDate(_ holders: [Holder]) -> Bool`, and the stored
+  `content` is internal, so both can be tested.
 - **Must not touch:** Score It \* (its own `RecordCardView.grid` stays until a Score It \* session
   adopts this one); `gridMinimum`; the card's surface, padding or fonts.
-- **Done when:** SyLib's suite is at its previous total + 6; Syderal builds and passes.
+- **Done when:** SyLib's suite is at 1553 + 5 = 1558 (1 skipped); Syderal builds and passes;
+  SyFive builds.
 
 #### Task 26.13 · House Records on `RecordCard`
 
@@ -602,8 +699,8 @@ None for this round. `28` and `17_GAME_NIGHT_NEARBY_JOIN` carry their own.
 
 ## 8. Invariants (quick reference)
 
-- Builds use `sylib-reintegration` against `syfive-integration`. SyLib is edited only by 26.9 and
-  26.12, and only additively.
+- Builds use `sylib-reintegration` against `syfive-integration`. SyLib is edited only by 26.9, 26.9b
+  and 26.12, and only additively.
 - `appProtocolVersion` stays 1 and the transport stays 3. `Match.options` is always `[:]` from
   SyFive.
 - CloudKit Production is deployed before TestFlight (D-026).
@@ -626,7 +723,7 @@ None for this round. `28` and `17_GAME_NIGHT_NEARBY_JOIN` carry their own.
 | D-158 | **The feel catalog (`FeelCatalog.syzygy` + SyFive's `celebration`), `DiceFeelAdapter` (SyLibDiceFeel), the dice palette, `DiceRollControls` and the game-over `GameOverOverlay` / `WinnerCard` are SyLib's.** The Yatzy moment, `celebration` and `CelebrationCoordinator` stay SyFive's. | `26 §2.4` |
 | D-159 | **Settings' Audio & Feedback rows are `FeelSettingsRows`, and Haptics is hidden without haptic hardware. Appearance is `AppearanceSetting`, applied by `WindowAppearance`**; `.preferredColorScheme` leaves the root (it fixed Settings keeping its old scheme). | `26 §2.5, §2.6` |
 | D-160 | **Where SyFive's look and Score It \*'s differ, SyFive takes Score It \*'s, except where a ledger row fixes the look**; those conflicts go to Pops. A defect in either app is fixed, not copied. (Pops, 6 Nov 2026.) | `26 §2.7` |
-| D-161 | **The in-play scorecard is SyLibYatzyUI's card and pager**, iPad width cap included. Legality is passed per category (`scorableCategories` = `legalScoreCategories`). The pre-game card stays SyFive's. | `26 §2.8` |
+| D-161 | **The in-play scorecard is SyLibYatzyUI's card and pager**, iPad width cap included. Legality is passed per category (`scorableCategories`, built from `canScore(category:for:)`), and only the current player's card can score. Suggested values always show; the Suggested Move setting controls only the pulse (`pulsesBestSuggestion`, SyLib addition 26.9b, Pops 6 Nov 2026). The pre-game card stays SyFive's. | `26 §2.8` |
 | D-162 | **Player edit is `PalettePlayerEditSheet` with `PaletteChips`**; the swatch picker is retired. SyFive's modes and writes stay in `onSave`. | `26 §2.9` |
 | D-163 | **Stats uses SyLib's `SegmentedPicker`; `WindowTint` puts the palette's accent on windows, alerts and bars.** | `26 §2.11` |
 | D-164 | **House Records' cards are `RecordCard`, extended in SyLib for ties, captions and unclaimed titles, and laid out in `RecordCard.grid`.** Dates read as an abbreviated date ("Nov 5, 2026"). D-097 to D-116 unchanged; the titles stay SyFive's (D-110). | `12 → 26 §2.10` |
@@ -645,7 +742,7 @@ build. A Syderal session handles it. For that session:
 - `Match(… options:)` at every place where Syderal calls the initializer.
 - §3's build-only changes that apply to it: the 44 pt `IconButton`, renderer v2 sounds, the
   `AppIconView` corner, `deriveInitials`, and anything it presents from SyLib that reads `syTheme`.
-- The additions from 26.9 and 26.12 change nothing for it. Its compatibility build after each one
+- The additions from 26.9, 26.9b and 26.12 change nothing for it. Its compatibility build after each one
   (`00B` §5.4) proves that.
 
 ---
@@ -681,6 +778,25 @@ document.
 | 26.2 | 6 Nov 2026 | Done (checked by Claude against the diff) | 19 / — expected | `Theme.swift` deleted; 28 files; every changed line is the rename, the table's lookups (`themeID:`, `fallback:` at 210/309, `rawValue` kept at 460), `SyTheme(themeID:colorScheme:)` in `PlayerPickerSheet`, two imports, and `rank.ordinal`. No `Theme` type, `\.theme` key or typealias remains. MatchController lines are now +1 after 26.1 |
 | 26.3 | 6 Nov 2026 | **Verified by Claude, no code change, no agent session** | — | Every sheet in `ContentView` that shows a SyLib reader of `syTheme` writes `.environment(\.syTheme, theme)`: Dice Fairness 465–474 (on its `NavigationStack`), About 476–478. Both wrote `\.theme` before, and 26.2 renamed them. The Game Night sheets (489–500) take an accent color and read no `syTheme`. The recheck moved into 26.11 and 26.14 |
 | 26.4 (pre-check) | 6 Nov 2026 | Claude compared both catalogs | — | All 11 shared recipe ids (sounds, rattles and haptics) are identical in value; neither catalog sets `rootHz` or reverb. Only `celebration` is SyFive's own |
+| 26.4 | 6 Nov 2026 | Done (checked by Claude against the diff) | 20 / — expected | `FeelCatalog.syFive` = `FeelCatalog.syzygy.merging(…)` with SyFive's `celebration` sound and haptic copied unchanged (verified against HEAD); 194 → 33 lines; `FeelBoardView` untouched. New test `syFiveCatalog_isSyzygyPlusOnlyCelebration` in `FeelTests.swift` |
+| 26.5 | 6 Nov 2026 | Done (checked by Claude against the diff) | 20 / — expected | `App/DiceFeelAdapter.swift` deleted; `DiceAreaView` imports `SyLibDiceFeel` and its `extension SyTheme { var dicePalette }` is gone. Nothing else changed |
+| 26.6 | 6 Nov 2026 | Done (checked by Claude against the diff) | 20 / — expected | `rollControls` is one `DiceRollControls`; actions, strings and toast unchanged; `rollControlHeight` and the row's `zIndex` removed |
+| V6 | 6 Nov 2026 | **Pass** (Pops, iPhone and iPad) | | The tray looks as before; no slot or tap-area trouble from the 44 pt minimum (D-165) |
+| 26.7 | 6 Nov 2026 | **Done** (code checked by Claude; suite re-run by the agent; Pops's device check passed on iPhone and iPad) | 20 / — expected | `GameOverOverlay` at 21 and `WinnerCard` with `CelebrationWinner`s at 125–130, as specified; `WinnerCardView`, `GameOverOverlayView`, `joinedWithAmpersand` and `makeFallParticles` deleted; file 702 lines; no new warnings. The first suite run hit the D-144 launch crash (row below) and was re-run |
+| D-144 evidence | 6 Nov 2026 | Simulator launch crash during 26.7's suite (18:27, `SyFive-2026-11-06-182716.ips`) | | iPhone SE (3rd generation), iOS 18.6. SIGABRT on the main thread, display-link driven, all RealityKit: `PhysicsSystem::ecsToSim` → `ForceEffectComponent` → `_os_crash_msg`, no SyFive frame. Same class as `17` §11, but through `ForceEffectComponent` rather than `PhysicsSimulationComponent`. The agent also mentioned a crash during 26.5 and a Network crash at 17:19; their details aren't recorded here. Still simulator-only; D-144 holds (no SyLib dice change without device evidence) |
+| 26.8 | 6 Nov 2026 | Done (checked by Claude against the tree) | 20 / — expected | `FeelSettingsRows` with `hapticsSupported: director.hapticSupported` and `FeelSettingsRows.footer`; `AppColorScheme` deleted, computed `colorScheme` is `AppearanceSetting`, stored default unchanged; `.preferredColorScheme` replaced by `WindowAppearance.apply` (ContentView 261, 405); Settings sheet passes the director. Follow-up: `SettingsView`'s `#Preview` has no `FeelDirector`; harmless while its store is empty, added in 26.10 |
+| V4 | 6 Nov 2026 | **Pass** (Pops, iPhone and iPad) | | Settings changes scheme at once from inside itself |
+| 26.9 | 6 Nov 2026 | Done (checked by Claude against the SyLib diff) | 20 / 1551 expected | `YatzyScorecardContent.scorableCategories` (nil default) in `isScorable`; card init parameter after `canScore`; `YATZY.md` documented; 3 tests, including the pulse staying among legal cells. Additive, staged on `syfive-integration` |
+| 26.9b | 6 Nov 2026 | Done (checked by Claude against the SyLib diff) | 20 / 1553 expected | `pulsesBestSuggestion` (default true) on `YatzyScorecardContent`, in `bestSuggestedCategory`'s guard only, and on the card init after `suggestedValues`, passed through; `YATZY.md` documented; 2 tests. Additive |
+| 26.10 | 6 Nov 2026 | Done (checked by Claude against the tree) | 20 / — expected | `ScorecardView`'s in-play branch is `YatzyScorecardPager` with the 26 table's inputs; `inGameView` and its helpers removed; `PlayerScoreCardView` untouched; Settings preview has its director. Leftovers for `28`: unused `colorScheme`, `sizeCategory`, `logger` and the `availableWidth` parameter in `ScorecardView` |
+| V5 | 6 Nov 2026 | **Pass** (Pops, iPhone and iPad) | | |
+| 26.11 | 6 Nov 2026 | Done (checked by Claude against the tree); device check passed on iPhone and iPad (Pops) | 20 / — expected | `PlayerEditSheet` wraps `PalettePlayerEditSheet` (nil limits, SyLib `deriveInitials`); today's writes in `onSave`, no second dismiss; the two Game Night sites in `GameNightScreens.swift` now pass `\.syTheme` (45, 165). Game Night checks deferred (below) |
+| Game Night pass | 6 Nov 2026 | **Deferred to the end of this build** (Pops) | | One pass after the last task: V3 (mixed table), and the Game Night edit-sheet checks from 26.11 (edit own seat, create a player while claiming a seat) |
+| 26.12 | 6 Nov 2026 | Done (checked by Claude against the SyLib diff) | — / 1558 expected | `RecordCard.Holder`, `Content`, `init(title:content:)`; the holder-name init maps onto one claimed holder and draws as before; per-holder dates when they differ; captions; unclaimed with the value's room kept; `RecordCard.grid` with `nonisolated` spacing and column count; 3 new previews; `SCORING_UI.md` updated; 5 tests in `RecordCardTests.swift`. Score It untested from here (its own copy is unchanged) |
+| 26.13 | 6 Nov 2026 | Done (checked by Claude against the tree) | 20 / — expected | House Records lays both sections in `RecordCard.grid` (one width, measured on the first), with `content(for:)` mapping `TitleState` and today's copy; `TitleCard`, `ClaimedContent`, `HolderRow` and `UnclaimedContent` deleted; 130 lines |
+| V7 | 6 Nov 2026 | **Pass** (Pops, iPhone and iPad) | | |
+| 26.14 | 6 Nov 2026 | Done (checked by Claude against the tree) | 20 / — expected | Both Stats pickers are `SegmentedPicker` with today's selections and text (no `.pickerStyle(.segmented)` remains); `WindowTint.apply` at launch (ContentView 263) and on theme change (408); `.tint` kept. `\.syTheme` reaches both: `PlayerProfileView` 154 (the player's palette), History via `ContentView` |
+| V8 | 6 Nov 2026 | **Pass** (Pops, iPhone and iPad) | | A player's profile keeps its toolbar buttons in the player's color under `WindowTint` |
 | V1 | 6 Nov 2026 | **Pass** (Pops) | | Every look and listen as described. `game_end`'s end click is gone, and no tick after it with Haptics off: Score It \*'s open item doesn't reproduce in SyFive |
 | V2 | 6 Nov 2026 | **Pass** (Pops) | | `initializeCloudKitSchema` logged "Development schema initialized". The Production deploy dialog listed exactly `CD_GameModel` + `CD_isArchived`, `CD_optionsData`, `CD_rulesLinksData` and `CD_MatchModel` + `CD_optionsData`, each `Data` field with its `_ckAsset` companion, plus 8 sortable/queryable indexes. Additive only |
 | V3 | 6 Nov 2026 | **Deferred** (Pops) | | No later task changes the wire, so it can run at any point before ship; it must pass before TestFlight |

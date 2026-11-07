@@ -227,7 +227,6 @@ struct ContentView: View {
                     }
                 }
         }
-        .preferredColorScheme(appSettings?.colorScheme.preferredColorScheme ?? .dark)
         .tint(theme.primaryAccent)
         .environment(\.syTheme, theme)
         .environment(\.suggestedMoveEnabled, appSettings?.suggestedMoveEnabled ?? true)
@@ -257,6 +256,11 @@ struct ContentView: View {
             // Sync initial settings values (onChange won't fire for the first load).
             director.soundMode      = appSettings?.soundMode      ?? .mix
             director.hapticsEnabled = appSettings?.hapticsEnabled ?? true
+            // One owner for the app's appearance: every window's style, so open sheets follow
+            // a change made inside them (D-159; THEME.md).
+            WindowAppearance.apply(appSettings?.colorScheme ?? .dark)
+            // The palette's accent on alerts, navigation bars and Back, which .tint misses (D-163).
+            WindowTint.apply(UIColor(theme.primaryAccent))
             // Warm up haptic engine before first roll to avoid first-event latency (§6.2).
             director.warmUpHaptics()
             syncCommentaryEngine()
@@ -400,6 +404,8 @@ struct ContentView: View {
             logger.info(self, "leading slot: \(old) → \(new) hasGameActivity=\(model.hasGameActivity) over=\(model.isGameOver) players=\(model.playerCount)")
         }
         .onChange(of: appSettings?.soundModeRaw) { _, _ in handleSoundModeChanged() }
+        .onChange(of: appSettings?.colorSchemeRaw) { _, _ in WindowAppearance.apply(appSettings?.colorScheme ?? .dark) }
+        .onChange(of: theme) { _, _ in WindowTint.apply(UIColor(theme.primaryAccent)) }
         .onChange(of: appSettings?.hapticsEnabled) { _, v in director.hapticsEnabled = v ?? true }
         .onChange(of: appSettings?.commentaryModeRaw)        { _, _ in syncCommentaryEngine() }
         .onChange(of: appSettings?.commentaryLevelRaw)      { _, _ in syncCommentaryEngine() }
@@ -461,6 +467,7 @@ struct ContentView: View {
             SettingsView()
                 .environment(\.syTheme, theme)
                 .environment(commentaryVoices)
+                .environment(director)
         }
         .sheet(isPresented: $showsDiceFairness) {
             NavigationStack {

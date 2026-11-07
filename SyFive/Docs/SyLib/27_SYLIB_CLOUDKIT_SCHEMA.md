@@ -1,7 +1,7 @@
 # SyLib: one CloudKit schema push for every app (`SyLibCloud.CloudKitSchema`)
 
-**Status:** **Ready for the agent.** Version 1.0, 6 November 2026. Its rulings are Pops's, from 6
-November 2026 (§2). Number 27 was previously used by a note that was never filed; that note is now
+**Status:** **Ready for the agent.** Version 1.0, 6 November 2026. All of §2 is ruled by Pops,
+6 November 2026, including the recommendations in §2.3 to §2.5, ruled as written. Number 27 was previously used by a note that was never filed; that note is now
 `Requirements/17`.
 
 **Scope:**
@@ -60,7 +60,7 @@ new API are SwiftData's and Core Data's.
 **2.2 Every Syzygy app with CloudKit uses it eventually** (D-168; Pops). SyFive goes first (27.2).
 Each other app adopts it in its own session (§6).
 
-**2.3 Two entry points, and a convenience for scoring apps** *(rec.)*:
+**2.3 Two entry points, and a convenience for scoring apps** (Pops, as recommended):
 - **SwiftData:** the app passes its own models and the `ModelConfiguration` it is about to open.
   SyFive uses this, which keeps D-129 intact.
 - **Core Data:** the app passes its own loaded `NSPersistentCloudKitContainer`.
@@ -71,13 +71,13 @@ Each other app adopts it in its own session (§6).
 
 *Rationale:* each app calls with what it already has, and nobody reconstructs a configuration.
 
-**2.4 Failures are returned and logged, never fatal** *(rec.)*. Each entry point returns
+**2.4 Failures are returned and logged, never fatal** (Pops, as recommended). Each entry point returns
 `Result<Void, Error>`, marked `@discardableResult`. It logs through
 `AppLogger(category: "CloudKit")`, which SyLib owns, so there is no logger parameter. Offline, no
 iCloud account and the Simulator are all ordinary failures. *Rationale:* this is today's behavior in
 every SwiftData app, and the `Result` makes it testable.
 
-**2.5 The gate stays in the app, as a flag** (D-169) *(rec.)*. SyLib doesn't decide when the push
+**2.5 The gate stays in the app, as a flag** (D-169) (Pops, as recommended). SyLib doesn't decide when the push
 runs. Each app keeps `#if DEBUG` + `AppConfig.DebugCloudKit.runSchemaExercise` (SyFive's form) and
 lists the flag in its pre-archive checklist. A commented-out call is retired. *Rationale:* a flag
 can be checked before an archive; a comment can't. `00A` gets the convention (§5).

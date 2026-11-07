@@ -31,6 +31,7 @@ struct SettingsView: View {
 private struct SettingsForm: View {
     @Environment(\.syTheme) private var theme
     @Environment(CommentaryVoices.self) private var commentaryVoices
+    @Environment(FeelDirector.self) private var director
     
     @Bindable var settings: AppSettingsModel
 
@@ -38,7 +39,7 @@ private struct SettingsForm: View {
         Form {
             Section {
                 Picker("Color Scheme", selection: $settings.colorSchemeRaw) {
-                    ForEach(AppColorScheme.allCases, id: \.rawValue) { scheme in
+                    ForEach(AppearanceSetting.allCases, id: \.rawValue) { scheme in
                         Text(scheme.displayName).tag(scheme.rawValue)
                     }
                 }
@@ -48,17 +49,13 @@ private struct SettingsForm: View {
             }
             
             Section {
-                Picker("Sound", selection: $settings.soundModeRaw) {
-                    ForEach(AppSoundMode.allCases, id: \.rawValue) { mode in
-                        Text(mode.displayName).tag(mode.rawValue)
-                    }
-                }
-                Toggle("Haptics", isOn: $settings.hapticsEnabled)
+                FeelSettingsRows(soundMode: $settings.soundMode, hapticsEnabled: $settings.hapticsEnabled,
+                                 hapticsSupported: director.hapticSupported)
             } header: {
                 Text("Audio & Feedback")
                     .foregroundStyle(theme.primaryAccent)
             } footer: {
-                Text("Mix with Other Audio plays alongside your music or podcast. Game Audio Only pauses it.")
+                Text(FeelSettingsRows.footer)
             }
 
             Section {
@@ -94,4 +91,5 @@ private struct SettingsForm: View {
     SettingsView()
         .modelContainer(for: AppSettingsModel.self, inMemory: true)
         .environment(CommentaryVoices())
+        .environment(FeelDirector(catalog: .syFive))
 }

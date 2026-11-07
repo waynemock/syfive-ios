@@ -41,11 +41,9 @@ struct MatchHistoryView: View {
         NavigationStack {
             VStack(spacing: 8) {
                 if !inProgressMatches.isEmpty {
-                    Picker("", selection: $segment) {
-                        Text("Finished").tag(HistorySegment.finished)
-                        Text("Unfinished (\(inProgressMatches.count))").tag(HistorySegment.unfinished)
-                    }
-                    .pickerStyle(.segmented)
+                    SegmentedPicker("", selection: $segment,
+                                    segments: [(.finished, "Finished"),
+                                               (.unfinished, "Unfinished (\(inProgressMatches.count))")])
                     .padding(.horizontal)
                     .padding(.top, 8)
                 }

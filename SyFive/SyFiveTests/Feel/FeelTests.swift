@@ -186,6 +186,29 @@ struct FeelTests {
         #expect(k0 != k1, "Different seed indices must produce different cache keys")
     }
 
+    // MARK: (d) Catalog composition — SyLib's syzygy family plus SyFive's own celebration (D-158)
+
+    @Test func syFiveCatalog_isSyzygyPlusOnlyCelebration() {
+        let syFive = FeelCatalog.syFive
+        let syzygy = FeelCatalog.syzygy
+        let own = "celebration"
+
+        for id in Set(syFive.sounds.keys).union(syzygy.sounds.keys) where id != own {
+            #expect(syFive.sounds[id] == syzygy.sounds[id], "sound '\(id)' differs from syzygy")
+        }
+        for id in Set(syFive.rattles.keys).union(syzygy.rattles.keys) where id != own {
+            #expect(syFive.rattles[id] == syzygy.rattles[id], "rattle '\(id)' differs from syzygy")
+        }
+        for id in Set(syFive.haptics.keys).union(syzygy.haptics.keys) where id != own {
+            #expect(syFive.haptics[id] == syzygy.haptics[id], "haptic '\(id)' differs from syzygy")
+        }
+
+        #expect(syFive.sounds[own] != nil)
+        #expect(syFive.haptics[own] != nil)
+        #expect(syzygy.sounds[own] == nil)
+        #expect(syzygy.haptics[own] == nil)
+    }
+
     // MARK: Frame counts
 
     @Test func renderFrameCounts_matchDuration() throws {

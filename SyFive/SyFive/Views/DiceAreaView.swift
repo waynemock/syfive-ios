@@ -1,6 +1,7 @@
 import SwiftUI
 import SyLibCore
 import SyLibDice
+import SyLibDiceFeel
 import SyLibFeel
 import SyLibGameNight
 import SyLibScoring
@@ -8,19 +9,6 @@ import SyLibUI
 import SyLibYatzy
 import Observation
 import UIKit
-
-extension SyTheme {
-    var dicePalette: DiceTintPalette {
-        DiceTintPalette(
-            normal: UIColor(primaryAccent),
-            held: UIColor(heldAccent),
-            nudgeable: UIColor(stuckColor),
-            stuck: UIColor(errorColor),
-            pip: UIColor(pipColor),
-            heldPip: UIColor(heldPipColor)
-        )
-    }
-}
 
 struct DiceAreaView: View {
     @Bindable var model: MatchController
@@ -37,7 +25,6 @@ struct DiceAreaView: View {
     @Environment(GameNightController.self) private var gameNight
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.syTheme) private var theme
-    private let rollControlHeight: CGFloat = 24
 
     var body: some View {
         VStack(spacing: 0) {
@@ -117,122 +104,90 @@ struct DiceAreaView: View {
     // MARK: - Subviews
 
     private var rollControls: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 0) {
-                IconButton(gameNight.commentaryIsSuppressed ? "quote.bubble" : "quote.bubble.fill") {
-                    let willSuppress = !gameNight.commentaryIsSuppressed
-                    gameNight.setCommentarySuppressed(willSuppress)
-                    commentaryToast = Toast(willSuppress ? "Commentary off" : "Commentary on",
-                                            systemImage: willSuppress ? "quote.bubble" : "quote.bubble.fill")
-                }
-                .frame(width: rollControlHeight + 8, height: rollControlHeight, alignment: .trailing)
-                .padding(.trailing, 8)
-                .font(Font.system(size: rollControlHeight))
-                .accessibilityLabel(gameNight.commentaryIsSuppressed ? "Commentary, off" : "Commentary, on")
-                .opacity(isCommentaryActive ? 1 : 0)
-                .disabled(!isCommentaryActive)
-                
-                Button {
-                    if isPlayAgainButton {
-                        onPlayAgain()
-                        return
-                    }
-
-                    if shouldPrimeInitialTurn {
-                        isAwaitingInitialTurnStart = true
-                        diceRoller.clearDice()
-                        return
-                    }
-
-                    if isAwaitingInitialTurnStart {
-                        isAwaitingInitialTurnStart = false
-                    }
-
-                    model.beginRoll()
-                    director.rollStarted(unheldCount: model.held.filter { !$0 }.count)
-                    let capturedHeld = model.held
-                    let gn = gameNight
-                    let dr = diceRoller
-                    // Notify watchers immediately so they can snap held dice to the row
-                    // before the roll starts. lastRecipe is the previous roll's recipe;
-                    // the recipe itself is ignored by watchers — only heldMask matters.
-                    if gn.isSessionActive && gn.phase == .inProgress, let recipe = dr.lastRecipe {
-                        gn.sendRollBegan(recipe: recipe, rollIndex: 0, heldMask: capturedHeld)
-                    }
-                    Task {
-                        await dr.roll(held: capturedHeld) { values in
-                            model.receiveDiceResults(values)
-                            if gn.isSessionActive && gn.phase == .inProgress {
-                                gn.sendRollResult(faceValues: values)
-                            }
-                            // Yatzy-moment predicate (D-052): all-same values + box nil or 50.
-                            let isYatzy = !values.isEmpty && values.dropFirst().allSatisfy { $0 == values[0] }
-                            let yatzyBox = model.scores(for: model.currentPlayerIndex)[.yatzy]
-                            if isYatzy && (yatzyBox == nil || yatzyBox == 50) {
-                                director.celebration()
-                                celebrationCoordinator.triggerYatzy(playerIndex: model.currentPlayerIndex)
-                            }
-                        }
-                    }
-                } label: {
-                    Text(rollButtonTitle)
-                        .frame(maxWidth: .infinity)
-                        .frame(minHeight: rollControlHeight)
-                        .font(.headline)
-                }
-                .buttonStyle(.borderedProminent)
-                .frame(minWidth: 0)
-                .disabled(!canRoll)
-                // Commentary on/off feedback slides down out from under the Roll button
-                // (D-141; placement by Pops, 10 Oct 2026).
-                .toast($commentaryToast, bottomPadding: 4, placement: .belowBottom)
-
-                IconButton("arrow.uturn.backward.circle.fill") {
-                    if gameNight.isSessionActive && gameNight.phase == .inProgress && gameNight.role != .host {
-                        // Guest: propose undo to host before any local state changes —
-                        // undoLastScore() clears lastScoreSnapshot, making undoPlayerIndex nil
-                        // and causing proposeUndo() to fail its guard silently.
-                        gameNight.proposeUndo()
-                    } else {
-                        suppressNextPlayerChangeDiceClear = true
-                        if let restoration = model.undoLastScore() {
-                            diceRoller.restoreDice(values: restoration.diceValues, held: restoration.held)
-                        } else {
-                            suppressNextPlayerChangeDiceClear = false
-                        }
-                    }
-                }
-                .frame(width: rollControlHeight + 8, height: rollControlHeight, alignment: .leading)
-                .padding(.leading, 8)
-                .font(Font.system(size: rollControlHeight))
-                .tint(undoButtonTint)
-                .accessibilityLabel("Undo last score")
-                .opacity(isUndoTurn ? 1 : 0)
-                .disabled(!isUndoTurn)
+        DiceRollControls(
+            stuckMessage: isLocalTurn ? diceRoller.stuckDiceMessage : nil,
+            message: model.canScore
+                ? "Choose a category to score"
+                : (!model.isGameOver && model.rollsRemaining == 0 ? "No rolls remaining — choose a category" : nil)
+        ) {
+            IconButton(gameNight.commentaryIsSuppressed ? "quote.bubble" : "quote.bubble.fill") {
+                let willSuppress = !gameNight.commentaryIsSuppressed
+                gameNight.setCommentarySuppressed(willSuppress)
+                commentaryToast = Toast(willSuppress ? "Commentary off" : "Commentary on",
+                                        systemImage: willSuppress ? "quote.bubble" : "quote.bubble.fill")
             }
-            // Above the status row, so the commentary toast hanging from the Roll button draws
-            // over it rather than under it.
-            .zIndex(1)
+            .accessibilityLabel(gameNight.commentaryIsSuppressed ? "Commentary, off" : "Commentary, on")
+            .opacity(isCommentaryActive ? 1 : 0)
+            .disabled(!isCommentaryActive)
+        } roll: {
+            DiceRollButton(rollButtonTitle, isEnabled: canRoll) {
+                if isPlayAgainButton {
+                    onPlayAgain()
+                    return
+                }
 
-            VStack(spacing: 4) {
-                if let stuckMessage = diceRoller.stuckDiceMessage, isLocalTurn {
-                    Text(stuckMessage)
-                        .foregroundStyle(.red)
-                } else if model.canScore {
-                    Text("Choose a category to score")
-                        .foregroundStyle(.secondary)
-                } else if !model.isGameOver && model.rollsRemaining == 0 {
-                    Text("No rolls remaining — choose a category")
-                        .foregroundStyle(.secondary)
+                if shouldPrimeInitialTurn {
+                    isAwaitingInitialTurnStart = true
+                    diceRoller.clearDice()
+                    return
+                }
+
+                if isAwaitingInitialTurnStart {
+                    isAwaitingInitialTurnStart = false
+                }
+
+                model.beginRoll()
+                director.rollStarted(unheldCount: model.held.filter { !$0 }.count)
+                let capturedHeld = model.held
+                let gn = gameNight
+                let dr = diceRoller
+                // Notify watchers immediately so they can snap held dice to the row
+                // before the roll starts. lastRecipe is the previous roll's recipe;
+                // the recipe itself is ignored by watchers — only heldMask matters.
+                if gn.isSessionActive && gn.phase == .inProgress, let recipe = dr.lastRecipe {
+                    gn.sendRollBegan(recipe: recipe, rollIndex: 0, heldMask: capturedHeld)
+                }
+                Task {
+                    await dr.roll(held: capturedHeld) { values in
+                        model.receiveDiceResults(values)
+                        if gn.isSessionActive && gn.phase == .inProgress {
+                            gn.sendRollResult(faceValues: values)
+                        }
+                        // Yatzy-moment predicate (D-052): all-same values + box nil or 50.
+                        let isYatzy = !values.isEmpty && values.dropFirst().allSatisfy { $0 == values[0] }
+                        let yatzyBox = model.scores(for: model.currentPlayerIndex)[.yatzy]
+                        if isYatzy && (yatzyBox == nil || yatzyBox == 50) {
+                            director.celebration()
+                            celebrationCoordinator.triggerYatzy(playerIndex: model.currentPlayerIndex)
+                        }
+                    }
+                }
+            }
+            // Commentary on/off feedback slides down out from under the Roll button
+            // (D-141; placement by Pops, 10 Oct 2026).
+            .toast($commentaryToast, bottomPadding: 4, placement: .belowBottom)
+        } trailing: {
+            IconButton("arrow.uturn.backward.circle.fill") {
+                if gameNight.isSessionActive && gameNight.phase == .inProgress && gameNight.role != .host {
+                    // Guest: propose undo to host before any local state changes —
+                    // undoLastScore() clears lastScoreSnapshot, making undoPlayerIndex nil
+                    // and causing proposeUndo() to fail its guard silently.
+                    gameNight.proposeUndo()
                 } else {
-                    Text("M") // keep space for this row of text
-                        .foregroundColor(.clear)
+                    suppressNextPlayerChangeDiceClear = true
+                    if let restoration = model.undoLastScore() {
+                        diceRoller.restoreDice(values: restoration.diceValues, held: restoration.held)
+                    } else {
+                        suppressNextPlayerChangeDiceClear = false
+                    }
                 }
-
-                proxyModeControls
             }
-            .font(.footnote)
-            .transition(.opacity)
+            .tint(undoButtonTint)
+            .accessibilityLabel("Undo last score")
+            .opacity(isUndoTurn ? 1 : 0)
+            .disabled(!isUndoTurn)
+        } extra: {
+            proxyModeControls
         }
     }
 

@@ -16,6 +16,7 @@ private struct SeatEditButton: View {
     let gameNight: GameNightController
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.syTheme) private var theme
     @State private var showsPlayerEdit: PlayerEditSheet.Mode? = nil
 
     private var isVisible: Bool {
@@ -41,6 +42,7 @@ private struct SeatEditButton: View {
                     gameNight.updateOwnSeat(name: pm.name, initials: pm.initials, themeID: pm.themeID)
                 }
             })
+            .environment(\.syTheme, theme)
         }
     }
 
@@ -160,6 +162,7 @@ struct SyFiveSeatClaimSheet: View {
                         accentColor: SyTheme.accent(forThemeID: pm.themeID, colorScheme: colorScheme)
                     ))
                 })
+                .environment(\.syTheme, theme)
             }
         )
     }

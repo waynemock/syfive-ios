@@ -26,143 +26,51 @@ struct PlayerEditSheet: View {
     var onCreated: ((PlayerModel) -> Void)? = nil
 
     @Environment(\.modelContext) private var context
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.sizeCategory) private var sizeCategory
-    @Environment(\.syTheme) private var theme
-
-    @ScaledMetric private var swatchSize: CGFloat = 36
-
-    @State private var name: String
-    @State private var initials: String
-    @State private var themeType: SyTheme.ThemeType
 
     init(mode: Mode, matchModel: MatchController, onSave: (() -> Void)? = nil, onCreated: ((PlayerModel) -> Void)? = nil) {
         self.mode = mode
         self.matchModel = matchModel
         self.onSave = onSave
         self.onCreated = onCreated
-        switch mode {
-        case .create:
-            _name = State(initialValue: "")
-            _initials = State(initialValue: "")
-            _themeType = State(initialValue: matchModel.nextPlayerThemeType)
-        case .edit(let pm, _):
-            _name = State(initialValue: pm.name)
-            _initials = State(initialValue: pm.initials)
-            _themeType = State(initialValue: SyTheme.ThemeType(themeID: pm.themeID))
-        }
-    }
-
-    private var isNew: Bool {
-        if case .create = mode { return true }
-        return false
-    }
-
-    private var canSave: Bool {
-        !name.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    TextField("Name", text: $name)
-                        .textInputAutocapitalization(.words)
-                        .onChange(of: name) { oldName, newName in
-                            // Auto-sync initials when they still match the previous auto-derived value.
-                            if initials == deriveInitials(from: oldName) || initials.isEmpty {
-                                initials = deriveInitials(from: newName)
-                            }
-                        }
-
-                    if sizeCategory.isAccessibilityCategory {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Initials")
-                            TextField("AB", text: $initials)
-                                .textInputAutocapitalization(.characters)
-                                .foregroundStyle(.secondary)
-                        }
-                    } else {
-                        HStack {
-                            Text("Initials")
-                            Spacer()
-                            TextField("AB", text: $initials)
-                                .textInputAutocapitalization(.characters)
-                                .multilineTextAlignment(.trailing)
-                                .frame(width: 60)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-
-                Section {
-                    themePicker
-                } header: {
-                    Text("Color")
-                        .foregroundStyle(theme.primaryAccent)
-                }
+        // SyLib's sheet: Name, Initials and the palette chips; it trims and resolves the name and
+        // initials, and dismisses itself after onSave (D-162).
+        PalettePlayerEditSheet(
+            existing: existing,
+            themeID: initialThemeID,
+            nameLimit: nil,
+            initialsLimit: nil,
+            deriveInitials: { deriveInitials(from: $0) },
+            onSave: { name, initials, themeID in
+                save(name: name, initials: initials, themeType: SyTheme.ThemeType(themeID: themeID))
             }
-            .navigationTitle(isNew ? "New Player" : "Edit Player")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .disabled(!canSave)
-                }
-            }
+        )
+    }
+
+    private var existing: (name: String, initials: String)? {
+        switch mode {
+        case .create: return nil
+        case .edit(let pm, _): return (pm.name, pm.initials)
         }
     }
 
-    private var themePicker: some View {
-        let columnCount = sizeCategory.isAccessibilityCategory ? 4 : 7
-        let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: columnCount)
-        return LazyVGrid(columns: columns, spacing: 8) {
-            ForEach(SyTheme.ThemeType.allCases, id: \.self) { type in
-                let swatchTheme = SyTheme(type: type, colorScheme: colorScheme)
-                let isSelected = themeType == type
-                ZStack {
-                    HStack(spacing: 0) {
-                        Rectangle().fill(swatchTheme.primaryAccent)
-                        Rectangle().fill(swatchTheme.secondaryAccent)
-                    }
-                    .clipShape(Circle())
-
-                    if isSelected {
-                        Image(systemName: "checkmark")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(.white)
-                            .shadow(color: .black.opacity(0.4), radius: 2)
-                    }
-                }
-                .frame(height: swatchSize)
-                .overlay(
-                    Circle().strokeBorder(
-                        isSelected ? Color.white.opacity(0.9) : Color.clear,
-                        lineWidth: 2
-                    )
-                )
-                .shadow(color: .black.opacity(isSelected ? 0.35 : 0.15), radius: isSelected ? 4 : 2)
-                .onTapGesture { themeType = type }
-            }
+    private var initialThemeID: String {
+        switch mode {
+        case .create: return matchModel.nextPlayerThemeType.rawValue
+        case .edit(let pm, _): return pm.themeID
         }
-        .padding(.vertical, 4)
     }
 
-    private func save() {
-        let trimmedName = name.trimmingCharacters(in: .whitespaces)
-        guard !trimmedName.isEmpty else { return }
-        let trimmedInitials = initials.trimmingCharacters(in: .whitespaces)
-        let finalInitials = trimmedInitials.isEmpty ? deriveInitials(from: trimmedName) : trimmedInitials
-
+    /// Today's writes: a new player is inserted and handed to onCreated or seated in the match; an
+    /// edited one is updated, and so is its match seat when it has one.
+    private func save(name: String, initials: String, themeType: SyTheme.ThemeType) {
         switch mode {
         case .create:
             let pm = PlayerModel()
-            pm.name = trimmedName
-            pm.initials = finalInitials
+            pm.name = name
+            pm.initials = initials
             pm.themeID = themeType.rawValue
             context.insert(pm)
             if let onCreated {
@@ -172,16 +80,15 @@ struct PlayerEditSheet: View {
             }
 
         case .edit(let pm, let matchSlot):
-            pm.name = trimmedName
-            pm.initials = finalInitials
+            pm.name = name
+            pm.initials = initials
             pm.themeID = themeType.rawValue
             if let slot = matchSlot {
-                matchModel.updatePlayer(at: slot, name: trimmedName, initials: finalInitials, themeType: themeType)
+                matchModel.updatePlayer(at: slot, name: name, initials: initials, themeType: themeType)
             }
         }
 
         onSave?()
-        dismiss()
     }
 }
 

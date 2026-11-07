@@ -55,12 +55,15 @@ file is HEAD.*
 | D-158 | **The feel catalog (`FeelCatalog.syzygy` + SyFive's `celebration`), `DiceFeelAdapter` (SyLibDiceFeel), the dice palette, `DiceRollControls` and the game-over `GameOverOverlay` / `WinnerCard` are SyLib's.** The Yatzy moment, `celebration` and `CelebrationCoordinator` stay SyFive's. | `26 §2.4` |
 | D-159 | **Settings' Audio & Feedback rows are `FeelSettingsRows`, and Haptics is hidden without haptic hardware. Appearance is `AppearanceSetting`, applied by `WindowAppearance`**; `.preferredColorScheme` leaves the root (it fixed Settings keeping its old scheme). | `26 §2.5, §2.6` |
 | D-160 | **Where SyFive's look and Score It \*'s differ, SyFive takes Score It \*'s, except where a ledger row fixes the look**; those conflicts go to Pops. A defect in either app is fixed, not copied. (Pops, 6 Nov 2026.) | `26 §2.7` |
-| D-161 | **The in-play scorecard is SyLibYatzyUI's card and pager**, iPad width cap included. Legality is passed per category (`scorableCategories` = `legalScoreCategories`). The pre-game card stays SyFive's. | `26 §2.8` |
+| D-161 | **The in-play scorecard is SyLibYatzyUI's card and pager**, iPad width cap included. Legality is passed per category (`scorableCategories`, built from `canScore(category:for:)`), and only the current player's card can score. Suggested values always show; the Suggested Move setting controls only the pulse (`pulsesBestSuggestion`, SyLib addition 26.9b, Pops 6 Nov 2026). The pre-game card stays SyFive's. | `26 §2.8` |
 | D-162 | **Player edit is `PalettePlayerEditSheet` with `PaletteChips`**; the swatch picker is retired. SyFive's modes and writes stay in `onSave`. | `26 §2.9` |
 | D-163 | **Stats uses SyLib's `SegmentedPicker`; `WindowTint` puts the palette's accent on windows, alerts and bars.** | `26 §2.11` |
 | D-165 | **`IconButton`'s 44 pt minimum touch area is accepted**; an overflow from the dice area's 32 × 24 slots is a defect ruled on a device. | `26 §2.12` |
 | D-166 | **`paletteBarBackground` lands with `28`'s palette lists**, not before. | `26 §2.13` |
 | D-167 | **SyLib's `deriveInitials` splits on non-alphanumerics** ("Mary-Jo" → "MJ"). Stored initials never change; a pre-1.2.0 punctuated name's initials no longer follow a rename. Accepted. | `26 §2.14` |
+| D-168 | **CloudKit Development schema pushes go through SyLibCloud's `CloudKitSchema`** (SwiftData and Core Data entry points; `initializeScoringCloudKitSchema` for `makeScoringContainer` apps). Every Syzygy app with CloudKit adopts it, each in its own session; SyFive first. | `27 §2.1–2.3` (Pops, 6 Nov 2026) |
+| D-169 | **The push runs only behind `#if DEBUG` and `AppConfig.DebugCloudKit.runSchemaExercise`**, a flag on the pre-archive checklist; never a commented-out call. SyLib holds no gate. | `27 §2.5` |
+| D-170 | **A failed push is returned and logged, never fatal** (`Result<Void, Error>`, SyLib's `CloudKit` log category). | `27 §2.4` |
 
 ## Product & rules
 

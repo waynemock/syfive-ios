@@ -18,7 +18,7 @@ struct CelebrationView: View {
 
     var body: some View {
         if coordinator.isGameOverActive {
-            GameOverOverlayView(
+            GameOverOverlay(
                 winnerThemes: coordinator.winnerIndices.map {
                     SyTheme(type: model.themeType(for: $0), colorScheme: colorScheme)
                 },
@@ -122,20 +122,12 @@ struct DiceTrayOverlayView: View {
                 }
 
                 if let winner = coordinator.winnerAnnouncement {
-                    let isTied = winner.winnerIndices.count > 1
-                    let winners: [(initials: String, themeType: SyTheme.ThemeType)] = winner.winnerIndices.map {
-                        (model.playerInitials(for: $0), model.themeType(for: $0))
-                    }
-                    let winnerNames = joinedWithAmpersand(winner.winnerIndices
-                        .compactMap { model.playerDisplayNames.indices.contains($0) ? model.playerDisplayNames[$0] : nil })
-                    let primaryTheme = SyTheme(type: model.themeType(for: winner.winnerIndices.first ?? 0), colorScheme: colorScheme)
-                    WinnerCardView(
-                        isTied: isTied,
-                        winners: winners,
-                        winnerNames: winnerNames,
-                        primaryTheme: primaryTheme,
-                        score: winner.score
-                    )
+                    WinnerCard(winners: winner.winnerIndices.map { i in
+                                   CelebrationWinner(
+                                       name: model.playerDisplayNames.indices.contains(i) ? model.playerDisplayNames[i] : "",
+                                       initials: model.playerInitials(for: i),
+                                       themeType: model.themeType(for: i)) },
+                               scoreText: "\(winner.score) pts")
                     .id(winner.id)
                     .transition(.asymmetric(
                         insertion: .move(edge: .top).combined(with: .opacity),
@@ -280,76 +272,6 @@ private struct UpperBonusTextCard: View {
     }
 }
 
-// MARK: - Winner card
-
-private struct WinnerCardView: View {
-    let isTied: Bool
-    let winners: [(initials: String, themeType: SyTheme.ThemeType)]
-    let winnerNames: String
-    let primaryTheme: SyTheme
-    let score: Int
-
-    @ScaledMetric private var headlineFontSize: CGFloat = 40
-    @ScaledMetric private var scoreFontSize: CGFloat = 24
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var activeThemeIndex = 0
-
-    // Cycles through tied players' themes; falls back to the single winner's theme.
-    private var displayTheme: SyTheme {
-        guard isTied, winners.indices.contains(activeThemeIndex) else { return primaryTheme }
-        return SyTheme(type: winners[activeThemeIndex].themeType, colorScheme: colorScheme)
-    }
-
-    var body: some View {
-        VStack(spacing: 4) {
-            if isTied {
-                HStack(spacing: 6) {
-                    ForEach(Array(winners.enumerated()), id: \.offset) { _, w in
-                        InitialsCircle(initials: w.initials, color: SyTheme(type: w.themeType, colorScheme: colorScheme).primaryAccent, diameter: 28)
-                    }
-                }
-                Text(winnerNames)
-                    .font(.subheadline.weight(.semibold))
-                    .fontDesign(.rounded)
-                    .foregroundStyle(displayTheme.secondaryAccent)
-                    .multilineTextAlignment(.center)
-            } else if let solo = winners.first {
-                HStack(spacing: 6) {
-                    InitialsCircle(initials: solo.initials, color: SyTheme(type: solo.themeType, colorScheme: colorScheme).primaryAccent, diameter: 28)
-                    Text(winnerNames)
-                        .font(.subheadline.weight(.semibold))
-                        .fontDesign(.rounded)
-                        .foregroundStyle(displayTheme.secondaryAccent)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
-            }
-            Text(isTied ? "IT'S A TIE" : "WINNER")
-                .font(.system(size: headlineFontSize, weight: .black, design: .rounded))
-                .foregroundStyle(displayTheme.primaryAccent)
-            Text("\(score) pts")
-                .font(.system(size: scoreFontSize, weight: .bold, design: .rounded))
-                .foregroundStyle(displayTheme.secondaryAccent)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 32)
-        .padding(.vertical, 18)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .modifier(RainbowBorderModifier(cornerRadius: 22))
-        .shadow(color: displayTheme.primaryAccent.opacity(0.3), radius: 20, x: 0, y: 6)
-        .task {
-            guard isTied, winners.count > 1 else { return }
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(1.5))
-                guard !Task.isCancelled else { return }
-                withAnimation(.easeInOut(duration: 0.6)) {
-                    activeThemeIndex = (activeThemeIndex + 1) % winners.count
-                }
-            }
-        }
-    }
-}
-
 // MARK: - Post-match head-to-head card
 
 private struct PostMatchH2HView: View {
@@ -389,57 +311,6 @@ private struct PostMatchH2HView: View {
             .shadow(color: theme.primaryAccent.opacity(0.2), radius: 12, x: 0, y: 4)
         }
     }
-}
-
-// MARK: - Game-over overlay
-
-private struct GameOverOverlayView: View {
-    let winnerThemes: [SyTheme]
-    let onDone: () -> Void
-
-    @State private var washOpacity: Double = 0
-    @State private var overlayOpacity: Double = 1.0
-
-    var body: some View {
-        ZStack {
-            LinearGradient(colors: washColors, startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea()
-                .opacity(washOpacity)
-
-            // Same slow-fall under Reduce Motion: it is already the calm form (D-073).
-            ParticleBurst(particles: { makeFallParticles(winnerThemes: winnerThemes) },
-                          reducedMotion: { makeFallParticles(winnerThemes: winnerThemes) })
-        }
-        .opacity(overlayOpacity)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .ignoresSafeArea()
-        .onAppear {
-            withAnimation(.easeIn(duration: 0.8).delay(0.3)) { washOpacity = 1.0 }
-            Task {
-                try? await Task.sleep(for: .seconds(4.0))
-                withAnimation(.easeOut(duration: 0.5)) { overlayOpacity = 0.0 }
-                try? await Task.sleep(for: .seconds(0.5))
-                onDone()
-            }
-        }
-    }
-
-    private var washColors: [Color] {
-        guard !winnerThemes.isEmpty else {
-            return [Color.accentColor.opacity(0.15), Color.clear]
-        }
-        if winnerThemes.count == 1 {
-            let t = winnerThemes[0]
-            return [t.primaryAccent.opacity(0.18), t.secondaryAccent.opacity(0.10), Color.clear]
-        }
-        // Tie: interleave each winner's primary and secondary accent.
-        var colors: [Color] = winnerThemes.flatMap { t in
-            [t.primaryAccent.opacity(0.15), t.secondaryAccent.opacity(0.08)]
-        }
-        colors.append(.clear)
-        return colors
-    }
-
 }
 
 // MARK: - Score announcement banner
@@ -535,17 +406,6 @@ private struct ScoreAnnouncementBannerView: View {
     }
 }
 
-// MARK: - Helpers
-
-private func joinedWithAmpersand(_ names: [String]) -> String {
-    switch names.count {
-    case 0: return ""
-    case 1: return names[0]
-    case 2: return "\(names[0]) & \(names[1])"
-    default: return names.dropLast().joined(separator: ", ") + " & " + names[names.count - 1]
-    }
-}
-
 // MARK: - Particle factories
 
 // Approximate normalized positions of 5 dice within the tray view (0-1 relative to tray bounds).
@@ -570,24 +430,6 @@ private func makeYatzyParticles(theme: SyTheme) -> [Particle] {
             size: Double.random(in: 5...10),
             delay: Double.random(in: 0...0.2),
             lifetime: Double.random(in: 1.0...1.6)
-        )
-    }
-}
-
-private func makeFallParticles(winnerThemes: [SyTheme]) -> [Particle] {
-    let allColors: [Color] = winnerThemes.isEmpty
-        ? [.accentColor]
-        : winnerThemes.flatMap { [$0.primaryAccent, $0.primaryAccent, $0.secondaryAccent] }
-    return (0..<55).map { i in
-        Particle(
-            x: Double.random(in: 0.05...0.95),
-            y: -0.02,
-            vx: Double.random(in: -20...20),
-            vy: Double.random(in: 65...115),
-            color: allColors[i % allColors.count],
-            size: Double.random(in: 4...9),
-            delay: Double.random(in: 0.3...2.0),
-            lifetime: Double.random(in: 2.5...3.5)
         )
     }
 }
