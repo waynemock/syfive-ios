@@ -3,32 +3,11 @@ import SwiftData
 import SwiftUI
 import SyLibCommentary
 import SyLibFeel
-
-enum AppColorScheme: String, CaseIterable, Codable {
-    case system
-    case light
-    case dark
-
-    var displayName: String {
-        switch self {
-        case .system: "System"
-        case .light: "Light"
-        case .dark: "Dark"
-        }
-    }
-
-    var preferredColorScheme: ColorScheme? {
-        switch self {
-        case .system: nil
-        case .light: .light
-        case .dark: .dark
-        }
-    }
-}
+import SyLibUI
 
 @Model final class AppSettingsModel {
     // CloudKit requires declaration-level defaults on all stored properties.
-    var colorSchemeRaw: String = AppColorScheme.dark.rawValue
+    var colorSchemeRaw: String = AppearanceSetting.dark.rawValue
     var soundEnabled: Bool = true       // retained for CloudKit schema compatibility; use soundMode
     var hapticsEnabled: Bool = true
     var suggestedMoveEnabled: Bool = true
@@ -41,8 +20,8 @@ enum AppColorScheme: String, CaseIterable, Codable {
 
     init() {}
 
-    var colorScheme: AppColorScheme {
-        get { AppColorScheme(rawValue: colorSchemeRaw) ?? .dark }
+    var colorScheme: AppearanceSetting {
+        get { AppearanceSetting(rawValue: colorSchemeRaw) ?? .dark }
         set { colorSchemeRaw = newValue.rawValue }
     }
 

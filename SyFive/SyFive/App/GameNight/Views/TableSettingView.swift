@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibUI
 import SyLibCommentary
 import SyLibGameNight
 import SyLibScoring
@@ -12,7 +13,7 @@ struct TableSettingView: View {
     @Bindable var gameNight: GameNightController
     let matchModel: MatchController
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.theme) private var theme
+    @Environment(\.syTheme) private var theme
     @State private var showsSeatClaim = false
     @State private var showsGameNightHelp = false
     @State private var showsEndSessionConfirmation = false
@@ -27,6 +28,7 @@ struct TableSettingView: View {
             )
             .navigationTitle("Game Night")
             .navigationBarTitleDisplayMode(.inline)
+            .paletteBarBackground()
             .toolbar {
                 ToolbarItemGroup(placement: .topBarLeading) {
                     Button("Leave") {
@@ -43,10 +45,8 @@ struct TableSettingView: View {
                         }
                     }
                     if gameNight.role == .host {
-                        Button { showsGameNightHelp = true } label: {
-                            Image(systemName: "questionmark.circle")
-                        }
-                        .accessibilityLabel("Game Night Help")
+                        IconButton("questionmark.circle", context: .toolbar) { showsGameNightHelp = true }
+                            .accessibilityLabel("Game Night Help")
                     }
                 }
                 if gameNight.role == .host && gameNight.phase == .settingTable {
@@ -66,6 +66,7 @@ struct TableSettingView: View {
             }
             .sheet(isPresented: $showsSeatClaim) {
                 SyFiveSeatClaimSheet(gameNight: gameNight, matchModel: matchModel)
+                    .sheetTextSizeCeiling()
             }
             .sheet(isPresented: $showsGameNightHelp) {
                 GameNightHelpSheet(
@@ -74,8 +75,10 @@ struct TableSettingView: View {
                     appName: "SyFive",
                     accentColor: theme.primaryAccent
                 )
+                .sheetTextSizeCeiling()
             }
         }
+        .tint(theme.primaryAccent)
     }
 
     // MARK: - Commentary section (SyFive-specific, passed into the table view)

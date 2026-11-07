@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibUI
 import SyLibScoring
 import SyLibScoringUI
 import SwiftData
@@ -32,7 +33,7 @@ struct HeadToHeadDetailView: View {
         sharedMatchModels.map { model in
             let m = model.toDomain()
             let winner = m.participants.sorted { $0.rank < $1.rank }.first { $0.rank == 1 }
-            return (m, Theme.accent(forParticipant: winner, colorScheme: colorScheme))
+            return (m, SyTheme.accent(forParticipant: winner, colorScheme: colorScheme))
         }
     }
 

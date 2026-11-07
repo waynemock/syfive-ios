@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibUI
 import SyLibCore
 import SyLibGameNight
 import SyLibScoring
@@ -12,6 +13,13 @@ extension ContentView {
     /// Where this device stands with Game Night, read from `body` so the menu and the leading
     /// control follow the session (17 §4.8).
     var gameNightEntry: GameNightEntryState { GameNightEntryState(session: gameNight.session) }
+
+    /// Bump to join is offered only while Game Night is idle and no local match is in progress
+    /// (17 §2.4, D-172).
+    var isNearbyInviteAdvertised: Bool {
+        guard case .idle = gameNightEntry else { return false }
+        return !model.hasStarted || model.isGameOver
+    }
 
     /// Which control the leading nav bar shows. The conditions live here, in one place, so
     /// leadingNavButton draws from it and its changes can be logged (18 §4.6). The order is
@@ -53,28 +61,22 @@ extension ContentView {
                 }
             }
         case .hostRematch:
-            Button {
+            IconButton("arrow.clockwise.circle", context: .toolbar) {
                 startGameNightRematch()
-            } label: {
-                Image(systemName: "arrow.clockwise.circle")
             }
             .accessibilityLabel("Play Again")
         case .newGame:
             // Active game — reset button opens the pause/delete alert.
-            Button { showsResetAlert = true } label: {
-                Image(systemName: "arrow.clockwise")
-            }
-            .accessibilityLabel("New Game")
+            IconButton("arrow.clockwise", context: .toolbar) { showsResetAlert = true }
+                .accessibilityLabel("New Game")
         case .playAgain:
             // Game finished — one-tap play again with same players.
-            Button {
+            IconButton("plus", context: .toolbar) {
                 logModelState("playAgain(toolbar) before")
                 model.abandonMatch(in: modelContext)
                 model.resetGame()
                 celebrationCoordinator.clearWinnerAnnouncement()
                 logModelState("playAgain(toolbar) after")
-            } label: {
-                Image(systemName: "plus")
             }
             .accessibilityLabel("Play Again")
         case .empty:

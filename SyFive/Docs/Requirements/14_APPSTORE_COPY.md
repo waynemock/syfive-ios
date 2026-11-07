@@ -4,10 +4,13 @@
 paste-ready source of truth for App Store Connect. All copy blocks below are final unless
 listed in Open Decisions (§7).*
 
-**Version 1.1.0** · revised 11 October 2026 · **A living record, edited in place** (D-148, an
+**Version 1.2.0** · revised 7 November 2026 · **A living record, edited in place** (D-148, an
 exception to D-001). Changes are listed in §10.
 
-> **Status:** Copy locked pending three small Pops rulings (§7). Screenshot plan locked at
+> **Status (1.2.0):** §3's promotional text, §4's Game Night and fairness beats and §4a's What's
+> New are new for 1.2.0; the Game Night lines wait on `17`'s S2 (§7.4).
+>
+> **Status (1.1.0):** Copy locked pending three small Pops rulings (§7). Screenshot plan locked at
 > four. Description reflects the confirmed full 1.0 feature set (dice, scorecard, Game Night
 > over FaceTime + Messages, themes, commentary, house records, insights) — everything
 > designed in this project is implemented and shipping.
@@ -60,8 +63,13 @@ subtitle, description, or keywords. "Yatzy" (European spelling) only. This is a 
 ## 3. Promotional text (170 char — editable anytime without review)
 
 ```
-Real physics dice you can actually feel. No ads, no accounts, no noise — just five dice, a beautiful scorecard, and a game that respects your evening.
+New: hold two iPhones together to start Game Night at the table. Real physics dice, a beautiful scorecard, and no ads, no accounts, no noise.
 ```
+
+141 chars. For 1.2.0's release; it can change back anytime without review.
+
+- **1.1.0 value, for history:** `Real physics dice you can actually feel. No ads, no accounts, no
+  noise — just five dice, a beautiful scorecard, and a game that respects your evening.`
 
 ---
 
@@ -73,7 +81,7 @@ are intentional.
 ```
 Most dice apps pick a number, then animate it. SyFive doesn't.
 
-Every roll is a real physics simulation — impulse, spin, collision, settle. The result isn't decided until the dice stop moving. Then we tested it across 10,000 rolls to prove it's fair, so you never have to wonder.
+Every roll is a real physics simulation — impulse, spin, collision, settle. The result isn't decided until the dice stop moving. Then we tested it across 50,000 rolls to prove it's fair, so you never have to wonder.
 
 And then we spent just as long making it calm.
 
@@ -81,7 +89,7 @@ Five dice you can feel. They tumble, knock, rock to a stop, and catch the light 
 
 Classic Yatzy, in full. Upper bonus, the lower categories, the Yatzy bonus, joker scoring — all of it. And a scorecard that's finally readable: available moves obvious, locked ones quiet, totals that settle instead of pop.
 
-Game night, across any distance. Start a Game Night over FaceTime or Messages and pass the dice around the table — even when the table spans time zones.
+Game night, at the table or across any distance. Sitting together? Hold two iPhones close to start a Game Night. Far apart? Start one over FaceTime or Messages and pass the dice around — even when the table spans time zones.
 
 Made your way. Seven themes, light and dark. Optional spoken commentary in four voices, off until you ask for it. Celebrations that mark the moment without shouting.
 
@@ -91,6 +99,32 @@ No ads. No in-app purchases. No account. No tracking. No casino noise. Works ful
 
 Five dice. Pure calm.
 ```
+
+- **1.2.0 changes, for history:** the fairness beat's 10,000 rolls is now 50,000 (D-152: five full
+  runs pooled, 250,000 dice results, PASS, shipped in 1.1.0). The Game Night beat was "Game night,
+  across any distance. Start a Game Night over FaceTime or Messages and pass the dice around the
+  table — even when the table spans time zones."
+
+---
+
+## 4a. What's New in 1.2.0 (release notes; paste as plain text)
+
+```
+Game Night at the table: hold two iPhones together to start or join. No call needed.
+
+A fresh look: every screen now wears your palette, from Settings to History.
+
+Players, refreshed: edit anyone from their profile, see how many games each has played, and tidy your roster with a swipe.
+
+New Game: seat players with a tap.
+
+iCloud at a glance: a cloud in the toolbar tells you when your games aren't syncing.
+
+Large text sizes now hold together on every screen, plus many small fixes.
+```
+
+Each line is a 1.2.0 change: `17` (D-171), `28` (D-187), `30` and `31` (D-176, D-182), `28` §2.6
+(D-190), `32` (D-185), `29` (D-175).
 
 ---
 
@@ -136,6 +170,11 @@ floated rather than filling the slot. Same restraint as the icon.
    + insights named lightly) or cut it entirely and let those be pure in-app discovery. Kept
    in the current draft.
 3. **Marketing/Support URLs:** confirm the exact Syzygy Softwerks URLs to enter.
+4. **The Game Night lines (1.2.0) are gated on `17`'s S2.** §3's promotional text, §4's "Sitting
+   together?" sentence and §4a's first line go into App Store Connect only once two iPhones on the
+   TestFlight build offer and join Game Night when held together (with the hidden `ShareLink`, or
+   the UIKit fallback if S2 fails). If the feature doesn't ship, use §3's 1.1.0 promotional text and
+   §4's earlier Game Night beat, and drop §4a's first line.
 
 ---
 
@@ -148,6 +187,8 @@ floated rather than filling the slot. Same restraint as the icon.
 - [ ] App Store name, subtitle and keywords entered as in §1–§2, with character counts as
       shown
 - [ ] No "Yahtzee" string anywhere in listing metadata
+- [ ] 1.2.0: `17`'s S2 passed before the Game Night lines are entered (§7.4); §4a pasted as the
+      version's What's New
 - [ ] Privacy label attested as Data Not Collected (no analytics SDK present)
 - [ ] Icon exported at all required sizes from the locked spec
 - [ ] Four screenshots captured at required device resolutions
@@ -163,7 +204,8 @@ floated rather than filling the slot. Same restraint as the icon.
 - App Store: description leads with provable-fairness differentiator (physics + 10k-roll
   validation), closes on calm/no-noise ethos.
 - App Store: Game Night described as joining over FaceTime **or** Messages (corrects prior
-  FaceTime-only assumption).
+  FaceTime-only assumption), and from 1.2.0 by holding two iPhones together (D-171), once `17`'s
+  S2 passes.
 - App Store: screenshot count locked at **four** (dice tumble / two-player scorecard / Yatzy
   moment / dark ethos closer). Game Night deliberately not screenshotted.
 - App Store: privacy label = Data Not Collected; age rating 4+; private CloudKit sync does
@@ -182,3 +224,4 @@ floated rather than filling the slot. Same restraint as the icon.
 |---|---|---|
 | 1.0 | 2026 | First listing: name `SyFive`, subtitle `Classic Yatzy, real dice`, 91-char keywords |
 | 1.1.0 | 11 Oct 2026 | §1: store name `SyFive: Yatzy Dice Game`; subtitle `Classic rules, real physics`. §2: keywords drop words now in the name or subtitle, and add `shareplay`, `party`, `yacht` and `multiplayer` (98 chars). §7.1 resolved. §8 points to `00B` §6. §9 rows updated; D-148 added (Pops) |
+| 1.2.0 | 7 Nov 2026 | §3: a 1.2.0 promotional text naming Game Night at the table (141 chars). §4: the Game Night beat adds holding two iPhones together; the fairness beat's 10,000 rolls becomes 50,000 (D-152). §4a: What's New for 1.2.0. §7.4 and §8: the Game Night lines wait on `17`'s S2. §9's Game Night row updated |

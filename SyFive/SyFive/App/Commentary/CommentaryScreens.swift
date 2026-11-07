@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibUI
 import SwiftData
 import SyLibCommentary
 
@@ -6,7 +7,7 @@ import SyLibCommentary
 // Bridges AppSettingsModel and UserDefaults to the package CommentarySettingsView.
 struct CommentaryScreen: View {
     @Bindable var settings: AppSettingsModel
-    @Environment(\.theme) private var theme
+    @Environment(\.syTheme) private var theme
     @Environment(CommentaryVoices.self) private var voices
 
     var body: some View {
@@ -18,6 +19,8 @@ struct CommentaryScreen: View {
             voiceID: voiceIDBinding,
             accentColor: theme.primaryAccent
         )
+        .paletteListBackground()
+        .tint(theme.primaryAccent)
     }
 
     private var levelBinding: Binding<CommentaryLevel> {

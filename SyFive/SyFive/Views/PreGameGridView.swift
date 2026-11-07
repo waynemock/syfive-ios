@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibUI
 import SyLibScoring
 import SyLibFeel
 
@@ -45,7 +46,7 @@ struct PreGameGridView: View {
     }
 
     private var addPlayerCard: some View {
-        let theme = Theme(type: model.nextPlayerThemeType, colorScheme: colorScheme)
+        let theme = SyTheme(type: model.nextPlayerThemeType, colorScheme: colorScheme)
         return Button(action: onAddPlayer) {
             HStack(spacing: 10) {
                 Image(systemName: "plus.circle.fill")

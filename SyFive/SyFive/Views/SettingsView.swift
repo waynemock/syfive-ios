@@ -1,11 +1,14 @@
 import SwiftUI
+import SyLibUI
 import SyLibCommentary
 import SyLibScoring
 import SwiftData
 import SyLibFeel
+import SyLibCloud
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.syTheme) private var theme
     
     @Query private var settingsModels: [AppSettingsModel]
 
@@ -18,54 +21,52 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
+            .paletteBarBackground()
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
             }
         }
+        .tint(theme.primaryAccent)
     }
 }
 
 private struct SettingsForm: View {
-    @Environment(\.theme) private var theme
+    @Environment(\.syTheme) private var theme
     @Environment(CommentaryVoices.self) private var commentaryVoices
+    @Environment(FeelDirector.self) private var director
+    @Environment(CloudAccountStatus.self) private var cloudStatus
     
     @Bindable var settings: AppSettingsModel
+    @State private var showsICloud = false
 
     var body: some View {
         Form {
             Section {
-                Picker("Color Scheme", selection: $settings.colorSchemeRaw) {
-                    ForEach(AppColorScheme.allCases, id: \.rawValue) { scheme in
-                        Text(scheme.displayName).tag(scheme.rawValue)
-                    }
-                }
+                SegmentedPicker("Color Scheme", selection: $settings.colorSchemeRaw,
+                                segments: AppearanceSetting.allCases.map { ($0.rawValue, $0.displayName) })
             } header: {
                 Text("Appearance")
-                    .foregroundStyle(theme.primaryAccent)
             }
+            .paletteRowBackground()
             
             Section {
-                Picker("Sound", selection: $settings.soundModeRaw) {
-                    ForEach(AppSoundMode.allCases, id: \.rawValue) { mode in
-                        Text(mode.displayName).tag(mode.rawValue)
-                    }
-                }
-                Toggle("Haptics", isOn: $settings.hapticsEnabled)
+                FeelSettingsRows(soundMode: $settings.soundMode, hapticsEnabled: $settings.hapticsEnabled,
+                                 hapticsSupported: director.hapticSupported)
             } header: {
                 Text("Audio & Feedback")
-                    .foregroundStyle(theme.primaryAccent)
             } footer: {
-                Text("Mix with Other Audio plays alongside your music or podcast. Game Audio Only pauses it.")
+                Text(FeelSettingsRows.footer)
             }
+            .paletteRowBackground()
 
             Section {
                 Toggle("Suggested Move", isOn: $settings.suggestedMoveEnabled)
             } header: {
                 Text("Gameplay")
-                    .foregroundStyle(theme.primaryAccent)
             }
+            .paletteRowBackground()
 
             Section {
                 // Mode, Level, Personality and the voice in use, with Preview (20 §4.2, D-146).
@@ -82,9 +83,24 @@ private struct SettingsForm: View {
                 }
             } header: {
                 Text("Commentary")
-                    .foregroundStyle(theme.primaryAccent)
             }
+            .paletteRowBackground()
 
+            Section {
+                Button { showsICloud = true } label: {
+                    LabeledContent("iCloud Sync", value: cloudStatus.isAvailable ? "On" : "Off")
+                        .foregroundStyle(.primary)
+                }
+            } header: {
+                Text("iCloud")
+            }
+            .paletteRowBackground()
+        }
+        .paletteListBackground()
+        .sheet(isPresented: $showsICloud) {
+            ICloudInfoSheet(appName: "SyFive", accentColor: theme.primaryAccent,
+                            backgroundColor: theme.backgroundColor)
+                .sheetTextSizeCeiling()
         }
     }
 }
@@ -93,4 +109,6 @@ private struct SettingsForm: View {
     SettingsView()
         .modelContainer(for: AppSettingsModel.self, inMemory: true)
         .environment(CommentaryVoices())
+        .environment(FeelDirector(catalog: .syFive))
+        .environment(CloudAccountStatus())
 }

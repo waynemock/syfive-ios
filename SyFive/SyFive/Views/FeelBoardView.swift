@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibUI
 import SyLibCore
 import SyLibFeel
 
@@ -9,7 +10,7 @@ import SyLibFeel
 struct FeelBoardView: View {
     @Environment(FeelDirector.self) private var director
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.theme) private var theme
+    @Environment(\.syTheme) private var theme
 
     @State private var workingSounds: [String: SoundRecipe]
     @State private var workingHaptics: [String: HapticRecipe]
@@ -43,14 +44,17 @@ struct FeelBoardView: View {
                 }
             }
             .listStyle(.insetGrouped)
+            .paletteListBackground()
             .navigationTitle("Feel Board")
             .navigationBarTitleDisplayMode(.inline)
+            .paletteBarBackground()
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
             }
         }
+        .tint(theme.primaryAccent)
     }
 
     // MARK: - Master toggles
@@ -80,8 +84,8 @@ struct FeelBoardView: View {
             }
         } header: {
             Text("Master")
-                .foregroundStyle(theme.primaryAccent)
         }
+        .paletteRowBackground()
     }
 
     // MARK: - Sound event section
@@ -167,6 +171,7 @@ struct FeelBoardView: View {
                     .foregroundStyle(.orange)
             }
         }
+        .paletteRowBackground()
     }
 
     // MARK: - Rattle section
@@ -184,6 +189,7 @@ struct FeelBoardView: View {
                 }
             }
         }
+        .paletteRowBackground()
     }
 
     // MARK: - Sound recipe editor

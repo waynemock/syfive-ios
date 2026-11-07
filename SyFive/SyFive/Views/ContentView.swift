@@ -1,6 +1,7 @@
 import SwiftUI
 import AVFoundation
 import SyLibCommentary
+import SyLibCloud
 import SyLibCore
 import SyLibDice
 import SyLibFeel
@@ -29,6 +30,7 @@ struct ContentView: View {
     @State var showsGameNightPendingSheet = false
     @State var showsGameNightHelp = false
     @State var showsHowToPlay = false
+    @State var showsICloud = false
     @State var celebrationCoordinator = CelebrationCoordinator()
     @State var commentaryEngine: CommentaryEngine<CommentaryEventKind>? = nil
     /// The device's voices, scanned off the main actor; resolves each personality's voice (D-081).
@@ -57,7 +59,7 @@ struct ContentView: View {
     var appSettings: AppSettingsModel? { settingsModels.first }
 
     var body: some View {
-        let theme = Theme(type: model.themeType(for: model.currentPlayerIndex), colorScheme: colorScheme)
+        let theme = SyTheme(type: model.themeType(for: model.currentPlayerIndex), colorScheme: colorScheme)
         NavigationStack {
             GeometryReader { proxy in
                 geometryContent(proxy: proxy)
@@ -76,15 +78,14 @@ struct ContentView: View {
                 ToolbarItemGroup(placement: .topBarLeading) {
                     leadingNavButton
                     if gameNightEntry.showsLeadingHelp {
-                        Button { showsGameNightHelp = true } label: {
-                            Image(systemName: "questionmark.circle")
-                        }
-                        .accessibilityLabel("Game Night Help")
+                        IconButton("questionmark.circle", context: .toolbar) { showsGameNightHelp = true }
+                            .accessibilityLabel("Game Night Help")
                     }
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
+                    ICloudStatusButton(tint: theme.primaryAccent, pulses: false) { showsICloud = true }
                     if !(appSettings?.helpDismissed ?? false) {
-                        IconButton("questionmark.circle") { showsHowToPlay = true }
+                        IconButton("questionmark.circle", context: .toolbar) { showsHowToPlay = true }
                             .accessibilityLabel("How to Play")
                     }
                     MoreMenu(showsBadge: updateState.showsBadge,
@@ -227,9 +228,10 @@ struct ContentView: View {
                     }
                 }
         }
-        .preferredColorScheme(appSettings?.colorScheme.preferredColorScheme ?? .dark)
         .tint(theme.primaryAccent)
-        .environment(\.theme, theme)
+        .gameNightNearbyInvite(GameNightActivity(), title: GameNightActivity.title,
+                               isAdvertising: isNearbyInviteAdvertised)
+        .environment(\.syTheme, theme)
         .environment(\.suggestedMoveEnabled, appSettings?.suggestedMoveEnabled ?? true)
         .environment(director)
         .environment(commentaryVoices)
@@ -257,6 +259,11 @@ struct ContentView: View {
             // Sync initial settings values (onChange won't fire for the first load).
             director.soundMode      = appSettings?.soundMode      ?? .mix
             director.hapticsEnabled = appSettings?.hapticsEnabled ?? true
+            // One owner for the app's appearance: every window's style, so open sheets follow
+            // a change made inside them (D-159; THEME.md).
+            WindowAppearance.apply(appSettings?.colorScheme ?? .dark)
+            // The palette's accent on alerts, navigation bars and Back, which .tint misses (D-163).
+            WindowTint.apply(UIColor(theme.primaryAccent))
             // Warm up haptic engine before first roll to avoid first-event latency (§6.2).
             director.warmUpHaptics()
             syncCommentaryEngine()
@@ -400,6 +407,8 @@ struct ContentView: View {
             logger.info(self, "leading slot: \(old) → \(new) hasGameActivity=\(model.hasGameActivity) over=\(model.isGameOver) players=\(model.playerCount)")
         }
         .onChange(of: appSettings?.soundModeRaw) { _, _ in handleSoundModeChanged() }
+        .onChange(of: appSettings?.colorSchemeRaw) { _, _ in WindowAppearance.apply(appSettings?.colorScheme ?? .dark) }
+        .onChange(of: theme) { _, _ in WindowTint.apply(UIColor(theme.primaryAccent)) }
         .onChange(of: appSettings?.hapticsEnabled) { _, v in director.hapticsEnabled = v ?? true }
         .onChange(of: appSettings?.commentaryModeRaw)        { _, _ in syncCommentaryEngine() }
         .onChange(of: appSettings?.commentaryLevelRaw)      { _, _ in syncCommentaryEngine() }
@@ -435,7 +444,8 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showsHouseRecords) {
             HouseRecordsView()
-                .environment(\.theme, theme)
+                .environment(\.syTheme, theme)
+                .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsHistory) {
             MatchHistoryView(
@@ -449,50 +459,68 @@ struct ContentView: View {
                     showsHistory = false
                 }
             )
-            .environment(\.theme, theme)
+            .environment(\.syTheme, theme)
             .environment(director)
+            .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsPlayers, onDismiss: { syncPlayerThemesFromRoster() }) {
             PlayersView()
-                .environment(\.theme, theme)
+                .environment(\.syTheme, theme)
                 .environment(director)
+                .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsSettings, onDismiss: { syncCommentaryEngine() }) {
             SettingsView()
-                .environment(\.theme, theme)
+                .environment(\.syTheme, theme)
                 .environment(commentaryVoices)
+                .environment(director)
+                .sheetTextSizeCeiling()
+        }
+        .sheet(isPresented: $showsICloud) {
+            ICloudInfoSheet(appName: "SyFive", accentColor: theme.primaryAccent,
+                            backgroundColor: theme.backgroundColor)
+                .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsDiceFairness) {
             NavigationStack {
                 DiceFairnessView(accentColor: theme.primaryAccent, appName: "SyFive")
+                    .paletteListBackground(theme.backgroundColor)
+                    .tint(theme.primaryAccent)
+                    .paletteBarBackground()
                     .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
+                        ToolbarItem(placement: .confirmationAction) {
                             Button("Done") { showsDiceFairness = false }
                         }
                     }
             }
-            .environment(\.theme, theme)
+            .environment(\.syTheme, theme)
+            .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsAbout) {
             AboutView()
-                .environment(\.theme, theme)
+                .environment(\.syTheme, theme)
+                .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsFeelBoard) {
             FeelBoardView()
                 .environment(director)
-                .environment(\.theme, theme)
+                .environment(\.syTheme, theme)
+                .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsGameNight) {
             TableSettingView(gameNight: gameNight, matchModel: model)
-                .environment(\.theme, theme)
+                .environment(\.syTheme, theme)
+                .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsInviteInstructions) {
             GameNightInviteInstructions(accentColor: theme.primaryAccent)
+                .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsGameNightPendingSheet) {
             GameNightPendingSheet(accentColor: theme.primaryAccent) {
                 gameNight.cancelHostPreparation()
             }
+            .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsGameNightHelp) {
             GameNightHelpSheet(
@@ -501,10 +529,12 @@ struct ContentView: View {
                 appName: "SyFive",
                 accentColor: theme.primaryAccent
             )
+            .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsHowToPlay) {
             HowToPlayView(settings: appSettings)
-                .environment(\.theme, theme)
+                .environment(\.syTheme, theme)
+                .sheetTextSizeCeiling()
         }
     }
 
@@ -513,8 +543,7 @@ struct ContentView: View {
     }
 
     private func openSyzygyAppStore() {
-        guard let url = URL(string: "https://apps.apple.com/us/developer/syzygy-softwerks-llc/id1118759442") else { return }
-        openURL(url)
+        openURL(SyzygyLinks.developerAppStore)
     }
 }
 
@@ -536,7 +565,7 @@ struct ContentView: View {
     let p1 = ParticipantModel()
     p1.displayName = "Wayne"
     p1.displayInitials = "WM"
-    p1.displayThemeID = Theme.ThemeType.midnight.rawValue
+    p1.displayThemeID = SyTheme.ThemeType.midnight.rawValue
     p1.seat = 0
     p1.playerID = UUID()
     p1.match = match
@@ -545,7 +574,7 @@ struct ContentView: View {
     let p2 = ParticipantModel()
     p2.displayName = "Sherida"
     p2.displayInitials = "SM"
-    p2.displayThemeID = Theme.ThemeType.forest.rawValue
+    p2.displayThemeID = SyTheme.ThemeType.forest.rawValue
     p2.seat = 1
     p2.playerID = UUID()
     p2.match = match
@@ -553,6 +582,7 @@ struct ContentView: View {
 
     return ContentView()
         .environment(GameNightController())
+        .environment(CloudAccountStatus())
         .modelContainer(container)
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
 }

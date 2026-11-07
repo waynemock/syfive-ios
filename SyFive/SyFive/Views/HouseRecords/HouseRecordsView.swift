@@ -1,5 +1,6 @@
 import SwiftUI
 import SyLibUI
+import SyLibScoringUI
 import SwiftData
 import SyLibScoringData
 
@@ -10,7 +11,9 @@ struct HouseRecordsView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.theme) private var theme
+    @Environment(\.syTheme) private var theme
+    @ScaledMetric(relativeTo: .subheadline) private var minimum = RecordCard.gridMinimum
+    @State private var width: CGFloat = 0
 
     private var titles: [HouseRecords.Title] {
         HouseRecords.compute(from: completedModels.map { $0.toDomain() })
@@ -19,27 +22,50 @@ struct HouseRecordsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVStack(spacing: 14) {
+                VStack(alignment: .leading, spacing: 14) {
                     RecordsSectionHeader(title: "All Games", subtitle: "Solo and multiplayer")
-                    ForEach(titles.filter { $0.category == .event }) { title in
-                        TitleCard(title: title)
+                    RecordCard.grid(titles.filter { $0.category == .event }, id: \.id,
+                                    width: width, minimum: minimum) {
+                        RecordCard(title: $0.name, content: content(for: $0))
                     }
+                    // One width for both grids, measured on the first.
+                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
                     RecordsSectionHeader(title: "Head-to-Head", subtitle: "Multiplayer only")
                         .padding(.top, 8)
-                    ForEach(titles.filter { $0.category == .standing }) { title in
-                        TitleCard(title: title)
+                    RecordCard.grid(titles.filter { $0.category == .standing }, id: \.id,
+                                    width: width, minimum: minimum) {
+                        RecordCard(title: $0.name, content: content(for: $0))
                     }
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 8)
             }
+            .background(theme.backgroundColor)
             .navigationTitle("House Records")
             .navigationBarTitleDisplayMode(.inline)
+            .paletteBarBackground()
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
             }
+        }
+        .tint(theme.primaryAccent)
+    }
+
+    /// A title's state as SyLib's card shows it; the copy is today's (D-164).
+    private func content(for title: HouseRecords.Title) -> RecordCard.Content {
+        switch title.state {
+        case .claimed(let holders, let displayValue):
+            return .claimed(holders: holders.map {
+                RecordCard.Holder(id: $0.id, name: $0.displayName, initials: $0.displayInitials,
+                                  themeID: $0.displayThemeID, date: $0.heldSince,
+                                  caption: $0.sampleCount.map { "\($0) game\($0 == 1 ? "" : "s")" })
+            }, value: displayValue)
+        case .unclaimed:
+            return .unclaimed(label: "Unclaimed", note: nil)
+        case .unclaimedGated:
+            return .unclaimed(label: "Unclaimed", note: "After 10 games")
         }
     }
 }
@@ -47,168 +73,17 @@ struct HouseRecordsView: View {
 // MARK: - Section header
 
 private struct RecordsSectionHeader: View {
-    @Environment(\.theme) private var theme
-    
     let title: String
     let subtitle: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .foregroundStyle(theme.primaryAccent)
-                .font(.subheadline)
-                .fontWeight(.semibold)
+            SectionHeader(title)
             Text(subtitle)
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-// MARK: - Title card
-
-private struct TitleCard: View {
-    let title: HouseRecords.Title
-
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Title name
-            Text(title.name.uppercased())
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
-                .tracking(0.8)
-                .padding(.bottom, 10)
-
-            switch title.state {
-            case .claimed(let holders, let displayValue):
-                ClaimedContent(holders: holders, displayValue: displayValue)
-            case .unclaimed:
-                UnclaimedContent(gated: false)
-            case .unclaimedGated:
-                UnclaimedContent(gated: true)
-            }
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-}
-
-// MARK: - Claimed content
-
-private struct ClaimedContent: View {
-    let holders: [HouseRecords.Holder]
-    let displayValue: String
-
-    @Environment(\.colorScheme) private var colorScheme
-
-    private var holderTheme: Theme {
-        let themeType = holders.first.flatMap { Theme.ThemeType(rawValue: $0.displayThemeID) } ?? .midnight
-        return Theme(type: themeType, colorScheme: colorScheme)
-    }
-
-    private var allSameDate: Bool {
-        guard holders.count > 1 else { return true }
-        let first = holders[0].heldSince
-        return holders.dropFirst().allSatisfy { $0.heldSince == first }
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // Holder rows
-            ForEach(holders) { holder in
-                HolderRow(holder: holder, showDate: !allSameDate)
-            }
-
-            Divider()
-                .padding(.vertical, 4)
-
-            // Record value
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(displayValue)
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundStyle(holderTheme.primaryAccent)
-
-                Spacer()
-
-                // Collective date when all holders share it
-                if allSameDate, let date = holders.first?.heldSince {
-                    Text(formatDate(date))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-    }
-
-    private func formatDate(_ date: Date) -> String {
-        date.formatted(.dateTime.month(.wide).year())
-    }
-}
-
-// MARK: - Holder row
-
-private struct HolderRow: View {
-    let holder: HouseRecords.Holder
-    let showDate: Bool
-
-    @Environment(\.colorScheme) private var colorScheme
-
-    private var themeType: Theme.ThemeType {
-        Theme.ThemeType(rawValue: holder.displayThemeID) ?? .midnight
-    }
-
-    var body: some View {
-        HStack(spacing: 10) {
-            InitialsCircle(initials: holder.displayInitials, color: Theme(type: themeType, colorScheme: colorScheme).primaryAccent, diameter: 28)
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(holder.displayName)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-
-                if let count = holder.sampleCount {
-                    Text("\(count) game\(count == 1 ? "" : "s")")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Spacer()
-
-            if showDate {
-                Text(holder.heldSince.formatted(.dateTime.month(.abbreviated).year()))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-}
-
-// MARK: - Unclaimed content
-
-private struct UnclaimedContent: View {
-    let gated: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Unclaimed")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            if gated {
-                Text("After 10 games")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-        }
-        .padding(.vertical, 4)
     }
 }
 
@@ -232,22 +107,22 @@ private struct UnclaimedContent: View {
 
         let p1 = ParticipantModel()
         p1.displayName = "Wayne"; p1.displayInitials = "WM"
-        p1.displayThemeID = Theme.ThemeType.midnight.rawValue
+        p1.displayThemeID = SyTheme.ThemeType.midnight.rawValue
         p1.finalScore = Decimal(i % 3 == 0 ? 290 : 220); p1.rank = i % 3 == 0 ? 2 : 1
         p1.match = match
         container.mainContext.insert(p1)
 
         let p2 = ParticipantModel()
         p2.displayName = "Sherida"; p2.displayInitials = "SM"
-        p2.displayThemeID = Theme.ThemeType.forest.rawValue
+        p2.displayThemeID = SyTheme.ThemeType.forest.rawValue
         p2.finalScore = Decimal(i % 3 == 0 ? 310 : 195); p2.rank = i % 3 == 0 ? 1 : 2
         p2.match = match
         container.mainContext.insert(p2)
     }
 
-    let theme = Theme(type: .midnight, colorScheme: .dark)
+    let theme = SyTheme(type: .midnight, colorScheme: .dark)
     return HouseRecordsView()
         .modelContainer(container)
-        .environment(\.theme, theme)
+        .environment(\.syTheme, theme)
         .preferredColorScheme(.dark)
 }

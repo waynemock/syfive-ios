@@ -4,7 +4,7 @@ import SyLibUI
 struct HowToPlayView: View {
     var settings: AppSettingsModel?
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.theme) private var theme
+    @Environment(\.syTheme) private var theme
 
     var body: some View {
         NavigationStack {
@@ -60,12 +60,14 @@ struct HowToPlayView: View {
             }
             .navigationTitle("How to Play")
             .navigationBarTitleDisplayMode(.inline)
+            .paletteBarBackground()
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
             }
         }
+        .tint(theme.primaryAccent)
     }
 
     // MARK: - Content Blocks
@@ -130,10 +132,10 @@ struct HowToPlayView: View {
 
 #Preview("Dark") {
     HowToPlayView()
-        .environment(\.theme, Theme(type: .midnight, colorScheme: .dark))
+        .environment(\.syTheme, SyTheme(type: .midnight, colorScheme: .dark))
 }
 
 #Preview("Light") {
     HowToPlayView()
-        .environment(\.theme, Theme(type: .midnight, colorScheme: .light))
+        .environment(\.syTheme, SyTheme(type: .midnight, colorScheme: .light))
 }

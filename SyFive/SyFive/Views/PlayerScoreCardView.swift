@@ -46,7 +46,7 @@ struct PlayerScoreCardView: View {
         let rawTotal = model.totalScore(for: playerIndex)
         // Use animated count-up total for the winner at game-over; live total otherwise.
         let totalScore = (isWinner && model.isGameOver) ? displayedTotal : rawTotal
-        let theme = Theme(type: model.themeType(for: playerIndex), colorScheme: colorScheme)
+        let theme = SyTheme(type: model.themeType(for: playerIndex), colorScheme: colorScheme)
         let gameOverWinner = isWinner && model.isGameOver
 
         return AnyView(
@@ -105,17 +105,23 @@ struct PlayerScoreCardView: View {
                 updateWinnerHighlightAnimation(isWinner: newValue)
             }
             .sheet(isPresented: $showsProfile) {
-                if let pid = model.playerIDs[playerIndex] {
-                    PlayerProfileView(
-                        playerID: pid,
-                        playerName: model.playerNames[playerIndex],
-                        themeType: model.themeType(for: playerIndex)
-                    )
+                Group {
+                    if let pid = model.playerIDs[playerIndex] {
+                        PlayerProfileView(
+                            playerID: pid,
+                            playerName: model.playerNames[playerIndex],
+                            themeType: model.themeType(for: playerIndex),
+                            matchModel: model,
+                            matchSlot: playerIndex
+                        )
+                    }
                 }
+                .sheetTextSizeCeiling()
             }
             .sheet(item: $showsPlayerEdit) { mode in
                 PlayerEditSheet(mode: mode, matchModel: model)
-                    .environment(\.theme, theme)
+                    .environment(\.syTheme, theme)
+                    .sheetTextSizeCeiling()
             }
             .task(id: model.isGameOver && isWinner) {
                 let finalTotal = model.totalScore(for: playerIndex)
@@ -141,7 +147,7 @@ struct PlayerScoreCardView: View {
         )
     }
 
-    private func header(theme: Theme, isCurrentPlayer: Bool, totalScore: Int) -> some View {
+    private func header(theme: SyTheme, isCurrentPlayer: Bool, totalScore: Int) -> some View {
         HStack(alignment: .center, spacing: 8) {
             initialsCircle(theme: theme)
 
@@ -191,7 +197,7 @@ struct PlayerScoreCardView: View {
         }
     }
 
-    private func initialsCircle(theme: Theme) -> some View {
+    private func initialsCircle(theme: SyTheme) -> some View {
         ZStack {
             Circle().fill(theme.primaryAccent)
             Text(model.playerInitials(for: playerIndex))
@@ -203,7 +209,7 @@ struct PlayerScoreCardView: View {
     }
 
     @ViewBuilder
-    private func scoreContent(theme: Theme) -> some View {
+    private func scoreContent(theme: SyTheme) -> some View {
         if sizeCategory.isAccessibilityCategory {
             VStack(alignment: .leading, spacing: scoreSectionSpacing) {
                 scoreSection(title: "Upper", isUpper: true, categories: upperCategories, theme: theme)
@@ -220,7 +226,7 @@ struct PlayerScoreCardView: View {
     }
 
     @ViewBuilder
-    private func statsContent(theme: Theme) -> some View {
+    private func statsContent(theme: SyTheme) -> some View {
         let viewerID = model.playerIDs[playerIndex]
 
         VStack(alignment: .leading, spacing: 10) {
@@ -261,7 +267,7 @@ struct PlayerScoreCardView: View {
         title: String,
         isUpper: Bool,
         categories: [YatzyCategory],
-        theme: Theme
+        theme: SyTheme
     ) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(title.localizedUppercase)
@@ -299,7 +305,7 @@ struct PlayerScoreCardView: View {
             category: category,
             isBestSuggested: category == bestSuggestedCategory,
             cell: playerCell(for: category),
-            theme: Theme(type: model.themeType(for: playerIndex), colorScheme: colorScheme),
+            theme: SyTheme(type: model.themeType(for: playerIndex), colorScheme: colorScheme),
             columnWidth: scoreColumnWidth,
             rowHeight: scoreRowHeight,
             rowAction: rowAction(for: category)
@@ -374,7 +380,7 @@ struct PlayerScoreCardView: View {
         return (cell.isAvailable && cell.canScore) ? cell.onSelect : nil
     }
 
-    private func cardHighlightColor(isWinner: Bool, isCurrentPlayer: Bool, theme: Theme) -> Color {
+    private func cardHighlightColor(isWinner: Bool, isCurrentPlayer: Bool, theme: SyTheme) -> Color {
         if isWinner && model.isGameOver {
             return theme.primaryAccent.opacity(isWinnerHighlightExpanded ? 0.50 : 0.32)
         }
@@ -401,15 +407,15 @@ struct PlayerScoreCardView: View {
         }
     }
 
-    private var themeBinding: Binding<Theme.ThemeType> {
+    private var themeBinding: Binding<SyTheme.ThemeType> {
         Binding(
             get: { model.themeType(for: playerIndex) },
             set: { model.setTheme($0, for: playerIndex) }
         )
     }
 
-    private func colorSwatch(for type: Theme.ThemeType) -> Color {
-        Theme(type: type, colorScheme: colorScheme).primaryAccent
+    private func colorSwatch(for type: SyTheme.ThemeType) -> Color {
+        SyTheme(type: type, colorScheme: colorScheme).primaryAccent
     }
 
     private var colorButtonBorder: Color {
@@ -429,7 +435,7 @@ private struct CategoryScoreRow: View {
     let category: YatzyCategory
     let isBestSuggested: Bool
     let cell: ScoreRow.PlayerCell
-    let theme: Theme
+    let theme: SyTheme
     let columnWidth: CGFloat
     let rowHeight: CGFloat
     let rowAction: (() -> Void)?

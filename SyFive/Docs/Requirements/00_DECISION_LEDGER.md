@@ -49,6 +49,43 @@ file is HEAD.*
 | D-144 | **The RealityKit launch assertion (`17` §11) is held for device evidence.** No SyLib dice change until it appears on hardware. Then a diagnosis task comes first, and a fix task must state how the fairness certification is kept (D-037). 1.1.0 is not held for it. | `17` §11 → `18` §2.4 (Pops, 11 Oct 2026) |
 | D-145 | **The How to Play "Got it" button is SyLibUI's `HelpDismissButton`**: a `CapsuleButton` in the `.accent` style, centred, the same in every app, saying "Got it, hide this", then the alert "Hide the help button?" with the message "How to Play stays in the Menu, in the last section with About. You can open it any time." The How to Play pages stay app-owned. SyFive adopts it in 1.1.0; Syderal in its `24`. | `19` §2 (Pops, 11 Oct 2026; wording *(rec.)*) → Pops, 11 Oct 2026 (single `CapsuleButton` look, centred; the `.link` / `.prominent` styles removed) |
 | D-147 | **1.1.0 ships `18` §4.6's diagnostic logging at info level** (Play Again state, score changes, the leading toolbar slot, `saveMatch` outcomes and failures), to catch the lost-restart-button / lost-save report in the field. It is removed once that report is resolved. | `18` §4.6 → `21` §2.2 *(rec.)* |
+| D-155 | **SyFive 1.2.0 is built on SyLib's `ScoringSchemaV2`** (additive: `GameModel.isArchived`, `optionsData`, `rulesLinksData`; `MatchModel.optionsData`). CloudKit Production is deployed before any TestFlight build (D-026). | `26 §2.1` |
+| D-156 | **`Match` carries `options` on the wire, always `[:]` from SyFive.** `appProtocolVersion` stays 1 and the transport 3 through 1.2.0, so 1.1.x and 1.2.0 share a table. Proved by a mixed table. | `14 §1.x → 26 §2.2` (extends D-131) |
+| D-157 | **SyFive's palettes are SyLibUI's `SyTheme`**, renamed in one pass; `Theme.swift` is retired, with no typealias. D-013 unchanged. | `26 §2.3` |
+| D-158 | **The feel catalog (`FeelCatalog.syzygy` + SyFive's `celebration`), `DiceFeelAdapter` (SyLibDiceFeel), the dice palette, `DiceRollControls` and the game-over `GameOverOverlay` / `WinnerCard` are SyLib's.** The Yatzy moment, `celebration` and `CelebrationCoordinator` stay SyFive's. | `26 §2.4` |
+| D-159 | **Settings' Audio & Feedback rows are `FeelSettingsRows`, and Haptics is hidden without haptic hardware. Appearance is `AppearanceSetting`, applied by `WindowAppearance`**; `.preferredColorScheme` leaves the root (it fixed Settings keeping its old scheme). | `26 §2.5, §2.6` |
+| D-160 | **Where SyFive's look and Score It \*'s differ, SyFive takes Score It \*'s, except where a ledger row fixes the look**; those conflicts go to Pops. A defect in either app is fixed, not copied. (Pops, 6 Nov 2026.) | `26 §2.7` |
+| D-161 | **The in-play scorecard is SyLibYatzyUI's card and pager**, iPad width cap included. Legality is passed per category (`scorableCategories`, built from `canScore(category:for:)`), and only the current player's card can score. Suggested values always show; the Suggested Move setting controls only the pulse (`pulsesBestSuggestion`, SyLib addition 26.9b, Pops 6 Nov 2026). The pre-game card stays SyFive's. | `26 §2.8` |
+| D-162 | **Player edit is `PalettePlayerEditSheet` with `PaletteChips`**; the swatch picker is retired. SyFive's modes and writes stay in `onSave`. | `26 §2.9` |
+| D-163 | **Stats uses SyLib's `SegmentedPicker`; `WindowTint` puts the palette's accent on windows, alerts and bars.** | `26 §2.11` |
+| D-165 | **`IconButton`'s 44 pt minimum touch area is accepted**; an overflow from the dice area's 32 × 24 slots is a defect ruled on a device. | `26 §2.12` |
+| D-166 | **`paletteBarBackground` lands with `28`'s palette lists**, not before. | `26 §2.13` |
+| D-167 | **SyLib's `deriveInitials` splits on non-alphanumerics** ("Mary-Jo" → "MJ"). Stored initials never change; a pre-1.2.0 punctuated name's initials no longer follow a rename. Accepted. | `26 §2.14` |
+| D-168 | **CloudKit Development schema pushes go through SyLibCloud's `CloudKitSchema`** (SwiftData and Core Data entry points; `initializeScoringCloudKitSchema` for `makeScoringContainer` apps). Every Syzygy app with CloudKit adopts it, each in its own session; SyFive first. | `27 §2.1–2.3` (Pops, 6 Nov 2026) |
+| D-169 | **The push runs only behind `#if DEBUG` and `AppConfig.DebugCloudKit.runSchemaExercise`**, a flag on the pre-archive checklist; never a commented-out call. SyLib holds no gate. | `27 §2.5` |
+| D-170 | **A failed push is returned and logged, never fatal** (`Result<Void, Error>`, SyLib's `CloudKit` log category), **for a container identifier in the app's entitlements.** An identifier that isn't traps inside CloudKit and can't be caught, as SyFive's own copy always did (found by 27.1's test, 6 Nov 2026). | `27 §2.4` |
+| D-171 | **Game Night can start by bringing iPhones together (SharePlay over AirDrop), in 1.2.0.** `GameNightActivity` is `Transferable`; the session layer, payloads and versions are unchanged. The group Messages conversation iOS creates is accepted. | `17 §2.1` (Pops, 6 Nov 2026) |
+| D-172 | **Nothing new is visible.** The activity is advertised by a hidden `ShareLink` if iOS honors it (spike S2), otherwise by a UIKit `activityItemsConfiguration` responder; only while Game Night is idle and no local match is in progress. No visible SharePlay button. | `17 §2.2, §2.4` |
+| D-173 | **The advertising and its hint live in `SyLibGameNight`**, so Syderal can adopt them; Syderal's check waits for its next release. | `17 §2.3` |
+| D-174 | **The hint is a "Sitting together?" section in SyLib's Game Night help sheet, with Pops's copy (`17` §2.5), and the sheet's first line adds "or be sitting together (see below)".** | `17 §2.5` |
+| D-175 | **SyFive's game screen is capped at xxxLarge; its sheets, menus and alerts at AX2** (SyLibUI's `dynamicTypeCeiling(.xxxLarge)` inside `sceneDynamicTypeCeiling(.accessibility2)` at the root, and `dynamicTypeCeiling(.accessibility2)` at every sheet root). The game screen is 00B's E-2 exception to 00A §5's AX2 bar. | `29 §2` (Pops, 7 Nov 2026) |
+| D-176 | **The Players sheet is SyLibScoringUI's `PlayersSheet`** (with `NameStatsRow`), data in and callbacks out; writes stay in each app; SyFive's Game Night section sits in its leading slot. SyFive adopts it in 1.2.0. | `30 §2.1` (Pops, 7 Nov 2026) |
+| D-177 | **A player is deleted only by a swipe on an active player who has never played**; the profile's Delete button is removed. | `30 §2.3` |
+| D-178 | **A player's profile is pushed on the Players sheet**; elsewhere it stays a sheet. | `30 §2.4` |
+| D-179 | **Players rows show "N games"** (completed games). | `30 §2.5` |
+| D-180 | **The Players sheet's copy is `30` §2.6's**, Score It \*'s with "setup" as "New Game" and "a match" as "a new game". | `30 §2.6` |
+| D-181 | **A player profile opens with SyLibScoringUI's `PlayerProfileHeader`**, Score It \*'s header (initials, name, "Archived", Edit pencil), data in and an edit callback out; no callback, no pencil. SyFive adopts it in 1.2.0. | `31 §2.1` (Pops, 7 Nov 2026) |
+| D-182 | **SyFive's profile pencil edits the player in both forms** (pushed and as a sheet), through `PlayerEditSheet`; from a pre-game card it updates that seat too. The header reads the player live. | `31 §2.3` |
+| D-183 | **SyFive's profile title is inline.** | `31 §2.4` |
+| D-184 | **An archived player's header reads "Archived".** | `31 §2.5` |
+| D-185 | **SyFive shows iCloud's state as Score It \* does**: SyLibCloud's `ICloudStatusButton` first in the trailing toolbar (no pulse) and a last Settings section "iCloud" with "iCloud Sync" On/Off, both opening `ICloudInfoSheet` (standard copy, "SyFive"). In 1.2.0. Supersedes `04` §5.1's "never prompt for sign-in" (play is still never gated on iCloud) and `26` §2's exclusion of the button. | `32 §2.1` (Pops, 7 Nov 2026) |
+| D-186 | **The cloud shows whenever iCloud is off**, during a game and Game Night too, until "Don't show this again"; Settings' row always stays. | `32 §2.3` |
+| D-187 | **Every SyFive list is on the palette**: `paletteListBackground`, `paletteRowBackground`, `paletteBarBackground` and the accent tint on each sheet, as Score It \*. Meets D-166. | `28 §2.1` (Pops, 7 Nov 2026) |
+| D-188 | **Headers, Done and empty states are Score It \*'s**: plain headers in lists and forms, `SectionHeader` over the picker's and profile's sections, Done `.confirmationAction`, `EmptyStateView` with today's words. | `28 §2.2–2.4` |
+| D-189 | **The profile keeps its cards, on the palette**; the match detail cards take `theme.cellBackgroundColor`. | `28 §2.5` (Pops, 7 Nov 2026) |
+| D-190 | **New Game's roster is Score It \*'s chips**; "Playing" stays a list; editing, archiving and unarchiving are Players'. | `28 §2.6` (Pops, 7 Nov 2026) |
+| D-191 | **About is in the current palette; the studio link is `SyzygyLinks.developerAppStore`.** Dice Fairness and the Feel Board stay in ⋯. | `28 §2.7–2.8` (Pops, 7 Nov 2026) |
+| D-192 | **SyFive's toolbar buttons are `IconButton(…, context: .toolbar)`**, as Score It \*'s (SIA-216); SyLib's own controls stay. | `28` Task 28.5 |
 
 ## Product & rules
 
@@ -297,6 +334,7 @@ file is HEAD.*
 | D-114 | **No stored aggregates.** Compute-on-read from `MatchModel` / `ParticipantModel`; zero new schema. | `12 §4.1` |
 | D-115 | **Only `status == .completed` matches count.** In-progress and abandoned excluded everywhere, including Most Games Played. | `12 §4.1` |
 | D-116 | **No runner-up or partial ordering on any card.** A card names the holder(s) and nothing about who does not hold the title. | `12 §3.3` |
+| D-164 | **House Records' cards are `RecordCard`, extended in SyLib for ties, captions and unclaimed titles, and laid out in `RecordCard.grid`.** Dates read as an abbreviated date ("Nov 5, 2026"). D-097 to D-116 unchanged; the titles stay SyFive's (D-110). | `12 → 26 §2.10` |
 
 ---
 

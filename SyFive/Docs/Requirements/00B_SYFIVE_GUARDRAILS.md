@@ -31,7 +31,7 @@ the same rule, it is promoted to `00A` in project-neutral terms, and this docume
 
 ## 1. Exceptions to `00A`
 
-There is one exception, ledgered as `00A` requires.
+There are two exceptions, ledgered as `00A` requires.
 
 **E-1 · Document history (D-001). Exception to `00A` §1.** SyFive's design documents are
 **immutable once delivered**. A newer document that changes an earlier ruling carries a
@@ -45,6 +45,13 @@ mid-release would leave half the corpus in each style. Decided by Pops, 10 Octob
 
 What `00A` §1 calls a decision log is, in a SyFive design document, its **Locked decisions**
 section: each ruling with its rationale.
+
+**E-2 · Text size (D-175). Exception to `00A` §5.** SyFive's **game screen** is held at
+**xxxLarge**, below the studio's AX2 bar: the dice tray and the scorecard are too dense for the
+accessibility sizes. Its **sheets, menus and alerts** meet the bar, capped at AX2 (`29`).
+
+*Why:* the game screen has never been laid out above xxxLarge, and doing so is a layout project,
+not a cap. Decided by Pops, 7 November 2026.
 
 ---
 
