@@ -2,8 +2,7 @@ import SwiftUI
 import SyLibUI
 
 struct AboutView: View {
-    @Environment(\.colorScheme) private var colorScheme
-    private var theme: SyTheme { SyTheme(type: .midnight, colorScheme: colorScheme) }
+    @Environment(\.syTheme) private var theme
 
     static let appStoreURL = URL(string: "https://apps.apple.com/us/app/syfive/id6759580429")!
 
@@ -21,10 +20,12 @@ struct AboutView: View {
 
 #Preview("Dark") {
     AboutView()
+        .environment(\.syTheme, SyTheme(type: .midnight, colorScheme: .dark))
         .preferredColorScheme(.dark)
 }
 
 #Preview("Light") {
     AboutView()
+        .environment(\.syTheme, SyTheme(type: .midnight, colorScheme: .light))
         .preferredColorScheme(.light)
 }

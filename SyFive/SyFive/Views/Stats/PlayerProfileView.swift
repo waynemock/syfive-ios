@@ -156,11 +156,9 @@ struct PlayerProfileView: View {
                 if summary != nil || insights != nil {
                     profileContent
                 } else {
-                    ContentUnavailableView(
-                        "No games yet",
-                        systemImage: "chart.bar.xaxis",
-                        description: Text("Finish a game to see your stats.")
-                    )
+                    EmptyStateView(systemImage: "chart.bar.xaxis",
+                                   title: "No games yet",
+                                   message: "Finish a game to see your stats.")
                     .padding(.top, 60)
                 }
             }
@@ -169,6 +167,7 @@ struct PlayerProfileView: View {
         .background(theme.backgroundColor)
         .navigationTitle(displayName)
         .navigationBarTitleDisplayMode(.inline)
+        .paletteBarBackground()
         .toolbar {
             if !isPushed {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -376,8 +375,7 @@ struct PlayerProfileView: View {
     private var opponentsSection: some View {
         if !opponentRecords.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Opponents")
-                    .font(.headline)
+                SectionHeader("Opponents")
                     .padding(.horizontal, 2)
                 ForEach(opponentRecords) { record in
                     OpponentSummaryRow(
@@ -394,7 +392,7 @@ struct PlayerProfileView: View {
     @ViewBuilder
     private func statsCard<C: View>(title: String, @ViewBuilder content: () -> C) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.headline).padding(.horizontal, 2)
+            SectionHeader(title).padding(.horizontal, 2)
             content()
         }
         .padding(16)

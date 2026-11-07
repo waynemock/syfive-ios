@@ -14,6 +14,7 @@ struct UnfinishedMatchDetailView: View {
     private var match: Match { matchModel.toDomain() }
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.syTheme) private var theme
     @State private var scoreController = MatchController()
     @State private var scorecardContainerWidth: CGFloat = 0
     @State private var showsGNLogs = false
@@ -77,8 +78,11 @@ struct UnfinishedMatchDetailView: View {
             }
             .padding(16)
         }
+        .background(theme.backgroundColor)
         .navigationTitle(match.startedAt.formatted(date: .abbreviated, time: .omitted))
         .navigationBarTitleDisplayMode(.inline)
+        .paletteBarBackground()
+        .tint(theme.primaryAccent)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Resume") { onResume(matchModel) }
@@ -123,7 +127,7 @@ struct UnfinishedMatchDetailView: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(UIColor.secondarySystemBackground))
+                .fill(theme.cellBackgroundColor)
         )
     }
 
@@ -137,7 +141,7 @@ struct UnfinishedMatchDetailView: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(UIColor.secondarySystemBackground))
+                .fill(theme.cellBackgroundColor)
         )
     }
 
@@ -180,7 +184,7 @@ struct UnfinishedMatchDetailView: View {
         .padding(.vertical, 16)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(UIColor.secondarySystemBackground))
+                .fill(theme.cellBackgroundColor)
         )
         .onPreferenceChange(UnfinishedScorecardWidthKey.self) { width in
             if width > 0 { scorecardContainerWidth = width }

@@ -19,6 +19,8 @@ struct CommentaryScreen: View {
             voiceID: voiceIDBinding,
             accentColor: theme.primaryAccent
         )
+        .paletteListBackground()
+        .tint(theme.primaryAccent)
     }
 
     private var levelBinding: Binding<CommentaryLevel> {

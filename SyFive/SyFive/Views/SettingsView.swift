@@ -8,6 +8,7 @@ import SyLibCloud
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.syTheme) private var theme
     
     @Query private var settingsModels: [AppSettingsModel]
 
@@ -20,12 +21,14 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
+            .paletteBarBackground()
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
             }
         }
+        .tint(theme.primaryAccent)
     }
 }
 
@@ -41,32 +44,29 @@ private struct SettingsForm: View {
     var body: some View {
         Form {
             Section {
-                Picker("Color Scheme", selection: $settings.colorSchemeRaw) {
-                    ForEach(AppearanceSetting.allCases, id: \.rawValue) { scheme in
-                        Text(scheme.displayName).tag(scheme.rawValue)
-                    }
-                }
+                SegmentedPicker("Color Scheme", selection: $settings.colorSchemeRaw,
+                                segments: AppearanceSetting.allCases.map { ($0.rawValue, $0.displayName) })
             } header: {
                 Text("Appearance")
-                    .foregroundStyle(theme.primaryAccent)
             }
+            .paletteRowBackground()
             
             Section {
                 FeelSettingsRows(soundMode: $settings.soundMode, hapticsEnabled: $settings.hapticsEnabled,
                                  hapticsSupported: director.hapticSupported)
             } header: {
                 Text("Audio & Feedback")
-                    .foregroundStyle(theme.primaryAccent)
             } footer: {
                 Text(FeelSettingsRows.footer)
             }
+            .paletteRowBackground()
 
             Section {
                 Toggle("Suggested Move", isOn: $settings.suggestedMoveEnabled)
             } header: {
                 Text("Gameplay")
-                    .foregroundStyle(theme.primaryAccent)
             }
+            .paletteRowBackground()
 
             Section {
                 // Mode, Level, Personality and the voice in use, with Preview (20 §4.2, D-146).
@@ -83,8 +83,8 @@ private struct SettingsForm: View {
                 }
             } header: {
                 Text("Commentary")
-                    .foregroundStyle(theme.primaryAccent)
             }
+            .paletteRowBackground()
 
             Section {
                 Button { showsICloud = true } label: {
@@ -93,9 +93,10 @@ private struct SettingsForm: View {
                 }
             } header: {
                 Text("iCloud")
-                    .foregroundStyle(theme.primaryAccent)
             }
+            .paletteRowBackground()
         }
+        .paletteListBackground()
         .sheet(isPresented: $showsICloud) {
             ICloudInfoSheet(appName: "SyFive", accentColor: theme.primaryAccent,
                             backgroundColor: theme.backgroundColor)

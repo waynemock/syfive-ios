@@ -44,14 +44,17 @@ struct FeelBoardView: View {
                 }
             }
             .listStyle(.insetGrouped)
+            .paletteListBackground()
             .navigationTitle("Feel Board")
             .navigationBarTitleDisplayMode(.inline)
+            .paletteBarBackground()
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
             }
         }
+        .tint(theme.primaryAccent)
     }
 
     // MARK: - Master toggles
@@ -81,8 +84,8 @@ struct FeelBoardView: View {
             }
         } header: {
             Text("Master")
-                .foregroundStyle(theme.primaryAccent)
         }
+        .paletteRowBackground()
     }
 
     // MARK: - Sound event section
@@ -168,6 +171,7 @@ struct FeelBoardView: View {
                     .foregroundStyle(.orange)
             }
         }
+        .paletteRowBackground()
     }
 
     // MARK: - Rattle section
@@ -185,6 +189,7 @@ struct FeelBoardView: View {
                 }
             }
         }
+        .paletteRowBackground()
     }
 
     // MARK: - Sound recipe editor

@@ -18,6 +18,7 @@ struct MatchDetailView: View {
     }
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.syTheme) private var theme
     @State private var scoreController = MatchController()
     @State private var scorecardContainerWidth: CGFloat = 0
     @State private var showsGNLogs = false
@@ -78,8 +79,11 @@ struct MatchDetailView: View {
             }
             .padding(16)
         }
+        .background(theme.backgroundColor)
         .navigationTitle(match.startedAt.formatted(date: .abbreviated, time: .omitted))
         .navigationBarTitleDisplayMode(.inline)
+        .paletteBarBackground()
+        .tint(theme.primaryAccent)
         .onAppear { scoreController.load(from: matchModel) }
         .sheet(isPresented: $showsGNLogs) {
             GameNightLogSheet(matchID: matchModel.id)
@@ -115,7 +119,7 @@ struct MatchDetailView: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(UIColor.secondarySystemBackground))
+                .fill(theme.cellBackgroundColor)
         )
     }
 
@@ -129,7 +133,7 @@ struct MatchDetailView: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(UIColor.secondarySystemBackground))
+                .fill(theme.cellBackgroundColor)
         )
     }
 
@@ -173,7 +177,7 @@ struct MatchDetailView: View {
         .padding(.vertical, 16)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(UIColor.secondarySystemBackground))
+                .fill(theme.cellBackgroundColor)
         )
         .onPreferenceChange(HistoryScorecardWidthKey.self) { width in
             if width > 0 { scorecardContainerWidth = width }

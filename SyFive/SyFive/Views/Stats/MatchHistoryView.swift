@@ -20,6 +20,7 @@ struct MatchHistoryView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.syTheme) private var theme
 
     @Query(filter: #Predicate<MatchModel> { $0.statusRaw == "completed" },
            sort: \MatchModel.startedAt, order: .reverse)
@@ -63,6 +64,7 @@ struct MatchHistoryView: View {
                                     Label("Delete", systemImage: "trash")
                                 }
                             }
+                            .paletteRowBackground()
                         }
                         if previousLogExists {
                             Button {
@@ -78,6 +80,7 @@ struct MatchHistoryView: View {
                                     Label("Delete", systemImage: "trash")
                                 }
                             }
+                            .paletteRowBackground()
                         }
                     }
                     if segment == .finished {
@@ -90,6 +93,7 @@ struct MatchHistoryView: View {
                                 MatchHistoryRow(match: m, accentColor: SyTheme.accent(forParticipant: winner, colorScheme: colorScheme))
                             }
                         }
+                        .paletteRowBackground()
                     } else {
                         ForEach(inProgressMatches) { matchModel in
                             NavigationLink {
@@ -106,28 +110,32 @@ struct MatchHistoryView: View {
                             guard let i = indexSet.first else { return }
                             matchToDelete = inProgressMatches[i]
                         }
+                        .paletteRowBackground()
                     }
                 }
+                .paletteListBackground()
                 .animation(.default, value: segment)
                 .onAppear {
                     stagingLogExists = GameNightLogBuffer.shared.hasStagingLog()
                     previousLogExists = GameNightLogBuffer.shared.hasPreviousLog()
                 }
             }
+            .background(theme.backgroundColor)
             .navigationTitle("History")
             .navigationBarTitleDisplayMode(.inline)
+            .paletteBarBackground()
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: 16) {
-                        if segment == .unfinished && !inProgressMatches.isEmpty {
-                            Button(role: .destructive) {
-                                showsDeleteAllAlert = true
-                            } label: {
-                                Text("Delete All")
-                            }
+                    if segment == .unfinished && !inProgressMatches.isEmpty {
+                        Button(role: .destructive) {
+                            showsDeleteAllAlert = true
+                        } label: {
+                            Text("Delete All")
                         }
-                        Button("Done") { dismiss() }
                     }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
                 }
             }
             .onChange(of: inProgressMatches.isEmpty) { _, isEmpty in
@@ -135,17 +143,13 @@ struct MatchHistoryView: View {
             }
             .overlay {
                 if segment == .finished && completedMatches.isEmpty {
-                    ContentUnavailableView(
-                        "No completed games",
-                        systemImage: "list.bullet.rectangle",
-                        description: Text("Finished games will appear here.")
-                    )
+                    EmptyStateView(systemImage: "list.bullet.rectangle",
+                                   title: "No completed games",
+                                   message: "Finished games will appear here.")
                 } else if segment == .unfinished && inProgressMatches.isEmpty {
-                    ContentUnavailableView(
-                        "No unfinished games",
-                        systemImage: "checkmark.circle",
-                        description: Text("All your games have been finished.")
-                    )
+                    EmptyStateView(systemImage: "checkmark.circle",
+                                   title: "No unfinished games",
+                                   message: "All your games have been finished.")
                 }
             }
             .alert(
@@ -188,6 +192,7 @@ struct MatchHistoryView: View {
                     .sheetTextSizeCeiling()
             }
         }
+        .tint(theme.primaryAccent)
     }
 }
 

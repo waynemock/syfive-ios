@@ -40,14 +40,17 @@ struct HouseRecordsView: View {
                 .padding(.horizontal)
                 .padding(.vertical, 8)
             }
+            .background(theme.backgroundColor)
             .navigationTitle("House Records")
             .navigationBarTitleDisplayMode(.inline)
+            .paletteBarBackground()
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
             }
         }
+        .tint(theme.primaryAccent)
     }
 
     /// A title's state as SyLib's card shows it; the copy is today's (D-164).
@@ -70,17 +73,12 @@ struct HouseRecordsView: View {
 // MARK: - Section header
 
 private struct RecordsSectionHeader: View {
-    @Environment(\.syTheme) private var theme
-    
     let title: String
     let subtitle: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .foregroundStyle(theme.primaryAccent)
-                .font(.subheadline)
-                .fontWeight(.semibold)
+            SectionHeader(title)
             Text(subtitle)
                 .font(.caption)
                 .foregroundStyle(.secondary)

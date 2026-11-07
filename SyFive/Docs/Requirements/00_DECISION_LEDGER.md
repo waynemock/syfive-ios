@@ -80,6 +80,11 @@ file is HEAD.*
 | D-184 | **An archived player's header reads "Archived".** | `31 §2.5` |
 | D-185 | **SyFive shows iCloud's state as Score It \* does**: SyLibCloud's `ICloudStatusButton` first in the trailing toolbar (no pulse) and a last Settings section "iCloud" with "iCloud Sync" On/Off, both opening `ICloudInfoSheet` (standard copy, "SyFive"). In 1.2.0. Supersedes `04` §5.1's "never prompt for sign-in" (play is still never gated on iCloud) and `26` §2's exclusion of the button. | `32 §2.1` (Pops, 7 Nov 2026) |
 | D-186 | **The cloud shows whenever iCloud is off**, during a game and Game Night too, until "Don't show this again"; Settings' row always stays. | `32 §2.3` |
+| D-187 | **Every SyFive list is on the palette**: `paletteListBackground`, `paletteRowBackground`, `paletteBarBackground` and the accent tint on each sheet, as Score It \*. Meets D-166. | `28 §2.1` (Pops, 7 Nov 2026) |
+| D-188 | **Headers, Done and empty states are Score It \*'s**: plain headers in lists and forms, `SectionHeader` over the picker's and profile's sections, Done `.confirmationAction`, `EmptyStateView` with today's words. | `28 §2.2–2.4` |
+| D-189 | **The profile keeps its cards, on the palette**; the match detail cards take `theme.cellBackgroundColor`. | `28 §2.5` (Pops, 7 Nov 2026) |
+| D-190 | **New Game's roster is Score It \*'s chips**; "Playing" stays a list; editing, archiving and unarchiving are Players'. | `28 §2.6` (Pops, 7 Nov 2026) |
+| D-191 | **About is in the current palette; the studio link is `SyzygyLinks.developerAppStore`.** Dice Fairness and the Feel Board stay in ⋯. | `28 §2.7–2.8` (Pops, 7 Nov 2026) |
 
 ## Product & rules
 

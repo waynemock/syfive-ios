@@ -486,8 +486,11 @@ struct ContentView: View {
         .sheet(isPresented: $showsDiceFairness) {
             NavigationStack {
                 DiceFairnessView(accentColor: theme.primaryAccent, appName: "SyFive")
+                    .paletteListBackground(theme.backgroundColor)
+                    .tint(theme.primaryAccent)
+                    .paletteBarBackground()
                     .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
+                        ToolbarItem(placement: .confirmationAction) {
                             Button("Done") { showsDiceFairness = false }
                         }
                     }
@@ -542,8 +545,7 @@ struct ContentView: View {
     }
 
     private func openSyzygyAppStore() {
-        guard let url = URL(string: "https://apps.apple.com/us/developer/syzygy-softwerks-llc/id1118759442") else { return }
-        openURL(url)
+        openURL(SyzygyLinks.developerAppStore)
     }
 }
 
