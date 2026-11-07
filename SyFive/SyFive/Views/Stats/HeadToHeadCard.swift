@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibUI
 import SyLibScoring
 import SyLibScoringUI
 import SwiftData
@@ -17,7 +18,7 @@ struct HeadToHeadCard: View {
            sort: \MatchModel.startedAt)
     private var completedModels: [MatchModel]
 
-    @Environment(\.theme) private var theme
+    @Environment(\.syTheme) private var theme
 
     private var h2h: HeadToHead {
         headToHead(playerA: playerAID, playerB: playerBID,
@@ -43,6 +44,6 @@ struct HeadToHeadCard: View {
         playerBName: "Sherida"
     )
     .padding()
-    .environment(\.theme, Theme(type: .midnight, colorScheme: .dark))
+    .environment(\.syTheme, SyTheme(type: .midnight, colorScheme: .dark))
     .modelContainer(for: MatchModel.self, inMemory: true)
 }

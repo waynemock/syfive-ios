@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibUI
 import SyLibScoring
 import SyLibYatzy
 import Charts
@@ -87,11 +88,11 @@ struct MatchProgressionChart: View {
     MatchProgressionChart(
         progression: sampleProgression,
         playerNames: [id1: "Alex", id2: "Sam"],
-        playerColors: [id1: Theme(type: .midnight, colorScheme: .dark).primaryAccent,
-                       id2: Theme(type: .blossom, colorScheme: .dark).primaryAccent]
+        playerColors: [id1: SyTheme(type: .midnight, colorScheme: .dark).primaryAccent,
+                       id2: SyTheme(type: .blossom, colorScheme: .dark).primaryAccent]
     )
     .frame(height: 260)
     .padding()
-    .environment(\.theme, Theme(type: .midnight, colorScheme: .dark))
+    .environment(\.syTheme, SyTheme(type: .midnight, colorScheme: .dark))
     .preferredColorScheme(.dark)
 }

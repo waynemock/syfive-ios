@@ -20,7 +20,7 @@ struct CelebrationView: View {
         if coordinator.isGameOverActive {
             GameOverOverlayView(
                 winnerThemes: coordinator.winnerIndices.map {
-                    Theme(type: model.themeType(for: $0), colorScheme: colorScheme)
+                    SyTheme(type: model.themeType(for: $0), colorScheme: colorScheme)
                 },
                 onDone: { coordinator.clearGameOver() }
             )
@@ -47,7 +47,7 @@ struct DiceTrayOverlayView: View {
         ZStack(alignment: .center) {
             // Full-frame particle burst — Yatzy only.
             if let event = coordinator.yatzyEvent {
-                let theme = Theme(type: model.themeType(for: event.playerIndex), colorScheme: colorScheme)
+                let theme = SyTheme(type: model.themeType(for: event.playerIndex), colorScheme: colorScheme)
                 // Same motes under Reduce Motion: they are already the calm form (D-073).
                 ParticleBurst(particles: { makeYatzyParticles(theme: theme) },
                               reducedMotion: { makeYatzyParticles(theme: theme) })
@@ -61,7 +61,7 @@ struct DiceTrayOverlayView: View {
                 if let event = coordinator.yatzyEvent {
                     let playerIndex = event.playerIndex
                     YatzyTextCard(
-                        theme: Theme(type: model.themeType(for: playerIndex), colorScheme: colorScheme),
+                        theme: SyTheme(type: model.themeType(for: playerIndex), colorScheme: colorScheme),
                         playerName: model.playerDisplayNames.indices.contains(playerIndex)
                             ? model.playerDisplayNames[playerIndex] : "",
                         playerInitials: model.playerInitials(for: playerIndex),
@@ -78,7 +78,7 @@ struct DiceTrayOverlayView: View {
                 if let event = coordinator.upperBonusEvent {
                     let playerIndex = event.playerIndex
                     UpperBonusTextCard(
-                        theme: Theme(type: model.themeType(for: playerIndex), colorScheme: colorScheme),
+                        theme: SyTheme(type: model.themeType(for: playerIndex), colorScheme: colorScheme),
                         playerName: model.playerDisplayNames.indices.contains(playerIndex)
                             ? model.playerDisplayNames[playerIndex] : "",
                         playerInitials: model.playerInitials(for: playerIndex),
@@ -104,12 +104,12 @@ struct DiceTrayOverlayView: View {
                         playerName: model.playerDisplayNames.indices.contains(playerIndex)
                             ? model.playerDisplayNames[playerIndex] : "",
                         playerInitials: model.playerInitials(for: playerIndex),
-                        playerTheme: Theme(type: model.themeType(for: playerIndex), colorScheme: colorScheme),
+                        playerTheme: SyTheme(type: model.themeType(for: playerIndex), colorScheme: colorScheme),
                         categoryName: announcement.category.displayName,
                         value: announcement.value,
                         leaderName: leaderNames,
                         leaderInitials: model.playerInitials(for: leaderIdx),
-                        leaderTheme: Theme(type: model.themeType(for: leaderIdx), colorScheme: colorScheme),
+                        leaderTheme: SyTheme(type: model.themeType(for: leaderIdx), colorScheme: colorScheme),
                         leaderScore: model.leaderScore ?? 0,
                         leaderLabel: isTied ? "Tied" : "Leading",
                         onDone: { coordinator.clearScoreAnnouncementIfCurrent(id: announcement.id) }
@@ -123,12 +123,12 @@ struct DiceTrayOverlayView: View {
 
                 if let winner = coordinator.winnerAnnouncement {
                     let isTied = winner.winnerIndices.count > 1
-                    let winners: [(initials: String, themeType: Theme.ThemeType)] = winner.winnerIndices.map {
+                    let winners: [(initials: String, themeType: SyTheme.ThemeType)] = winner.winnerIndices.map {
                         (model.playerInitials(for: $0), model.themeType(for: $0))
                     }
                     let winnerNames = joinedWithAmpersand(winner.winnerIndices
                         .compactMap { model.playerDisplayNames.indices.contains($0) ? model.playerDisplayNames[$0] : nil })
-                    let primaryTheme = Theme(type: model.themeType(for: winner.winnerIndices.first ?? 0), colorScheme: colorScheme)
+                    let primaryTheme = SyTheme(type: model.themeType(for: winner.winnerIndices.first ?? 0), colorScheme: colorScheme)
                     WinnerCardView(
                         isTied: isTied,
                         winners: winners,
@@ -178,7 +178,7 @@ struct DiceTrayOverlayView: View {
 // MARK: - Yatzy text card
 
 private struct YatzyTextCard: View {
-    let theme: Theme
+    let theme: SyTheme
     let playerName: String
     let playerInitials: String
     let playerCount: Int
@@ -231,7 +231,7 @@ private struct YatzyTextCard: View {
 // MARK: - Upper bonus text card
 
 private struct UpperBonusTextCard: View {
-    let theme: Theme
+    let theme: SyTheme
     let playerName: String
     let playerInitials: String
     let playerCount: Int
@@ -284,9 +284,9 @@ private struct UpperBonusTextCard: View {
 
 private struct WinnerCardView: View {
     let isTied: Bool
-    let winners: [(initials: String, themeType: Theme.ThemeType)]
+    let winners: [(initials: String, themeType: SyTheme.ThemeType)]
     let winnerNames: String
-    let primaryTheme: Theme
+    let primaryTheme: SyTheme
     let score: Int
 
     @ScaledMetric private var headlineFontSize: CGFloat = 40
@@ -295,9 +295,9 @@ private struct WinnerCardView: View {
     @State private var activeThemeIndex = 0
 
     // Cycles through tied players' themes; falls back to the single winner's theme.
-    private var displayTheme: Theme {
+    private var displayTheme: SyTheme {
         guard isTied, winners.indices.contains(activeThemeIndex) else { return primaryTheme }
-        return Theme(type: winners[activeThemeIndex].themeType, colorScheme: colorScheme)
+        return SyTheme(type: winners[activeThemeIndex].themeType, colorScheme: colorScheme)
     }
 
     var body: some View {
@@ -305,7 +305,7 @@ private struct WinnerCardView: View {
             if isTied {
                 HStack(spacing: 6) {
                     ForEach(Array(winners.enumerated()), id: \.offset) { _, w in
-                        InitialsCircle(initials: w.initials, color: Theme(type: w.themeType, colorScheme: colorScheme).primaryAccent, diameter: 28)
+                        InitialsCircle(initials: w.initials, color: SyTheme(type: w.themeType, colorScheme: colorScheme).primaryAccent, diameter: 28)
                     }
                 }
                 Text(winnerNames)
@@ -315,7 +315,7 @@ private struct WinnerCardView: View {
                     .multilineTextAlignment(.center)
             } else if let solo = winners.first {
                 HStack(spacing: 6) {
-                    InitialsCircle(initials: solo.initials, color: Theme(type: solo.themeType, colorScheme: colorScheme).primaryAccent, diameter: 28)
+                    InitialsCircle(initials: solo.initials, color: SyTheme(type: solo.themeType, colorScheme: colorScheme).primaryAccent, diameter: 28)
                     Text(winnerNames)
                         .font(.subheadline.weight(.semibold))
                         .fontDesign(.rounded)
@@ -362,7 +362,7 @@ private struct PostMatchH2HView: View {
            sort: \MatchModel.startedAt)
     private var completedModels: [MatchModel]
 
-    @Environment(\.theme) private var theme
+    @Environment(\.syTheme) private var theme
 
     private var hasHistory: Bool {
         let aID = playerAID
@@ -394,7 +394,7 @@ private struct PostMatchH2HView: View {
 // MARK: - Game-over overlay
 
 private struct GameOverOverlayView: View {
-    let winnerThemes: [Theme]
+    let winnerThemes: [SyTheme]
     let onDone: () -> Void
 
     @State private var washOpacity: Double = 0
@@ -448,12 +448,12 @@ private struct ScoreAnnouncementBannerView: View {
     let announcementID: UUID
     let playerName: String
     let playerInitials: String
-    let playerTheme: Theme
+    let playerTheme: SyTheme
     let categoryName: String
     let value: Int
     let leaderName: String
     let leaderInitials: String
-    let leaderTheme: Theme
+    let leaderTheme: SyTheme
     let leaderScore: Int
     let leaderLabel: String
     let onDone: () -> Void
@@ -555,7 +555,7 @@ private let dieOrigins: [(x: Double, y: Double)] = [
     (0.22, 0.70), (0.78, 0.65),
 ]
 
-private func makeYatzyParticles(theme: Theme) -> [Particle] {
+private func makeYatzyParticles(theme: SyTheme) -> [Particle] {
     let count = Int.random(in: 15...25)
     // 2:1 primary-to-secondary ratio keeps the burst cohesive but varied.
     let colors = [theme.primaryAccent, theme.primaryAccent, theme.secondaryAccent]
@@ -574,7 +574,7 @@ private func makeYatzyParticles(theme: Theme) -> [Particle] {
     }
 }
 
-private func makeFallParticles(winnerThemes: [Theme]) -> [Particle] {
+private func makeFallParticles(winnerThemes: [SyTheme]) -> [Particle] {
     let allColors: [Color] = winnerThemes.isEmpty
         ? [.accentColor]
         : winnerThemes.flatMap { [$0.primaryAccent, $0.primaryAccent, $0.secondaryAccent] }
@@ -600,7 +600,7 @@ private func makeFallParticles(winnerThemes: [Theme]) -> [Particle] {
     let coordinator = CelebrationCoordinator()
     let model = MatchController()
     let p1 = Player(id: UUID(), name: "Wayne", initials: "WM",
-                    themeID: Theme.ThemeType.midnight.rawValue,
+                    themeID: SyTheme.ThemeType.midnight.rawValue,
                     createdAt: Date(), isArchived: false, source: .local)
     let _ = model.addPlayer(from: p1)
     ZStack {
@@ -615,10 +615,10 @@ private func makeFallParticles(winnerThemes: [Theme]) -> [Particle] {
     let coordinator = CelebrationCoordinator()
     let model = MatchController()
     let p1 = Player(id: UUID(), name: "Wayne", initials: "WM",
-                    themeID: Theme.ThemeType.midnight.rawValue,
+                    themeID: SyTheme.ThemeType.midnight.rawValue,
                     createdAt: Date(), isArchived: false, source: .local)
     let p2 = Player(id: UUID(), name: "Sherida", initials: "SM",
-                    themeID: Theme.ThemeType.forest.rawValue,
+                    themeID: SyTheme.ThemeType.forest.rawValue,
                     createdAt: Date(), isArchived: false, source: .local)
     let _ = model.addPlayer(from: p1)
     let _ = model.addPlayer(from: p2)
@@ -634,7 +634,7 @@ private func makeFallParticles(winnerThemes: [Theme]) -> [Particle] {
     let coordinator = CelebrationCoordinator()
     let model = MatchController()
     let p1 = Player(id: UUID(), name: "Wayne", initials: "WM",
-                    themeID: Theme.ThemeType.midnight.rawValue,
+                    themeID: SyTheme.ThemeType.midnight.rawValue,
                     createdAt: Date(), isArchived: false, source: .local)
     let _ = model.addPlayer(from: p1)
     ZStack {
@@ -649,10 +649,10 @@ private func makeFallParticles(winnerThemes: [Theme]) -> [Particle] {
     let coordinator = CelebrationCoordinator()
     let model = MatchController()
     let p1 = Player(id: UUID(), name: "Wayne", initials: "WM",
-                    themeID: Theme.ThemeType.midnight.rawValue,
+                    themeID: SyTheme.ThemeType.midnight.rawValue,
                     createdAt: Date(), isArchived: false, source: .local)
     let p2 = Player(id: UUID(), name: "Sherida", initials: "SM",
-                    themeID: Theme.ThemeType.forest.rawValue,
+                    themeID: SyTheme.ThemeType.forest.rawValue,
                     createdAt: Date(), isArchived: false, source: .local)
     let _ = model.addPlayer(from: p1)
     let _ = model.addPlayer(from: p2)
@@ -668,10 +668,10 @@ private func makeFallParticles(winnerThemes: [Theme]) -> [Particle] {
     let coordinator = CelebrationCoordinator()
     let model = MatchController()
     let p1 = Player(id: UUID(), name: "Wayne", initials: "WM",
-                    themeID: Theme.ThemeType.midnight.rawValue,
+                    themeID: SyTheme.ThemeType.midnight.rawValue,
                     createdAt: Date(), isArchived: false, source: .local)
     let p2 = Player(id: UUID(), name: "Sherida", initials: "SM",
-                    themeID: Theme.ThemeType.forest.rawValue,
+                    themeID: SyTheme.ThemeType.forest.rawValue,
                     createdAt: Date(), isArchived: false, source: .local)
     let _ = model.addPlayer(from: p1)
     let _ = model.addPlayer(from: p2)
@@ -693,10 +693,10 @@ private func makeFallParticles(winnerThemes: [Theme]) -> [Particle] {
     let coordinator = CelebrationCoordinator()
     let model = MatchController()
     let mockPlayer = Player(id: UUID(), name: "Wayne", initials: "WM",
-                            themeID: Theme.ThemeType.midnight.rawValue,
+                            themeID: SyTheme.ThemeType.midnight.rawValue,
                             createdAt: Date(), isArchived: false, source: .local)
     let leaderPlayer = Player(id: UUID(), name: "Sherida", initials: "SM",
-                              themeID: Theme.ThemeType.forest.rawValue,
+                              themeID: SyTheme.ThemeType.forest.rawValue,
                               createdAt: Date(), isArchived: false, source: .local)
     let _ = model.addPlayer(from: mockPlayer)
     let _ = model.addPlayer(from: leaderPlayer)
@@ -715,10 +715,10 @@ private func makeFallParticles(winnerThemes: [Theme]) -> [Particle] {
     let coordinator = CelebrationCoordinator()
     let model = MatchController()
     let p1 = Player(id: UUID(), name: "Wayne", initials: "WM",
-                    themeID: Theme.ThemeType.midnight.rawValue,
+                    themeID: SyTheme.ThemeType.midnight.rawValue,
                     createdAt: Date(), isArchived: false, source: .local)
     let p2 = Player(id: UUID(), name: "Sherida", initials: "SM",
-                    themeID: Theme.ThemeType.forest.rawValue,
+                    themeID: SyTheme.ThemeType.forest.rawValue,
                     createdAt: Date(), isArchived: false, source: .local)
     let _ = model.addPlayer(from: p1)
     let _ = model.addPlayer(from: p2)
@@ -744,10 +744,10 @@ private func makeFallParticles(winnerThemes: [Theme]) -> [Particle] {
     let coordinator = CelebrationCoordinator()
     let model = MatchController()
     let p1 = Player(id: aID, name: "Wayne", initials: "WM",
-                    themeID: Theme.ThemeType.midnight.rawValue,
+                    themeID: SyTheme.ThemeType.midnight.rawValue,
                     createdAt: Date(), isArchived: false, source: .local)
     let p2 = Player(id: bID, name: "Sherida", initials: "SM",
-                    themeID: Theme.ThemeType.forest.rawValue,
+                    themeID: SyTheme.ThemeType.forest.rawValue,
                     createdAt: Date(), isArchived: false, source: .local)
     let _ = model.addPlayer(from: p1)
     let _ = model.addPlayer(from: p2)
@@ -792,10 +792,10 @@ private func makeFallParticles(winnerThemes: [Theme]) -> [Particle] {
     let coordinator = CelebrationCoordinator()
     let model = MatchController()
     let p1 = Player(id: UUID(), name: "Wayne", initials: "WM",
-                    themeID: Theme.ThemeType.midnight.rawValue,
+                    themeID: SyTheme.ThemeType.midnight.rawValue,
                     createdAt: Date(), isArchived: false, source: .local)
     let p2 = Player(id: UUID(), name: "Sherida", initials: "SM",
-                    themeID: Theme.ThemeType.forest.rawValue,
+                    themeID: SyTheme.ThemeType.forest.rawValue,
                     createdAt: Date(), isArchived: false, source: .local)
     let _ = model.addPlayer(from: p1)
     let _ = model.addPlayer(from: p2)
@@ -814,13 +814,13 @@ private func makeFallParticles(winnerThemes: [Theme]) -> [Particle] {
     let coordinator = CelebrationCoordinator()
     let model = MatchController()
     let p1 = Player(id: UUID(), name: "Wayne", initials: "WM",
-                    themeID: Theme.ThemeType.midnight.rawValue,
+                    themeID: SyTheme.ThemeType.midnight.rawValue,
                     createdAt: Date(), isArchived: false, source: .local)
     let p2 = Player(id: UUID(), name: "Sherida", initials: "SM",
-                    themeID: Theme.ThemeType.forest.rawValue,
+                    themeID: SyTheme.ThemeType.forest.rawValue,
                     createdAt: Date(), isArchived: false, source: .local)
     let p3 = Player(id: UUID(), name: "Winry Ember", initials: "WE",
-                    themeID: Theme.ThemeType.ember.rawValue,
+                    themeID: SyTheme.ThemeType.ember.rawValue,
                     createdAt: Date(), isArchived: false, source: .local)
     let _ = model.addPlayer(from: p1)
     let _ = model.addPlayer(from: p2)

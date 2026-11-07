@@ -3,7 +3,7 @@ import SyLibUI
 
 struct AboutView: View {
     @Environment(\.colorScheme) private var colorScheme
-    private var theme: Theme { Theme(type: .midnight, colorScheme: colorScheme) }
+    private var theme: SyTheme { SyTheme(type: .midnight, colorScheme: colorScheme) }
 
     static let appStoreURL = URL(string: "https://apps.apple.com/us/app/syfive/id6759580429")!
 

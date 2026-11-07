@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibUI
 import SyLibCommentary
 import SyLibScoring
 import SwiftData
@@ -28,7 +29,7 @@ struct SettingsView: View {
 }
 
 private struct SettingsForm: View {
-    @Environment(\.theme) private var theme
+    @Environment(\.syTheme) private var theme
     @Environment(CommentaryVoices.self) private var commentaryVoices
     
     @Bindable var settings: AppSettingsModel

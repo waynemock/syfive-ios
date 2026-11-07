@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibUI
 import SwiftData
 import SyLibGameNight
 import SyLibScoring
@@ -63,7 +64,7 @@ struct SyFiveGameNightTableView<Settings: View>: View {
     let appSettings: () -> Settings
 
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.theme) private var theme
+    @Environment(\.syTheme) private var theme
 
     init(
         gameNight: GameNightController,
@@ -86,7 +87,7 @@ struct SyFiveGameNightTableView<Settings: View>: View {
             appName: "SyFive",
             accentColor: theme.primaryAccent,
             seatColor: { seat in
-                Theme.accent(forThemeID: seat.displayThemeID, colorScheme: colorScheme)
+                SyTheme.accent(forThemeID: seat.displayThemeID, colorScheme: colorScheme)
             },
             versionMismatchCount: gameNight.session.versionMismatchedCount,
             lastMismatchedVersion: gameNight.session.lastMismatchedVersion,
@@ -119,7 +120,7 @@ struct SyFiveSeatClaimSheet: View {
     let gameNight: GameNightController
     let matchModel: MatchController
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.theme) private var theme
+    @Environment(\.syTheme) private var theme
     @Query(sort: \PlayerModel.name) private var players: [PlayerModel]
 
     private var availableRoster: [SeatRosterEntry] {
@@ -132,7 +133,7 @@ struct SyFiveSeatClaimSheet: View {
                     name: pm.name,
                     initials: pm.initials,
                     themeID: pm.themeID,
-                    accentColor: Theme.accent(forThemeID: pm.themeID, colorScheme: colorScheme)
+                    accentColor: SyTheme.accent(forThemeID: pm.themeID, colorScheme: colorScheme)
                 )
             }
     }
@@ -156,7 +157,7 @@ struct SyFiveSeatClaimSheet: View {
                         name: pm.name,
                         initials: pm.initials,
                         themeID: pm.themeID,
-                        accentColor: Theme.accent(forThemeID: pm.themeID, colorScheme: colorScheme)
+                        accentColor: SyTheme.accent(forThemeID: pm.themeID, colorScheme: colorScheme)
                     ))
                 })
             }

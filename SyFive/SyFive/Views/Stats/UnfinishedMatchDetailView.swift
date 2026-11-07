@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibUI
 import SyLibCore
 import SyLibGameNight
 import SyLibScoring
@@ -44,7 +45,7 @@ struct UnfinishedMatchDetailView: View {
 
     private var playerColors: [UUID: Color] {
         Dictionary(match.participants.map { p in
-            return (p.id, Theme.accent(forThemeID: p.displayThemeID, colorScheme: colorScheme))
+            return (p.id, SyTheme.accent(forThemeID: p.displayThemeID, colorScheme: colorScheme))
         }, uniquingKeysWith: { first, _ in first })
     }
 
@@ -221,7 +222,7 @@ private struct UnfinishedScorecardWidthKey: PreferenceKey {
     let p1 = ParticipantModel()
     p1.seat = 0; p1.rank = 0; p1.finalScore = 0; p1.bonusPoints = 0
     p1.displayName = "Wayne"; p1.displayInitials = "WM"
-    p1.displayThemeID = Theme.ThemeType.midnight.rawValue
+    p1.displayThemeID = SyTheme.ThemeType.midnight.rawValue
     p1.scoreEntries = [
         entry(.ones, 3, minutesAgo: 50),
         entry(.twos, 8, minutesAgo: 46),
@@ -234,7 +235,7 @@ private struct UnfinishedScorecardWidthKey: PreferenceKey {
     let p2 = ParticipantModel()
     p2.seat = 1; p2.rank = 0; p2.finalScore = 0; p2.bonusPoints = 0
     p2.displayName = "Sherida"; p2.displayInitials = "SM"
-    p2.displayThemeID = Theme.ThemeType.forest.rawValue
+    p2.displayThemeID = SyTheme.ThemeType.forest.rawValue
     p2.scoreEntries = [
         entry(.ones, 2, minutesAgo: 49),
         entry(.twos, 6, minutesAgo: 45),

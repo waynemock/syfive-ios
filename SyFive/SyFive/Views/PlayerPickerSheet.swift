@@ -9,7 +9,7 @@ struct PlayerPickerSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.editMode) private var editMode
-    @Environment(\.theme) private var theme
+    @Environment(\.syTheme) private var theme
     @Query(sort: \PlayerModel.createdAt) private var allPlayers: [PlayerModel]
 
     @State private var playerEditMode: PlayerEditSheet.Mode? = nil
@@ -90,7 +90,7 @@ struct PlayerPickerSheet: View {
             }
             .sheet(item: $playerEditMode) { mode in
                 PlayerEditSheet(mode: mode, matchModel: model)
-                    .environment(\.theme, theme)
+                    .environment(\.syTheme, theme)
             }
             .alert(
                 pendingArchive.map { "Archive \($0.name)?" } ?? "",
@@ -111,7 +111,7 @@ struct PlayerPickerSheet: View {
     // MARK: - Row views
 
     private func inGameRow(at index: Int, slotID: UUID) -> some View {
-        let rowTheme = Theme(
+        let rowTheme = SyTheme(
             type: model.themeType(for: index),
             colorScheme: colorScheme
         )
@@ -167,8 +167,8 @@ struct PlayerPickerSheet: View {
     }
 
     private func rosterRow(for playerModel: PlayerModel) -> some View {
-        let rowTheme = Theme(
-            type: Theme.ThemeType(rawValue: playerModel.themeID) ?? .midnight,
+        let rowTheme = SyTheme(
+            themeID: playerModel.themeID,
             colorScheme: colorScheme
         )
 
@@ -210,8 +210,8 @@ struct PlayerPickerSheet: View {
     }
 
     private func archivedRow(for playerModel: PlayerModel) -> some View {
-        let rowTheme = Theme(
-            type: Theme.ThemeType(rawValue: playerModel.themeID) ?? .midnight,
+        let rowTheme = SyTheme(
+            themeID: playerModel.themeID,
             colorScheme: colorScheme
         )
 
@@ -272,13 +272,13 @@ struct PlayerPickerSheet: View {
     let p1 = PlayerModel()
     p1.name = "Wayne"
     p1.initials = "WM"
-    p1.themeID = Theme.ThemeType.midnight.rawValue
+    p1.themeID = SyTheme.ThemeType.midnight.rawValue
     container.mainContext.insert(p1)
 
     let p2 = PlayerModel()
     p2.name = "Sherida"
     p2.initials = "SM"
-    p2.themeID = Theme.ThemeType.forest.rawValue
+    p2.themeID = SyTheme.ThemeType.forest.rawValue
     container.mainContext.insert(p2)
 
     let model = MatchController()

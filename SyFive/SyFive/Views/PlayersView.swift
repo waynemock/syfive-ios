@@ -17,7 +17,7 @@ struct PlayersView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.theme) private var theme
+    @Environment(\.syTheme) private var theme
 
     @Query(sort: \PlayerModel.createdAt) private var allPlayers: [PlayerModel]
 
@@ -87,13 +87,13 @@ struct PlayersView: View {
             }
             .sheet(item: $playerEditMode) { mode in
                 PlayerEditSheet(mode: mode, matchModel: matchController)
-                    .environment(\.theme, theme)
+                    .environment(\.syTheme, theme)
             }
             .sheet(item: $selectedProfile) { player in
                 PlayerProfileView(
                     playerID: player.id,
                     playerName: player.name,
-                    themeType: Theme.ThemeType(rawValue: player.themeID) ?? .midnight,
+                    themeType: SyTheme.ThemeType(themeID: player.themeID),
                     isArchived: player.isArchived
                 )
             }
@@ -169,8 +169,8 @@ struct PlayersView: View {
     // MARK: - Helpers
 
     private func rosterEntry(for player: PlayerModel) -> PlayerRosterEntry {
-        let themeType = Theme.ThemeType(rawValue: player.themeID) ?? .midnight
-        let t = Theme(type: themeType, colorScheme: colorScheme)
+        let themeType = SyTheme.ThemeType(themeID: player.themeID)
+        let t = SyTheme(type: themeType, colorScheme: colorScheme)
         return PlayerRosterEntry(
             id: player.id,
             name: player.name,
@@ -184,8 +184,8 @@ struct PlayersView: View {
     // MARK: - Row views
 
     private func gameNightRow(for player: PlayerModel) -> some View {
-        let themeType = Theme.ThemeType(rawValue: player.themeID) ?? .midnight
-        let theme = Theme(type: themeType, colorScheme: colorScheme)
+        let themeType = SyTheme.ThemeType(themeID: player.themeID)
+        let theme = SyTheme(type: themeType, colorScheme: colorScheme)
 
         return HStack(spacing: 12) {
             InitialsCircle(initials: player.initials, color: theme.primaryAccent, diameter: 28)
@@ -235,8 +235,8 @@ struct PlayersView: View {
     }
 
     private func rosterRow(for player: PlayerModel) -> some View {
-        let themeType = Theme.ThemeType(rawValue: player.themeID) ?? .midnight
-        let theme = Theme(type: themeType, colorScheme: colorScheme)
+        let themeType = SyTheme.ThemeType(themeID: player.themeID)
+        let theme = SyTheme(type: themeType, colorScheme: colorScheme)
 
         return HStack(spacing: 12) {
             InitialsCircle(initials: player.initials, color: theme.primaryAccent, diameter: 28)
@@ -272,8 +272,8 @@ struct PlayersView: View {
     }
 
     private func archivedRow(for player: PlayerModel) -> some View {
-        let themeType = Theme.ThemeType(rawValue: player.themeID) ?? .midnight
-        let theme = Theme(type: themeType, colorScheme: colorScheme)
+        let themeType = SyTheme.ThemeType(themeID: player.themeID)
+        let theme = SyTheme(type: themeType, colorScheme: colorScheme)
 
         return HStack(spacing: 12) {
             InitialsCircle(initials: player.initials, color: theme.primaryAccent, diameter: 28, opacity: 0.4)
@@ -321,26 +321,26 @@ struct PlayersView: View {
     let p1 = PlayerModel()
     p1.name = "Wayne"
     p1.initials = "WM"
-    p1.themeID = Theme.ThemeType.midnight.rawValue
+    p1.themeID = SyTheme.ThemeType.midnight.rawValue
     container.mainContext.insert(p1)
 
     let p2 = PlayerModel()
     p2.name = "Sherida"
     p2.initials = "SM"
-    p2.themeID = Theme.ThemeType.forest.rawValue
+    p2.themeID = SyTheme.ThemeType.forest.rawValue
     container.mainContext.insert(p2)
 
     let p3 = PlayerModel()
     p3.name = "Weston"
     p3.initials = "WM"
-    p3.themeID = Theme.ThemeType.ember.rawValue
+    p3.themeID = SyTheme.ThemeType.ember.rawValue
     p3.isArchived = true
     container.mainContext.insert(p3)
 
     let p4 = PlayerModel()
     p4.name = "Sherida"
     p4.initials = "SM"
-    p4.themeID = Theme.ThemeType.forest.rawValue
+    p4.themeID = SyTheme.ThemeType.forest.rawValue
     p4.source = .gameNight
     container.mainContext.insert(p4)
 

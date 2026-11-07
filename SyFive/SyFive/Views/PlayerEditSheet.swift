@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibUI
 import SyLibScoring
 import SwiftData
 import SyLibScoringData
@@ -28,13 +29,13 @@ struct PlayerEditSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.sizeCategory) private var sizeCategory
-    @Environment(\.theme) private var theme
+    @Environment(\.syTheme) private var theme
 
     @ScaledMetric private var swatchSize: CGFloat = 36
 
     @State private var name: String
     @State private var initials: String
-    @State private var themeType: Theme.ThemeType
+    @State private var themeType: SyTheme.ThemeType
 
     init(mode: Mode, matchModel: MatchController, onSave: (() -> Void)? = nil, onCreated: ((PlayerModel) -> Void)? = nil) {
         self.mode = mode
@@ -49,7 +50,7 @@ struct PlayerEditSheet: View {
         case .edit(let pm, _):
             _name = State(initialValue: pm.name)
             _initials = State(initialValue: pm.initials)
-            _themeType = State(initialValue: Theme.ThemeType(rawValue: pm.themeID) ?? .midnight)
+            _themeType = State(initialValue: SyTheme.ThemeType(themeID: pm.themeID))
         }
     }
 
@@ -120,8 +121,8 @@ struct PlayerEditSheet: View {
         let columnCount = sizeCategory.isAccessibilityCategory ? 4 : 7
         let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: columnCount)
         return LazyVGrid(columns: columns, spacing: 8) {
-            ForEach(Theme.ThemeType.allCases, id: \.self) { type in
-                let swatchTheme = Theme(type: type, colorScheme: colorScheme)
+            ForEach(SyTheme.ThemeType.allCases, id: \.self) { type in
+                let swatchTheme = SyTheme(type: type, colorScheme: colorScheme)
                 let isSelected = themeType == type
                 ZStack {
                     HStack(spacing: 0) {
@@ -202,7 +203,7 @@ struct PlayerEditSheet: View {
     let pm = PlayerModel()
     pm.name = "Wayne"
     pm.initials = "WM"
-    pm.themeID = Theme.ThemeType.midnight.rawValue
+    pm.themeID = SyTheme.ThemeType.midnight.rawValue
     container.mainContext.insert(pm)
     return PlayerEditSheet(mode: .edit(pm, matchSlot: 0), matchModel: MatchController())
         .modelContainer(container)

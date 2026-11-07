@@ -5,6 +5,7 @@ import SyLibScoring
 import SyLibYatzy
 import Observation
 import SwiftUI
+import SyLibUI
 import SwiftData
 import SyLibCore
 import SyLibScoringData
@@ -38,7 +39,7 @@ final class MatchController {
     private(set) var playerScores: [[YatzyCategory: Int]]
     private var playerScoreTimestamps: [[YatzyCategory: Date]]
     private(set) var playerYatzyBonuses: [Int]
-    private(set) var playerThemes: [Theme.ThemeType]
+    private(set) var playerThemes: [SyTheme.ThemeType]
     private(set) var playerDisplayNames: [String]
     private(set) var playerDisplayInitials: [String]
     // UUID of the roster Player behind each slot; nil for anonymous/default players.
@@ -151,7 +152,7 @@ final class MatchController {
 
     var isLastRound: Bool { currentRound == totalRounds }
 
-    var nextPlayerThemeType: Theme.ThemeType {
+    var nextPlayerThemeType: SyTheme.ThemeType {
         Self.defaultTheme(for: playerCount)
     }
 
@@ -159,7 +160,7 @@ final class MatchController {
 
     var undoPlayerIndex: Int? { lastScoreSnapshot?.currentPlayerIndex }
 
-    var undoThemeType: Theme.ThemeType? { undoPlayerIndex.map { themeType(for: $0) } }
+    var undoThemeType: SyTheme.ThemeType? { undoPlayerIndex.map { themeType(for: $0) } }
 
     func playerInitials(for playerIndex: Int) -> String {
         guard playerDisplayInitials.indices.contains(playerIndex) else { return "" }
@@ -177,7 +178,7 @@ final class MatchController {
         return playerScores[playerIndex]
     }
 
-    func themeType(for playerIndex: Int) -> Theme.ThemeType {
+    func themeType(for playerIndex: Int) -> SyTheme.ThemeType {
         guard playerThemes.indices.contains(playerIndex) else { return .midnight }
         return playerThemes[playerIndex]
     }
@@ -206,7 +207,7 @@ final class MatchController {
         guard canEditPlayers else { return }
         clearUndoState()
         let newIndex = playerScores.count
-        let theme = Theme.ThemeType(rawValue: player.themeID) ?? Self.defaultTheme(for: newIndex)
+        let theme = SyTheme.ThemeType(themeID: player.themeID, fallback: Self.defaultTheme(for: newIndex))
         playerScores.append([:])
         playerScoreTimestamps.append([:])
         playerYatzyBonuses.append(0)
@@ -291,7 +292,7 @@ final class MatchController {
         clearUndoState()
     }
 
-    func updatePlayer(at index: Int, name: String, initials: String, themeType: Theme.ThemeType) {
+    func updatePlayer(at index: Int, name: String, initials: String, themeType: SyTheme.ThemeType) {
         guard playerDisplayNames.indices.contains(index) else { return }
         playerDisplayNames[index] = name
         playerDisplayInitials[index] = initials
@@ -305,7 +306,7 @@ final class MatchController {
     func restorePlayer(displayName: String, displayInitials: String, themeID: String, playerID: UUID?) {
         guard canEditPlayers else { return }
         clearUndoState()
-        let themeType = Theme.ThemeType(rawValue: themeID) ?? Self.defaultTheme(for: playerScores.count)
+        let themeType = SyTheme.ThemeType(themeID: themeID, fallback: Self.defaultTheme(for: playerScores.count))
         playerScores.append([:])
         playerScoreTimestamps.append([:])
         playerYatzyBonuses.append(0)
@@ -356,7 +357,8 @@ final class MatchController {
             status: isGameOver ? .completed : .inProgress,
             startedAt: matchStartedAt ?? Date(),
             completedAt: isGameOver ? matchCompletedAt : nil,
-            participants: buildParticipants()
+            participants: buildParticipants(),
+            options: [:]
         )
         matchModel.hydrate(from: match, context: context)
         matchModel.isGameNight = isGameNight
@@ -380,7 +382,7 @@ final class MatchController {
         matchCompletedAt = matchModel.completedAt
 
         for p in matchModel.participants.sorted(by: { $0.seat < $1.seat }) {
-            let themeType = Theme.ThemeType(rawValue: p.displayThemeID) ?? .midnight
+            let themeType = SyTheme.ThemeType(themeID: p.displayThemeID)
             let scores: [YatzyCategory: Int] = Dictionary(
                 p.scoreEntries.compactMap { entry in
                     guard let cat = YatzyCategory(rawValue: entry.slotKey),
@@ -443,7 +445,7 @@ final class MatchController {
         matchCompletedAt = nil
     }
 
-    func setTheme(_ theme: Theme.ThemeType, for playerIndex: Int) {
+    func setTheme(_ theme: SyTheme.ThemeType, for playerIndex: Int) {
         guard canEditPlayers, playerThemes.indices.contains(playerIndex) else { return }
         playerThemes[playerIndex] = theme
     }
@@ -455,7 +457,7 @@ final class MatchController {
         for i in playerIDs.indices {
             guard let playerID = playerIDs[i],
                   let player = players.first(where: { $0.id == playerID }),
-                  let themeType = Theme.ThemeType(rawValue: player.themeID),
+                  let themeType = SyTheme.ThemeType(rawValue: player.themeID),
                   playerThemes.indices.contains(i),
                   playerThemes[i] != themeType else { continue }
             playerThemes[i] = themeType
@@ -705,8 +707,8 @@ final class MatchController {
         sink(.turnStart(player: currentPlayerName))
     }
 
-    static func defaultTheme(for index: Int) -> Theme.ThemeType {
-        let order: [Theme.ThemeType] = [
+    static func defaultTheme(for index: Int) -> SyTheme.ThemeType {
+        let order: [SyTheme.ThemeType] = [
             .midnight, .blossom, .ember, .forest, .ocean, .sunset, .paper
         ]
         return order[index % order.count]
@@ -759,7 +761,7 @@ final class MatchController {
         }
         playerScoreTimestamps = sorted.map { _ in [:] }
         playerYatzyBonuses = sorted.map { $0.bonusPoints }
-        playerThemes = sorted.map { Theme.ThemeType(rawValue: $0.displayThemeID) ?? .midnight }
+        playerThemes = sorted.map { SyTheme.ThemeType(themeID: $0.displayThemeID) }
         playerDisplayNames = sorted.map { $0.displayName }
         playerDisplayInitials = sorted.map { $0.displayInitials }
         playerIDs = sorted.map { $0.playerID }
@@ -832,7 +834,8 @@ final class MatchController {
             status: isGameOver ? .completed : .inProgress,
             startedAt: matchStartedAt ?? Date(),
             completedAt: isGameOver ? (matchCompletedAt ?? Date()) : nil,
-            participants: buildParticipants()
+            participants: buildParticipants(),
+            options: [:]
         )
     }
 

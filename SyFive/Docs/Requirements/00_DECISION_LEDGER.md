@@ -49,6 +49,18 @@ file is HEAD.*
 | D-144 | **The RealityKit launch assertion (`17` §11) is held for device evidence.** No SyLib dice change until it appears on hardware. Then a diagnosis task comes first, and a fix task must state how the fairness certification is kept (D-037). 1.1.0 is not held for it. | `17` §11 → `18` §2.4 (Pops, 11 Oct 2026) |
 | D-145 | **The How to Play "Got it" button is SyLibUI's `HelpDismissButton`**: a `CapsuleButton` in the `.accent` style, centred, the same in every app, saying "Got it, hide this", then the alert "Hide the help button?" with the message "How to Play stays in the Menu, in the last section with About. You can open it any time." The How to Play pages stay app-owned. SyFive adopts it in 1.1.0; Syderal in its `24`. | `19` §2 (Pops, 11 Oct 2026; wording *(rec.)*) → Pops, 11 Oct 2026 (single `CapsuleButton` look, centred; the `.link` / `.prominent` styles removed) |
 | D-147 | **1.1.0 ships `18` §4.6's diagnostic logging at info level** (Play Again state, score changes, the leading toolbar slot, `saveMatch` outcomes and failures), to catch the lost-restart-button / lost-save report in the field. It is removed once that report is resolved. | `18` §4.6 → `21` §2.2 *(rec.)* |
+| D-155 | **SyFive 1.2.0 is built on SyLib's `ScoringSchemaV2`** (additive: `GameModel.isArchived`, `optionsData`, `rulesLinksData`; `MatchModel.optionsData`). CloudKit Production is deployed before any TestFlight build (D-026). | `26 §2.1` |
+| D-156 | **`Match` carries `options` on the wire, always `[:]` from SyFive.** `appProtocolVersion` stays 1 and the transport 3 through 1.2.0, so 1.1.x and 1.2.0 share a table. Proved by a mixed table. | `14 §1.x → 26 §2.2` (extends D-131) |
+| D-157 | **SyFive's palettes are SyLibUI's `SyTheme`**, renamed in one pass; `Theme.swift` is retired, with no typealias. D-013 unchanged. | `26 §2.3` |
+| D-158 | **The feel catalog (`FeelCatalog.syzygy` + SyFive's `celebration`), `DiceFeelAdapter` (SyLibDiceFeel), the dice palette, `DiceRollControls` and the game-over `GameOverOverlay` / `WinnerCard` are SyLib's.** The Yatzy moment, `celebration` and `CelebrationCoordinator` stay SyFive's. | `26 §2.4` |
+| D-159 | **Settings' Audio & Feedback rows are `FeelSettingsRows`, and Haptics is hidden without haptic hardware. Appearance is `AppearanceSetting`, applied by `WindowAppearance`**; `.preferredColorScheme` leaves the root (it fixed Settings keeping its old scheme). | `26 §2.5, §2.6` |
+| D-160 | **Where SyFive's look and Score It \*'s differ, SyFive takes Score It \*'s, except where a ledger row fixes the look**; those conflicts go to Pops. A defect in either app is fixed, not copied. (Pops, 6 Nov 2026.) | `26 §2.7` |
+| D-161 | **The in-play scorecard is SyLibYatzyUI's card and pager**, iPad width cap included. Legality is passed per category (`scorableCategories` = `legalScoreCategories`). The pre-game card stays SyFive's. | `26 §2.8` |
+| D-162 | **Player edit is `PalettePlayerEditSheet` with `PaletteChips`**; the swatch picker is retired. SyFive's modes and writes stay in `onSave`. | `26 §2.9` |
+| D-163 | **Stats uses SyLib's `SegmentedPicker`; `WindowTint` puts the palette's accent on windows, alerts and bars.** | `26 §2.11` |
+| D-165 | **`IconButton`'s 44 pt minimum touch area is accepted**; an overflow from the dice area's 32 × 24 slots is a defect ruled on a device. | `26 §2.12` |
+| D-166 | **`paletteBarBackground` lands with `28`'s palette lists**, not before. | `26 §2.13` |
+| D-167 | **SyLib's `deriveInitials` splits on non-alphanumerics** ("Mary-Jo" → "MJ"). Stored initials never change; a pre-1.2.0 punctuated name's initials no longer follow a rename. Accepted. | `26 §2.14` |
 
 ## Product & rules
 
@@ -297,6 +309,7 @@ file is HEAD.*
 | D-114 | **No stored aggregates.** Compute-on-read from `MatchModel` / `ParticipantModel`; zero new schema. | `12 §4.1` |
 | D-115 | **Only `status == .completed` matches count.** In-progress and abandoned excluded everywhere, including Most Games Played. | `12 §4.1` |
 | D-116 | **No runner-up or partial ordering on any card.** A card names the holder(s) and nothing about who does not hold the title. | `12 §3.3` |
+| D-164 | **House Records' cards are `RecordCard`, extended in SyLib for ties, captions and unclaimed titles, and laid out in `RecordCard.grid`.** Dates read as an abbreviated date ("Nov 5, 2026"). D-097 to D-116 unchanged; the titles stay SyFive's (D-110). | `12 → 26 §2.10` |
 
 ---
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibUI
 import SwiftData
 import SyLibGameNight
 import SyLibScoring
@@ -88,7 +89,7 @@ struct MatchHistoryView: View {
                             } label: {
                                 let m = matchModel.toDomain()
                                 let winner = m.participants.sorted { $0.rank < $1.rank }.first { $0.rank == 1 }
-                                MatchHistoryRow(match: m, accentColor: Theme.accent(forParticipant: winner, colorScheme: colorScheme))
+                                MatchHistoryRow(match: m, accentColor: SyTheme.accent(forParticipant: winner, colorScheme: colorScheme))
                             }
                         }
                     } else {
@@ -100,7 +101,7 @@ struct MatchHistoryView: View {
                             } label: {
                                 let m = matchModel.toDomain()
                                 let leader = m.participants.sorted { $0.finalScore > $1.finalScore }.first
-                                UnfinishedMatchRow(match: m, accentColor: Theme.accent(forParticipant: leader, colorScheme: colorScheme))
+                                UnfinishedMatchRow(match: m, accentColor: SyTheme.accent(forParticipant: leader, colorScheme: colorScheme))
                             }
                         }
                         .onDelete { indexSet in

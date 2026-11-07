@@ -20,7 +20,7 @@ this version replaces it in place (`00B` E-1 covers delivered documents only).
 `00B_SYFIVE_GUARDRAILS.md`, this document, and the SyLib usage doc each task names (in the
 package's `Docs/`).
 
-**Line numbers** are from the trees above. Find each edit by the declaration named, not the
+**Line numbers** are from the trees above, except where a task says they were moved by an earlier task. Find each edit by the declaration named, not the
 number.
 
 ---
@@ -250,13 +250,13 @@ Players see nothing new in this phase, except the fix from 26.8 and the Dice Fai
   | `Theme.ThemeType(rawValue: id) ?? .midnight` | `SyTheme.ThemeType(themeID: id)` |
   | `SyTheme(type: SyTheme.ThemeType(rawValue: id) ?? .midnight, colorScheme: c)` (where both are built together) | `SyTheme(themeID: id, colorScheme: c)` |
   | `MatchController.swift` 209, 308: `?? Self.defaultTheme(for: n)` | `SyTheme.ThemeType(themeID: id, fallback: Self.defaultTheme(for: n))` |
-  | `MatchController.swift` 458: `let themeType = Theme.ThemeType(rawValue: player.themeID),` inside a `guard let` | `SyTheme.ThemeType(rawValue: player.themeID)`. An unknown id still means none |
+  | `MatchController.swift` 459: `let themeType = Theme.ThemeType(rawValue: player.themeID),` inside a `guard let` | `SyTheme.ThemeType(rawValue: player.themeID)`. An unknown id still means none |
   | `Theme.accent(forParticipant:colorScheme:)` (`HeadToHeadDetailView.swift` 35; `MatchHistoryView.swift` 91, 103) | `SyTheme.accent(forParticipant:colorScheme:)`, importing `SyLibScoringUI` |
   | `MatchDetailView.swift` 97 `rankLabel(participant.rank)`; the function at 180 | `participant.rank.ordinal` (SyLibCore); the function deleted |
 
   There are 15 `ThemeType(rawValue:)` lookups: `PlayerEditSheet` 52; `PlayersView` 96, 172, 187,
   238, 275; `HouseRecordsView` 111, 164; `PlayerPickerSheet` 171, 214; `MatchController` 209, 308,
-  383, 458, 762. Previews are renamed in the same way.
+  384, 459, 763 (after 26.1's two added lines). Previews are renamed in the same way.
 - **Stop if:** SyFive uses a member of `Theme` that `SyTheme` doesn't have. Report it, and don't add
   it anywhere.
 - **Must not touch:** stored data (the palette raw values are the same); Domain; SyLib.
@@ -418,7 +418,8 @@ four things read `\.syTheme`: `paletteBarBackground` (which `DiceFairnessView` u
 - **Stop if:** a behavior of today's sheet (a mode, a validation, a Game Night case) has no place in
   `PalettePlayerEditSheet`'s parameters or `onSave`. Report it.
 - **Done when:** the build and suites pass; the summary lists each of today's sheet behaviors and
-  where it now lives.
+  where it now lives; and 26.3's check is repeated for the edit sheet: report the presentation
+  site(s) by file and line, and whether `\.syTheme` reaches it (add it there if not).
 
 #### Task 26.12 · SyLib: `RecordCard` with several holders, an unclaimed state, and the grid
 
@@ -559,7 +560,9 @@ four things read `\.syTheme`: `paletteBarBackground` (which `DiceFairnessView` u
   `SegmentedPicker(_:selection:segments:)`, with the same selections and segment titles. In
   `ContentView.swift`, call `WindowTint.apply(UIColor(theme.primaryAccent))` in `.onAppear` and in
   `.onChange(of: theme)`. The existing `.tint(theme.primaryAccent)` (line 231) stays.
-- **Done when:** the build and suites pass. Pops checks V8.
+- **Done when:** the build and suites pass; 26.3's check is repeated for the two pickers' screens
+  (report each by file and line, and whether `\.syTheme` reaches it; add it there if not). Pops
+  checks V8.
 
 ### Phase 4 · Restyle
 
@@ -674,7 +677,13 @@ document.
 
 | Task / V | Date | Result | Totals (SyFive / SyLib) | Notes |
 |---|---|---|---|---|
-| 26.1 | | | baseline: / | |
+| 26.1 | 6 Nov 2026 | Done: `options: [:]` at both `Match(` calls, no other change | baseline: 19 / 1548 | Both on `platform=iOS Simulator,name=iPhone SE (3rd generation),OS=18.6` (iOS 18.6, 22G86). SyFive: 19 tests (22 runs), all passed; confirmed by a re-run. SyLib: 1548 tests (1623 runs), 1547 passed, 1 skipped (`writeTheV1Fixture`, env-gated). New warnings: none in SyFive; SyLib `Tests/SyLibTests/SyLibUI/RainbowRotationTests.swift` 23, 26, 53 (main actor-isolated call from a nonisolated context), reported, not fixed |
+| 26.2 | 6 Nov 2026 | Done (checked by Claude against the diff) | 19 / — expected | `Theme.swift` deleted; 28 files; every changed line is the rename, the table's lookups (`themeID:`, `fallback:` at 210/309, `rawValue` kept at 460), `SyTheme(themeID:colorScheme:)` in `PlayerPickerSheet`, two imports, and `rank.ordinal`. No `Theme` type, `\.theme` key or typealias remains. MatchController lines are now +1 after 26.1 |
+| 26.3 | 6 Nov 2026 | **Verified by Claude, no code change, no agent session** | — | Every sheet in `ContentView` that shows a SyLib reader of `syTheme` writes `.environment(\.syTheme, theme)`: Dice Fairness 465–474 (on its `NavigationStack`), About 476–478. Both wrote `\.theme` before, and 26.2 renamed them. The Game Night sheets (489–500) take an accent color and read no `syTheme`. The recheck moved into 26.11 and 26.14 |
+| 26.4 (pre-check) | 6 Nov 2026 | Claude compared both catalogs | — | All 11 shared recipe ids (sounds, rattles and haptics) are identical in value; neither catalog sets `rootHz` or reverb. Only `celebration` is SyFive's own |
+| V1 | 6 Nov 2026 | **Pass** (Pops) | | Every look and listen as described. `game_end`'s end click is gone, and no tick after it with Haptics off: Score It \*'s open item doesn't reproduce in SyFive |
+| V2 | 6 Nov 2026 | **Pass** (Pops) | | `initializeCloudKitSchema` logged "Development schema initialized". The Production deploy dialog listed exactly `CD_GameModel` + `CD_isArchived`, `CD_optionsData`, `CD_rulesLinksData` and `CD_MatchModel` + `CD_optionsData`, each `Data` field with its `_ckAsset` companion, plus 8 sortable/queryable indexes. Additive only |
+| V3 | 6 Nov 2026 | **Deferred** (Pops) | | No later task changes the wire, so it can run at any point before ship; it must pass before TestFlight |
 
 ---
 

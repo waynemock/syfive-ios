@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibUI
 import SyLibCommentary
 import SyLibGameNight
 import SyLibScoring
@@ -12,7 +13,7 @@ struct TableSettingView: View {
     @Bindable var gameNight: GameNightController
     let matchModel: MatchController
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.theme) private var theme
+    @Environment(\.syTheme) private var theme
     @State private var showsSeatClaim = false
     @State private var showsGameNightHelp = false
     @State private var showsEndSessionConfirmation = false

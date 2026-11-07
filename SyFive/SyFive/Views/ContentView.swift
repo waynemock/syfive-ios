@@ -57,7 +57,7 @@ struct ContentView: View {
     var appSettings: AppSettingsModel? { settingsModels.first }
 
     var body: some View {
-        let theme = Theme(type: model.themeType(for: model.currentPlayerIndex), colorScheme: colorScheme)
+        let theme = SyTheme(type: model.themeType(for: model.currentPlayerIndex), colorScheme: colorScheme)
         NavigationStack {
             GeometryReader { proxy in
                 geometryContent(proxy: proxy)
@@ -229,7 +229,7 @@ struct ContentView: View {
         }
         .preferredColorScheme(appSettings?.colorScheme.preferredColorScheme ?? .dark)
         .tint(theme.primaryAccent)
-        .environment(\.theme, theme)
+        .environment(\.syTheme, theme)
         .environment(\.suggestedMoveEnabled, appSettings?.suggestedMoveEnabled ?? true)
         .environment(director)
         .environment(commentaryVoices)
@@ -435,7 +435,7 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showsHouseRecords) {
             HouseRecordsView()
-                .environment(\.theme, theme)
+                .environment(\.syTheme, theme)
         }
         .sheet(isPresented: $showsHistory) {
             MatchHistoryView(
@@ -449,17 +449,17 @@ struct ContentView: View {
                     showsHistory = false
                 }
             )
-            .environment(\.theme, theme)
+            .environment(\.syTheme, theme)
             .environment(director)
         }
         .sheet(isPresented: $showsPlayers, onDismiss: { syncPlayerThemesFromRoster() }) {
             PlayersView()
-                .environment(\.theme, theme)
+                .environment(\.syTheme, theme)
                 .environment(director)
         }
         .sheet(isPresented: $showsSettings, onDismiss: { syncCommentaryEngine() }) {
             SettingsView()
-                .environment(\.theme, theme)
+                .environment(\.syTheme, theme)
                 .environment(commentaryVoices)
         }
         .sheet(isPresented: $showsDiceFairness) {
@@ -471,20 +471,20 @@ struct ContentView: View {
                         }
                     }
             }
-            .environment(\.theme, theme)
+            .environment(\.syTheme, theme)
         }
         .sheet(isPresented: $showsAbout) {
             AboutView()
-                .environment(\.theme, theme)
+                .environment(\.syTheme, theme)
         }
         .sheet(isPresented: $showsFeelBoard) {
             FeelBoardView()
                 .environment(director)
-                .environment(\.theme, theme)
+                .environment(\.syTheme, theme)
         }
         .sheet(isPresented: $showsGameNight) {
             TableSettingView(gameNight: gameNight, matchModel: model)
-                .environment(\.theme, theme)
+                .environment(\.syTheme, theme)
         }
         .sheet(isPresented: $showsInviteInstructions) {
             GameNightInviteInstructions(accentColor: theme.primaryAccent)
@@ -504,7 +504,7 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showsHowToPlay) {
             HowToPlayView(settings: appSettings)
-                .environment(\.theme, theme)
+                .environment(\.syTheme, theme)
         }
     }
 
@@ -536,7 +536,7 @@ struct ContentView: View {
     let p1 = ParticipantModel()
     p1.displayName = "Wayne"
     p1.displayInitials = "WM"
-    p1.displayThemeID = Theme.ThemeType.midnight.rawValue
+    p1.displayThemeID = SyTheme.ThemeType.midnight.rawValue
     p1.seat = 0
     p1.playerID = UUID()
     p1.match = match
@@ -545,7 +545,7 @@ struct ContentView: View {
     let p2 = ParticipantModel()
     p2.displayName = "Sherida"
     p2.displayInitials = "SM"
-    p2.displayThemeID = Theme.ThemeType.forest.rawValue
+    p2.displayThemeID = SyTheme.ThemeType.forest.rawValue
     p2.seat = 1
     p2.playerID = UUID()
     p2.match = match

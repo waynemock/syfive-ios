@@ -10,7 +10,7 @@ struct HouseRecordsView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.theme) private var theme
+    @Environment(\.syTheme) private var theme
 
     private var titles: [HouseRecords.Title] {
         HouseRecords.compute(from: completedModels.map { $0.toDomain() })
@@ -47,7 +47,7 @@ struct HouseRecordsView: View {
 // MARK: - Section header
 
 private struct RecordsSectionHeader: View {
-    @Environment(\.theme) private var theme
+    @Environment(\.syTheme) private var theme
     
     let title: String
     let subtitle: String
@@ -107,9 +107,9 @@ private struct ClaimedContent: View {
 
     @Environment(\.colorScheme) private var colorScheme
 
-    private var holderTheme: Theme {
-        let themeType = holders.first.flatMap { Theme.ThemeType(rawValue: $0.displayThemeID) } ?? .midnight
-        return Theme(type: themeType, colorScheme: colorScheme)
+    private var holderTheme: SyTheme {
+        let themeType = holders.first.map { SyTheme.ThemeType(themeID: $0.displayThemeID) } ?? .midnight
+        return SyTheme(type: themeType, colorScheme: colorScheme)
     }
 
     private var allSameDate: Bool {
@@ -160,13 +160,13 @@ private struct HolderRow: View {
 
     @Environment(\.colorScheme) private var colorScheme
 
-    private var themeType: Theme.ThemeType {
-        Theme.ThemeType(rawValue: holder.displayThemeID) ?? .midnight
+    private var themeType: SyTheme.ThemeType {
+        SyTheme.ThemeType(themeID: holder.displayThemeID)
     }
 
     var body: some View {
         HStack(spacing: 10) {
-            InitialsCircle(initials: holder.displayInitials, color: Theme(type: themeType, colorScheme: colorScheme).primaryAccent, diameter: 28)
+            InitialsCircle(initials: holder.displayInitials, color: SyTheme(type: themeType, colorScheme: colorScheme).primaryAccent, diameter: 28)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(holder.displayName)
@@ -232,22 +232,22 @@ private struct UnclaimedContent: View {
 
         let p1 = ParticipantModel()
         p1.displayName = "Wayne"; p1.displayInitials = "WM"
-        p1.displayThemeID = Theme.ThemeType.midnight.rawValue
+        p1.displayThemeID = SyTheme.ThemeType.midnight.rawValue
         p1.finalScore = Decimal(i % 3 == 0 ? 290 : 220); p1.rank = i % 3 == 0 ? 2 : 1
         p1.match = match
         container.mainContext.insert(p1)
 
         let p2 = ParticipantModel()
         p2.displayName = "Sherida"; p2.displayInitials = "SM"
-        p2.displayThemeID = Theme.ThemeType.forest.rawValue
+        p2.displayThemeID = SyTheme.ThemeType.forest.rawValue
         p2.finalScore = Decimal(i % 3 == 0 ? 310 : 195); p2.rank = i % 3 == 0 ? 1 : 2
         p2.match = match
         container.mainContext.insert(p2)
     }
 
-    let theme = Theme(type: .midnight, colorScheme: .dark)
+    let theme = SyTheme(type: .midnight, colorScheme: .dark)
     return HouseRecordsView()
         .modelContainer(container)
-        .environment(\.theme, theme)
+        .environment(\.syTheme, theme)
         .preferredColorScheme(.dark)
 }

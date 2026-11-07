@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibUI
 import Observation
 import SyLibCore
 import SyLibFeel
@@ -9,7 +10,7 @@ struct ScorecardView: View {
     let availableWidth: CGFloat
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.sizeCategory) private var sizeCategory
-    @Environment(\.theme) private var theme
+    @Environment(\.syTheme) private var theme
     @State private var showsPlayerPicker = false
     @State private var measuredLabelWidth: CGFloat = 0
 
@@ -50,7 +51,7 @@ struct ScorecardView: View {
         }
         .sheet(isPresented: $showsPlayerPicker) {
             PlayerPickerSheet(model: model)
-                .environment(\.theme, theme)
+                .environment(\.syTheme, theme)
         }
     }
 

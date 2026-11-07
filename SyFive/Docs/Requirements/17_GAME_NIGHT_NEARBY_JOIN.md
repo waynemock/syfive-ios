@@ -185,12 +185,12 @@ its deliverable is a report.
 
 ---
 
-## 8. Proposed ledger rows (filed when ruled)
+## 8. Proposed ledger rows (filed when ruled, at the next free IDs)
 
 | ID | Ruling |
 |---|---|
-| D-168 | **Game Night can start by bringing iPhones together** (SharePlay over AirDrop). `GameNightActivity` is `Transferable`. The session layer, payloads and versions are unchanged |
-| D-169 | **The activity is advertised only while Game Night is idle** (and, per Q3, only when no local match is in progress), as Q1 and Q2 place it |
+| next | **Game Night can start by bringing iPhones together** (SharePlay over AirDrop). `GameNightActivity` is `Transferable`. The session layer, payloads and versions are unchanged |
+| next | **The activity is advertised only while Game Night is idle** (and, per Q3, only when no local match is in progress), as Q1 and Q2 place it |
 | later | The hint's place and words (Q4) |
 
 ---

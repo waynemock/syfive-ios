@@ -7,6 +7,7 @@
 
 
 import SwiftUI
+import SyLibUI
 
 struct ScoreRow: View {
     struct PlayerCell: Identifiable {
@@ -22,7 +23,7 @@ struct ScoreRow: View {
     }
 
     let players: [PlayerCell]
-    let theme: Theme
+    let theme: SyTheme
     let columnWidth: CGFloat
     let rowHeight: CGFloat
     let rowAction: (() -> Void)?
@@ -191,7 +192,7 @@ private struct CardButtonStyle: ButtonStyle {
                 isWinner: false
             ) {}
         ],
-        theme: Theme(),
+        theme: SyTheme(),
         columnWidth: 64,
         rowHeight: 32,
         rowAction: nil

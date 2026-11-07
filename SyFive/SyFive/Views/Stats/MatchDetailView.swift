@@ -1,4 +1,6 @@
 import SwiftUI
+import SyLibUI
+import SyLibCore
 import SyLibFeel
 import SyLibGameNight
 import SyLibScoring
@@ -50,7 +52,7 @@ struct MatchDetailView: View {
 
     private var playerColors: [UUID: Color] {
         Dictionary(match.participants.map { p in
-            return (p.id, Theme.accent(forThemeID: p.displayThemeID, colorScheme: colorScheme))
+            return (p.id, SyTheme.accent(forThemeID: p.displayThemeID, colorScheme: colorScheme))
         }, uniquingKeysWith: { first, _ in first })
     }
 
@@ -94,7 +96,7 @@ struct MatchDetailView: View {
             ForEach(sortedParticipants) { participant in
                 let color = playerColors[participant.id] ?? .primary
                 HStack {
-                    Text(rankLabel(participant.rank))
+                    Text(participant.rank.ordinal)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
                         .frame(width: 32, alignment: .leading)
@@ -176,15 +178,6 @@ struct MatchDetailView: View {
             if width > 0 { scorecardContainerWidth = width }
         }
     }
-
-    private func rankLabel(_ rank: Int) -> String {
-        switch rank {
-        case 1: return "1st"
-        case 2: return "2nd"
-        case 3: return "3rd"
-        default: return "\(rank)th"
-        }
-    }
 }
 
 private struct HistoryScorecardWidthKey: PreferenceKey {
@@ -224,7 +217,7 @@ private struct HistoryScorecardWidthKey: PreferenceKey {
     let p1 = ParticipantModel()
     p1.seat = 0; p1.rank = 1; p1.finalScore = 296; p1.bonusPoints = 0
     p1.displayName = "Wayne"; p1.displayInitials = "WM"
-    p1.displayThemeID = Theme.ThemeType.midnight.rawValue
+    p1.displayThemeID = SyTheme.ThemeType.midnight.rawValue
     p1.scoreEntries = [
         entry(.ones, 3, minutesAgo: 110),        entry(.twos, 8, minutesAgo: 108),
         entry(.threes, 9, minutesAgo: 106),       entry(.fours, 12, minutesAgo: 104),
@@ -241,7 +234,7 @@ private struct HistoryScorecardWidthKey: PreferenceKey {
     let p2 = ParticipantModel()
     p2.seat = 1; p2.rank = 2; p2.finalScore = 164; p2.bonusPoints = 0
     p2.displayName = "Sherida"; p2.displayInitials = "SM"
-    p2.displayThemeID = Theme.ThemeType.forest.rawValue
+    p2.displayThemeID = SyTheme.ThemeType.forest.rawValue
     p2.scoreEntries = [
         entry(.ones, 2, minutesAgo: 109),         entry(.twos, 6, minutesAgo: 107),
         entry(.threes, 6, minutesAgo: 105),        entry(.fours, 8, minutesAgo: 103),

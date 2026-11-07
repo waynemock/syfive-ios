@@ -1,4 +1,5 @@
 import SwiftUI
+import SyLibUI
 import SyLibScoring
 import SyLibScoringUI
 import SyLibYatzy
@@ -8,7 +9,7 @@ import SyLibScoringData
 struct PlayerProfileView: View {
     let playerID:   UUID
     let playerName: String
-    let themeType:  Theme.ThemeType
+    let themeType:  SyTheme.ThemeType
     var isArchived: Bool = false
 
     @Query(filter: #Predicate<MatchModel> { $0.statusRaw == "completed" },
@@ -25,7 +26,7 @@ struct PlayerProfileView: View {
 
     private enum ProfileMode: Hashable { case pvp, solo }
 
-    private var theme: Theme { Theme(type: themeType, colorScheme: colorScheme) }
+    private var theme: SyTheme { SyTheme(type: themeType, colorScheme: colorScheme) }
     private var matches: [Match] { completedModels.map { $0.toDomain() } }
 
     private var pvpMatches: [Match]  { matches.filter { $0.participants.count > 1 } }
@@ -60,7 +61,7 @@ struct PlayerProfileView: View {
                 opponentID: oid,
                 opponentName: info.name,
                 opponentInitials: info.initials,
-                opponentAccent: Theme.accent(forThemeID: info.themeID, colorScheme: colorScheme),
+                opponentAccent: SyTheme.accent(forThemeID: info.themeID, colorScheme: colorScheme),
                 h2h: headToHead(playerA: playerID, playerB: oid, matches: pvpMatches)
             )
         }
@@ -150,7 +151,7 @@ struct PlayerProfileView: View {
             )
         }
         .tint(theme.primaryAccent)
-        .environment(\.theme, theme)
+        .environment(\.syTheme, theme)
     }
 
     // MARK: - Main layout

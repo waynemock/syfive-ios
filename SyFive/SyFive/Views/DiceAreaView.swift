@@ -9,7 +9,7 @@ import SyLibYatzy
 import Observation
 import UIKit
 
-extension Theme {
+extension SyTheme {
     var dicePalette: DiceTintPalette {
         DiceTintPalette(
             normal: UIColor(primaryAccent),
@@ -36,7 +36,7 @@ struct DiceAreaView: View {
     @Environment(CelebrationCoordinator.self) private var celebrationCoordinator
     @Environment(GameNightController.self) private var gameNight
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.theme) private var theme
+    @Environment(\.syTheme) private var theme
     private let rollControlHeight: CGFloat = 24
 
     var body: some View {
@@ -390,7 +390,7 @@ struct DiceAreaView: View {
 
     private var undoButtonTint: Color {
         guard let undoThemeType = model.undoThemeType else { return .accentColor }
-        return Theme(type: undoThemeType, colorScheme: colorScheme).primaryAccent
+        return SyTheme(type: undoThemeType, colorScheme: colorScheme).primaryAccent
     }
 
 }
