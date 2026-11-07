@@ -4,6 +4,7 @@ import SyLibCommentary
 import SyLibScoring
 import SwiftData
 import SyLibFeel
+import SyLibCloud
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
@@ -32,8 +33,10 @@ private struct SettingsForm: View {
     @Environment(\.syTheme) private var theme
     @Environment(CommentaryVoices.self) private var commentaryVoices
     @Environment(FeelDirector.self) private var director
+    @Environment(CloudAccountStatus.self) private var cloudStatus
     
     @Bindable var settings: AppSettingsModel
+    @State private var showsICloud = false
 
     var body: some View {
         Form {
@@ -83,6 +86,20 @@ private struct SettingsForm: View {
                     .foregroundStyle(theme.primaryAccent)
             }
 
+            Section {
+                Button { showsICloud = true } label: {
+                    LabeledContent("iCloud Sync", value: cloudStatus.isAvailable ? "On" : "Off")
+                        .foregroundStyle(.primary)
+                }
+            } header: {
+                Text("iCloud")
+                    .foregroundStyle(theme.primaryAccent)
+            }
+        }
+        .sheet(isPresented: $showsICloud) {
+            ICloudInfoSheet(appName: "SyFive", accentColor: theme.primaryAccent,
+                            backgroundColor: theme.backgroundColor)
+                .sheetTextSizeCeiling()
         }
     }
 }
@@ -92,4 +109,5 @@ private struct SettingsForm: View {
         .modelContainer(for: AppSettingsModel.self, inMemory: true)
         .environment(CommentaryVoices())
         .environment(FeelDirector(catalog: .syFive))
+        .environment(CloudAccountStatus())
 }

@@ -1,6 +1,7 @@
 import SwiftUI
 import AVFoundation
 import SyLibCommentary
+import SyLibCloud
 import SyLibCore
 import SyLibDice
 import SyLibFeel
@@ -29,6 +30,7 @@ struct ContentView: View {
     @State var showsGameNightPendingSheet = false
     @State var showsGameNightHelp = false
     @State var showsHowToPlay = false
+    @State var showsICloud = false
     @State var celebrationCoordinator = CelebrationCoordinator()
     @State var commentaryEngine: CommentaryEngine<CommentaryEventKind>? = nil
     /// The device's voices, scanned off the main actor; resolves each personality's voice (D-081).
@@ -83,6 +85,7 @@ struct ContentView: View {
                     }
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
+                    ICloudStatusButton(tint: theme.primaryAccent, pulses: false) { showsICloud = true }
                     if !(appSettings?.helpDismissed ?? false) {
                         IconButton("questionmark.circle") { showsHowToPlay = true }
                             .accessibilityLabel("How to Play")
@@ -475,6 +478,11 @@ struct ContentView: View {
                 .environment(director)
                 .sheetTextSizeCeiling()
         }
+        .sheet(isPresented: $showsICloud) {
+            ICloudInfoSheet(appName: "SyFive", accentColor: theme.primaryAccent,
+                            backgroundColor: theme.backgroundColor)
+                .sheetTextSizeCeiling()
+        }
         .sheet(isPresented: $showsDiceFairness) {
             NavigationStack {
                 DiceFairnessView(accentColor: theme.primaryAccent, appName: "SyFive")
@@ -574,6 +582,7 @@ struct ContentView: View {
 
     return ContentView()
         .environment(GameNightController())
+        .environment(CloudAccountStatus())
         .modelContainer(container)
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
 }

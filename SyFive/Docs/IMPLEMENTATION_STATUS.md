@@ -12,6 +12,8 @@ The core game loop, dice system, scorecard UX, persistence, stats, feel system (
 
 **1.1.0:** Rebuilt on the post-Syderal SyLib; see `15` to `23`.
 
+**1.2.0:** Score It \*'s look and components through SyLib, the CloudKit schema helper, text-size ceilings, the shared Players sheet and profile header, iCloud status in the toolbar and Settings, and Game Night by bringing iPhones together; see SyLib `26`, `27`, `29`, `30`, `31`, `32` and Requirements `17`. Built; the Game Night pass waits for TestFlight.
+
 ---
 
 ## Core Gameplay — COMPLETE ✅

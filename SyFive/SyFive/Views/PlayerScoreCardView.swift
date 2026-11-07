@@ -110,7 +110,9 @@ struct PlayerScoreCardView: View {
                         PlayerProfileView(
                             playerID: pid,
                             playerName: model.playerNames[playerIndex],
-                            themeType: model.themeType(for: playerIndex)
+                            themeType: model.themeType(for: playerIndex),
+                            matchModel: model,
+                            matchSlot: playerIndex
                         )
                     }
                 }

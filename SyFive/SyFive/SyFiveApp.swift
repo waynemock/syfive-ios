@@ -19,6 +19,7 @@ struct SyFiveApp: App {
     }
 
     @State private var gameNight = GameNightController()
+    @State private var cloudStatus = CloudAccountStatus(containerIdentifier: SyFiveApp.cloudKitContainerID)
 
     static let cloudKitContainerID = "iCloud.com.syzygysoftwerksllc.SyFive"
 
@@ -53,8 +54,13 @@ struct SyFiveApp: App {
         WindowGroup {
             ContentView()
                 .environment(gameNight)
+                .environment(cloudStatus)
                 .appTextSizeCeilings()  // game screen at xxxLarge, everything else at AX2 (D-175)
                 .task {
+                    // Previews never ask CloudKit (32 §3).
+                    if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
+                        await cloudStatus.refresh()
+                    }
                     await gameNight.listenForSessions()
                 }
         }

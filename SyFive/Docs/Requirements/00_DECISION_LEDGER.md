@@ -69,6 +69,17 @@ file is HEAD.*
 | D-173 | **The advertising and its hint live in `SyLibGameNight`**, so Syderal can adopt them; Syderal's check waits for its next release. | `17 §2.3` |
 | D-174 | **The hint is a "Sitting together?" section in SyLib's Game Night help sheet, with Pops's copy (`17` §2.5), and the sheet's first line adds "or be sitting together (see below)".** | `17 §2.5` |
 | D-175 | **SyFive's game screen is capped at xxxLarge; its sheets, menus and alerts at AX2** (SyLibUI's `dynamicTypeCeiling(.xxxLarge)` inside `sceneDynamicTypeCeiling(.accessibility2)` at the root, and `dynamicTypeCeiling(.accessibility2)` at every sheet root). The game screen is 00B's E-2 exception to 00A §5's AX2 bar. | `29 §2` (Pops, 7 Nov 2026) |
+| D-176 | **The Players sheet is SyLibScoringUI's `PlayersSheet`** (with `NameStatsRow`), data in and callbacks out; writes stay in each app; SyFive's Game Night section sits in its leading slot. SyFive adopts it in 1.2.0. | `30 §2.1` (Pops, 7 Nov 2026) |
+| D-177 | **A player is deleted only by a swipe on an active player who has never played**; the profile's Delete button is removed. | `30 §2.3` |
+| D-178 | **A player's profile is pushed on the Players sheet**; elsewhere it stays a sheet. | `30 §2.4` |
+| D-179 | **Players rows show "N games"** (completed games). | `30 §2.5` |
+| D-180 | **The Players sheet's copy is `30` §2.6's**, Score It \*'s with "setup" as "New Game" and "a match" as "a new game". | `30 §2.6` |
+| D-181 | **A player profile opens with SyLibScoringUI's `PlayerProfileHeader`**, Score It \*'s header (initials, name, "Archived", Edit pencil), data in and an edit callback out; no callback, no pencil. SyFive adopts it in 1.2.0. | `31 §2.1` (Pops, 7 Nov 2026) |
+| D-182 | **SyFive's profile pencil edits the player in both forms** (pushed and as a sheet), through `PlayerEditSheet`; from a pre-game card it updates that seat too. The header reads the player live. | `31 §2.3` |
+| D-183 | **SyFive's profile title is inline.** | `31 §2.4` |
+| D-184 | **An archived player's header reads "Archived".** | `31 §2.5` |
+| D-185 | **SyFive shows iCloud's state as Score It \* does**: SyLibCloud's `ICloudStatusButton` first in the trailing toolbar (no pulse) and a last Settings section "iCloud" with "iCloud Sync" On/Off, both opening `ICloudInfoSheet` (standard copy, "SyFive"). In 1.2.0. Supersedes `04` §5.1's "never prompt for sign-in" (play is still never gated on iCloud) and `26` §2's exclusion of the button. | `32 §2.1` (Pops, 7 Nov 2026) |
+| D-186 | **The cloud shows whenever iCloud is off**, during a game and Game Night too, until "Don't show this again"; Settings' row always stays. | `32 §2.3` |
 
 ## Product & rules
 

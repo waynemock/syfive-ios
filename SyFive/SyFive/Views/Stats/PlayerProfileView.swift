@@ -11,22 +11,53 @@ struct PlayerProfileView: View {
     let playerName: String
     let themeType:  SyTheme.ThemeType
     var isArchived: Bool = false
+    /// Pushed on the Players sheet's stack (D-178): no NavigationStack of its own and no Done.
+    /// False, the default, is the profile presented as a sheet.
+    var isPushed: Bool = false
+    /// For `PlayerEditSheet`, which seats an edit in the match.
+    let matchModel: MatchController
+    /// The seat an edit also updates, from a pre-game card; nil elsewhere.
+    var matchSlot: Int? = nil
 
     @Query(filter: #Predicate<MatchModel> { $0.statusRaw == "completed" },
            sort: \MatchModel.startedAt)
     private var completedModels: [MatchModel]
 
+    /// The player, read live so a saved edit shows at once (D-182).
+    @Query private var playerRows: [PlayerModel]
+
+    init(playerID: UUID, playerName: String, themeType: SyTheme.ThemeType,
+         isArchived: Bool = false, isPushed: Bool = false,
+         matchModel: MatchController, matchSlot: Int? = nil) {
+        self.playerID = playerID
+        self.playerName = playerName
+        self.themeType = themeType
+        self.isArchived = isArchived
+        self.isPushed = isPushed
+        self.matchModel = matchModel
+        self.matchSlot = matchSlot
+        _playerRows = Query(filter: #Predicate<PlayerModel> { $0.id == playerID })
+    }
+
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.modelContext) private var modelContext
 
     @State private var profileMode: ProfileMode = .pvp
-    @State private var showsDeleteAlert = false
     @State private var selectedOpponent: OpponentRecord? = nil
+    @State private var editMode: PlayerEditSheet.Mode? = nil
 
     private enum ProfileMode: Hashable { case pvp, solo }
 
-    private var theme: SyTheme { SyTheme(type: themeType, colorScheme: colorScheme) }
+    private var player: PlayerModel? { playerRows.first }
+
+    /// The live name, initials and palette; the passed values when there is no player.
+    private var displayName: String { player?.name ?? playerName }
+    private var displayInitials: String { player?.initials ?? String(playerName.prefix(1)).uppercased() }
+    private var displayThemeType: SyTheme.ThemeType {
+        player.map { SyTheme.ThemeType(themeID: $0.themeID, fallback: themeType) } ?? themeType
+    }
+
+    private var theme: SyTheme { SyTheme(type: displayThemeType, colorScheme: colorScheme) }
     private var matches: [Match] { completedModels.map { $0.toDomain() } }
 
     private var pvpMatches: [Match]  { matches.filter { $0.participants.count > 1 } }
@@ -69,76 +100,22 @@ struct PlayerProfileView: View {
         .sorted { ($0.h2h.lastMeeting ?? .distantPast) > ($1.h2h.lastMeeting ?? .distantPast) }
     }
 
-    private var playerHasMatches: Bool {
-        matches.contains { $0.participants.contains { $0.playerID == playerID } }
-    }
-
     private var insights: PlayerInsights? { playerInsights(playerID: playerID, matches: activeMatches) }
     private var summary: PlayerSummary?   { playerSummary(playerID: playerID, matches: activeMatches) }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    if showsModePicker {
-                        SegmentedPicker("Mode", selection: $profileMode,
-                                        segments: [(.pvp, "PvP"), (.solo, "Solo")])
-                    }
-
-                    if summary != nil || insights != nil {
-                        profileContent
-                    } else {
-                        ContentUnavailableView(
-                            "No games yet",
-                            systemImage: "chart.bar.xaxis",
-                            description: Text("Finish a game to see your stats.")
-                        )
-                        .padding(.top, 60)
-                    }
-                }
-                .padding(16)
-            }
-            .background(theme.backgroundColor)
-            .navigationTitle(playerName)
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
+        Group {
+            if isPushed {
+                content
+            } else {
+                NavigationStack {
+                    content
                 }
             }
-        }
-        .safeAreaInset(edge: .bottom) {
-            if isArchived && !playerHasMatches {
-                Button(role: .destructive) {
-                    showsDeleteAlert = true
-                } label: {
-                    Label("Delete Player", systemImage: "trash")
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color(.systemBackground).opacity(0.95))
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.red)
-                .background(.ultraThinMaterial)
-            }
-        }
-        .alert("Delete \(playerName)?", isPresented: $showsDeleteAlert) {
-            Button("Delete", role: .destructive) {
-                var descriptor = FetchDescriptor<PlayerModel>(predicate: #Predicate { $0.id == playerID })
-                descriptor.fetchLimit = 1
-                if let player = (try? modelContext.fetch(descriptor))?.first {
-                    modelContext.delete(player)
-                    try? modelContext.save()
-                }
-                dismiss()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("This will permanently remove them from your player list.")
         }
         .sheet(item: $selectedOpponent) { opponent in
             HeadToHeadDetailView(
-                profilePlayerName: playerName,
+                profilePlayerName: displayName,
                 profileAccent: theme.primaryAccent,
                 profileBackgroundColor: theme.backgroundColor,
                 profileCellBackgroundColor: theme.cellBackgroundColor,
@@ -148,8 +125,57 @@ struct PlayerProfileView: View {
             )
             .sheetTextSizeCeiling()
         }
+        .sheet(item: $editMode) { mode in
+            PlayerEditSheet(mode: mode, matchModel: matchModel)
+                .environment(\.syTheme, theme)
+                .sheetTextSizeCeiling()
+        }
         .tint(theme.primaryAccent)
         .environment(\.syTheme, theme)
+    }
+
+    /// The profile itself; the body puts it in a NavigationStack unless it is pushed.
+    private var content: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                PlayerProfileHeader(
+                    name: displayName,
+                    initials: displayInitials,
+                    color: theme.primaryAccent,
+                    isArchived: player?.isArchived ?? isArchived,
+                    onEdit: player.map { player in
+                        { editMode = .edit(player, matchSlot: matchSlot) }
+                    }
+                )
+
+                if showsModePicker {
+                    SegmentedPicker("Mode", selection: $profileMode,
+                                    segments: [(.pvp, "PvP"), (.solo, "Solo")])
+                }
+
+                if summary != nil || insights != nil {
+                    profileContent
+                } else {
+                    ContentUnavailableView(
+                        "No games yet",
+                        systemImage: "chart.bar.xaxis",
+                        description: Text("Finish a game to see your stats.")
+                    )
+                    .padding(.top, 60)
+                }
+            }
+            .padding(16)
+        }
+        .background(theme.backgroundColor)
+        .navigationTitle(displayName)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if !isPushed {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
     }
 
     // MARK: - Main layout
@@ -460,6 +486,7 @@ private struct InsightLabelStyle: LabelStyle {
 }
 
 #Preview {
-    PlayerProfileView(playerID: UUID(), playerName: "Wayne", themeType: .midnight)
+    PlayerProfileView(playerID: UUID(), playerName: "Wayne", themeType: .midnight,
+                      matchModel: MatchController())
         .modelContainer(for: MatchModel.self, inMemory: true)
 }
