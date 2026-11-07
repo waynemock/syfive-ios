@@ -60,12 +60,14 @@ struct HowToPlayView: View {
             }
             .navigationTitle("How to Play")
             .navigationBarTitleDisplayMode(.inline)
+            .paletteBarBackground()
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
             }
         }
+        .tint(theme.primaryAccent)
     }
 
     // MARK: - Content Blocks

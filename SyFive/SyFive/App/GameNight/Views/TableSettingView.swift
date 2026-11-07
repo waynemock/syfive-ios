@@ -28,6 +28,7 @@ struct TableSettingView: View {
             )
             .navigationTitle("Game Night")
             .navigationBarTitleDisplayMode(.inline)
+            .paletteBarBackground()
             .toolbar {
                 ToolbarItemGroup(placement: .topBarLeading) {
                     Button("Leave") {
@@ -44,10 +45,8 @@ struct TableSettingView: View {
                         }
                     }
                     if gameNight.role == .host {
-                        Button { showsGameNightHelp = true } label: {
-                            Image(systemName: "questionmark.circle")
-                        }
-                        .accessibilityLabel("Game Night Help")
+                        IconButton("questionmark.circle", context: .toolbar) { showsGameNightHelp = true }
+                            .accessibilityLabel("Game Night Help")
                     }
                 }
                 if gameNight.role == .host && gameNight.phase == .settingTable {
@@ -79,6 +78,7 @@ struct TableSettingView: View {
                 .sheetTextSizeCeiling()
             }
         }
+        .tint(theme.primaryAccent)
     }
 
     // MARK: - Commentary section (SyFive-specific, passed into the table view)

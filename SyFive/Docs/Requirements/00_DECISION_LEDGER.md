@@ -85,6 +85,7 @@ file is HEAD.*
 | D-189 | **The profile keeps its cards, on the palette**; the match detail cards take `theme.cellBackgroundColor`. | `28 §2.5` (Pops, 7 Nov 2026) |
 | D-190 | **New Game's roster is Score It \*'s chips**; "Playing" stays a list; editing, archiving and unarchiving are Players'. | `28 §2.6` (Pops, 7 Nov 2026) |
 | D-191 | **About is in the current palette; the studio link is `SyzygyLinks.developerAppStore`.** Dice Fairness and the Feel Board stay in ⋯. | `28 §2.7–2.8` (Pops, 7 Nov 2026) |
+| D-192 | **SyFive's toolbar buttons are `IconButton(…, context: .toolbar)`**, as Score It \*'s (SIA-216); SyLib's own controls stay. | `28` Task 28.5 |
 
 ## Product & rules
 

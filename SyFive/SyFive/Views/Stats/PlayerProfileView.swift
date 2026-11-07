@@ -170,7 +170,7 @@ struct PlayerProfileView: View {
         .paletteBarBackground()
         .toolbar {
             if !isPushed {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
             }

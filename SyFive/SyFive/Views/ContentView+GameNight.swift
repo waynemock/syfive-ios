@@ -61,28 +61,22 @@ extension ContentView {
                 }
             }
         case .hostRematch:
-            Button {
+            IconButton("arrow.clockwise.circle", context: .toolbar) {
                 startGameNightRematch()
-            } label: {
-                Image(systemName: "arrow.clockwise.circle")
             }
             .accessibilityLabel("Play Again")
         case .newGame:
             // Active game — reset button opens the pause/delete alert.
-            Button { showsResetAlert = true } label: {
-                Image(systemName: "arrow.clockwise")
-            }
-            .accessibilityLabel("New Game")
+            IconButton("arrow.clockwise", context: .toolbar) { showsResetAlert = true }
+                .accessibilityLabel("New Game")
         case .playAgain:
             // Game finished — one-tap play again with same players.
-            Button {
+            IconButton("plus", context: .toolbar) {
                 logModelState("playAgain(toolbar) before")
                 model.abandonMatch(in: modelContext)
                 model.resetGame()
                 celebrationCoordinator.clearWinnerAnnouncement()
                 logModelState("playAgain(toolbar) after")
-            } label: {
-                Image(systemName: "plus")
             }
             .accessibilityLabel("Play Again")
         case .empty:

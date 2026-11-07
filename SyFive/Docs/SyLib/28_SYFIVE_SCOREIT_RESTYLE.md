@@ -1,6 +1,6 @@
 # SyFive in Score It \*'s look, beyond SyLib: the restyle
 
-**Status:** **Done (28.1 to 28.4); V1–V6 with Pops.** Version 1.1, 7 November 2026. In SyFive 1.2.0, before the
+**Status:** **Done (28.1 to 28.5); V1–V7 with Pops.** Version 1.2, 7 November 2026. In SyFive 1.2.0, before the
 first TestFlight build (Pops, 7 November 2026: everything in this round is 1.2.0).
 
 **Scope:** `syfive-ios` on `sylib-reintegration`. SyLib is unchanged: every piece used here is
@@ -162,6 +162,30 @@ file and line, and any list, form or header found that the task doesn't name, le
     `pendingArchive` and its alert, and `emptyRosterPrompt` (§2.6).
   - The editor sheet stays (the seat pencil and New Player use it).
 
+### Task 28.5 · The leftovers (from a second sweep, 7 November 2026)
+
+A second read of Score It \*'s use of SyLib (every SyLib type, modifier and argument Score It \*
+uses and SyFive doesn't; `23A` §6's and `25` §6's lists for SyFive; SyLib's "SyFive adoption"
+notes) found these, all D-187, D-188 or D-192. Everything else was already adopted or is excluded
+(§2.9, `26` §2.10's table).
+
+- **Done `.confirmationAction`** (D-188), where 28.1 to 28.3 didn't reach:
+  `Views/Stats/PlayerProfileView.swift` 173 (the sheet form's Done) and `Views/HowToPlayView.swift` 64.
+- **Bars and tint** (D-187): `HowToPlayView`'s stack and `App/GameNight/Views/TableSettingView.swift`'s
+  gain `.paletteBarBackground()` and `.tint(theme.primaryAccent)` (`theme` from `\.syTheme` where the
+  view has none). Nothing else in either changes: How to Play keeps its background, Game Night's
+  table keeps Leave and Start.
+- **Toolbar buttons are `IconButton(…, context: .toolbar)`** (D-192), as every toolbar button in Score
+  It \* is (SIA-216):
+  - `Views/ContentView.swift` 90: `IconButton("questionmark.circle", context: .toolbar)`.
+  - `ContentView.swift` 81–84 (Game Night Help), `Views/ContentView+GameNight.swift` 64–69 (Play
+    Again, `arrow.clockwise.circle`), 72–75 (New Game, `arrow.clockwise`), 78–85 (play again,
+    `plus`), and `TableSettingView` 45–48 (Game Night Help): each `Button { … } label: {
+    Image(systemName:) }` becomes `IconButton(systemName, context: .toolbar) { … }` with the same
+    action and `accessibilityLabel`.
+  - `GameNightLeadingControlButton` is SyLib's and stays.
+- **Must not touch:** SyLib; How to Play's content and "Got it" (D-145); any action.
+
 ## 4. Validation (Pops, iPhone and iPad, light and dark, two palettes)
 
 | # | Check | Pass |
@@ -172,6 +196,7 @@ file and line, and any list, form or header found that the task doesn't name, le
 | V4 | A profile (pushed and as a sheet) and House Records | Titles as Score It \*'s; "No games yet" as an empty state; cards as before |
 | V5 | New Game's picker: seat from chips, New Player chip, reorder, remove, pencil on a seat | Chips in each player's palette; the hint row with nobody seated; no Archive in the picker |
 | V6 | At AX5 | Every screen holds at AX2 (29); chips wrap |
+| V7 | After 28.5: the game screen's toolbar before, during and after a game, and in Game Night (host, at the table) | Every toolbar symbol the same size and weight as the ⋯; Done on the right in How to Play and a profile sheet; How to Play's and Game Night's bars on the palette |
 
 ## 5. Ledger rows
 
@@ -182,6 +207,7 @@ file and line, and any list, form or header found that the task doesn't name, le
 | D-189 | **The profile keeps its cards, on the palette**; the match detail cards take `theme.cellBackgroundColor`. | `28 §2.5` (Pops, 7 Nov 2026) |
 | D-190 | **New Game's roster is Score It \*'s chips**; "Playing" stays a list; editing, archiving and unarchiving are Players'. | `28 §2.6` (Pops, 7 Nov 2026) |
 | D-191 | **About is in the current palette; the studio link is `SyzygyLinks.developerAppStore`.** Dice Fairness and the Feel Board stay in ⋯. | `28 §2.7–2.8` (Pops, 7 Nov 2026) |
+| D-192 | **SyFive's toolbar buttons are `IconButton(…, context: .toolbar)`**, as Score It \*'s (SIA-216); SyLib's own controls stay. | `28` Task 28.5 |
 
 ## 6. Results log
 
@@ -190,6 +216,7 @@ file and line, and any list, form or header found that the task doesn't name, le
 | 28.1 | 7 Nov 2026 | Done (checked by Claude against the tree) | `SettingsView`: Form on the palette, `paletteRowBackground` on all five sections, plain headers, Color Scheme a `SegmentedPicker`, stack bar background and tint, Done `.confirmationAction`. `CommentaryScreen`: list background and tint. Dice Fairness sheet: list background, tint, bar, Done `.confirmationAction`. `FeelBoardView`: list, three section builders' rows, bar, tint, plain "Master". `AboutView`: `\.syTheme`, previews pass Midnight. `ContentView`: `SyzygyLinks.developerAppStore`. SyFive 20 expected |
 | 28.2 | 7 Nov 2026 | Done (checked by Claude against the tree) | `MatchHistoryView`: List on the palette (116), `paletteRowBackground` on its four row groups, bar (125), tint; Done its own `.confirmationAction`, Delete All alone `.topBarTrailing`; both overlays `EmptyStateView` with today's words. Both detail views: `\.syTheme`, `theme.backgroundColor`, three cards each on `cellBackgroundColor`, bar, tint. **Gap, the spec's:** the `VStack` holding the Finished/Unfinished picker above the List has no background, so the picker's strip shows the system color; fixed in 28.3 (see there). SyFive 20 expected |
 | 28.3 | 7 Nov 2026 | Done (checked by Claude against the tree; a first report landed nothing on disk, the second did) | `PlayerProfileView`: "Opponents" and the card titles `SectionHeader`; the empty state `EmptyStateView` with today's words; `paletteBarBackground` on `content`; cards unchanged. `HouseRecordsView`: `theme.backgroundColor`, bar, tint; Done was already `.confirmationAction`; `RecordsSectionHeader`'s title `SectionHeader`, subtitle unchanged, its own theme read removed; cards and grid untouched (D-164). `MatchHistoryView`'s `VStack` on `theme.backgroundColor` (123), closing 28.2's gap. SyFive 20 expected |
+| 28.5 | 7 Nov 2026 | Done (checked by Claude against the tree) | Done `.confirmationAction` in `PlayerProfileView` (sheet form) and `HowToPlayView`; `HowToPlayView` and `TableSettingView` bar background and tint; `ContentView`'s ? `context: .toolbar`; Game Night Help (both), Play Again, New Game and the finished game's + are `IconButton(…, context: .toolbar)` with their actions and labels unchanged; SyLib's leading control, Leave and Start untouched. SyFive 20 expected |
 | 28.4 | 7 Nov 2026 | Done (checked by Claude against the tree) | `PlayerPickerSheet` (291 → 177 lines): list, both sections' rows, bar, tint on the palette; Done `.confirmationAction`. Playing always shown with the hint row when nobody is seated, its rows, reorder, remove and seat pencil unchanged, `SectionHeader("Playing")`. Roster a `FlowLayout` of `SelectableChip`s in each player's palette seating on tap, New Player last, `SectionHeader("Roster")`. `rosterRow`, `archivedRow`, the Archived section, `archivedPlayers`, `pendingArchive` and its alert, `emptyRosterPrompt` removed; the editor sheet kept. SyFive 20 expected |
 | V1–V6 | | | |
 
@@ -199,3 +226,4 @@ file and line, and any list, form or header found that the task doesn't name, le
 |---|---|---|
 | 1.0 | 7 Nov 2026 | First version, from the survey in §1 |
 | 1.1 | 7 Nov 2026 | 28.3 also gives Match History's picker strip the palette background (a gap in 28.2's spec) |
+| 1.2 | 7 Nov 2026 | Task 28.5 and V7, from a second sweep of Score It \*'s SyLib use; D-192 |

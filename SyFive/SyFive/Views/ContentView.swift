@@ -78,16 +78,14 @@ struct ContentView: View {
                 ToolbarItemGroup(placement: .topBarLeading) {
                     leadingNavButton
                     if gameNightEntry.showsLeadingHelp {
-                        Button { showsGameNightHelp = true } label: {
-                            Image(systemName: "questionmark.circle")
-                        }
-                        .accessibilityLabel("Game Night Help")
+                        IconButton("questionmark.circle", context: .toolbar) { showsGameNightHelp = true }
+                            .accessibilityLabel("Game Night Help")
                     }
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     ICloudStatusButton(tint: theme.primaryAccent, pulses: false) { showsICloud = true }
                     if !(appSettings?.helpDismissed ?? false) {
-                        IconButton("questionmark.circle") { showsHowToPlay = true }
+                        IconButton("questionmark.circle", context: .toolbar) { showsHowToPlay = true }
                             .accessibilityLabel("How to Play")
                     }
                     MoreMenu(showsBadge: updateState.showsBadge,
