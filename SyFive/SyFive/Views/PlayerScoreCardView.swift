@@ -105,17 +105,21 @@ struct PlayerScoreCardView: View {
                 updateWinnerHighlightAnimation(isWinner: newValue)
             }
             .sheet(isPresented: $showsProfile) {
-                if let pid = model.playerIDs[playerIndex] {
-                    PlayerProfileView(
-                        playerID: pid,
-                        playerName: model.playerNames[playerIndex],
-                        themeType: model.themeType(for: playerIndex)
-                    )
+                Group {
+                    if let pid = model.playerIDs[playerIndex] {
+                        PlayerProfileView(
+                            playerID: pid,
+                            playerName: model.playerNames[playerIndex],
+                            themeType: model.themeType(for: playerIndex)
+                        )
+                    }
                 }
+                .sheetTextSizeCeiling()
             }
             .sheet(item: $showsPlayerEdit) { mode in
                 PlayerEditSheet(mode: mode, matchModel: model)
                     .environment(\.syTheme, theme)
+                    .sheetTextSizeCeiling()
             }
             .task(id: model.isGameOver && isWinner) {
                 let finalTotal = model.totalScore(for: playerIndex)

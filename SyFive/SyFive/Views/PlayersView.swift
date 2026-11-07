@@ -88,6 +88,7 @@ struct PlayersView: View {
             .sheet(item: $playerEditMode) { mode in
                 PlayerEditSheet(mode: mode, matchModel: matchController)
                     .environment(\.syTheme, theme)
+                    .sheetTextSizeCeiling()
             }
             .sheet(item: $selectedProfile) { player in
                 PlayerProfileView(
@@ -96,6 +97,7 @@ struct PlayersView: View {
                     themeType: SyTheme.ThemeType(themeID: player.themeID),
                     isArchived: player.isArchived
                 )
+                .sheetTextSizeCeiling()
             }
             .sheet(item: $pendingLink) { gameNightPlayer in
                 let subject = rosterEntry(for: gameNightPlayer)
@@ -115,6 +117,7 @@ struct PlayersView: View {
                         }
                     }
                 }
+                .sheetTextSizeCeiling()
             }
             .sheet(item: $pendingMerge) { retiring in
                 let subject = rosterEntry(for: retiring)
@@ -135,6 +138,7 @@ struct PlayersView: View {
                         mergeFailureMessage = "Couldn't merge those players. Please try again."
                     }
                 }
+                .sheetTextSizeCeiling()
             }
             .alert(
                 pendingArchive.map { "Archive \($0.name)?" } ?? "",

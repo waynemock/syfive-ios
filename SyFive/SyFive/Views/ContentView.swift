@@ -228,6 +228,8 @@ struct ContentView: View {
                 }
         }
         .tint(theme.primaryAccent)
+        .gameNightNearbyInvite(GameNightActivity(), title: GameNightActivity.title,
+                               isAdvertising: isNearbyInviteAdvertised)
         .environment(\.syTheme, theme)
         .environment(\.suggestedMoveEnabled, appSettings?.suggestedMoveEnabled ?? true)
         .environment(director)
@@ -442,6 +444,7 @@ struct ContentView: View {
         .sheet(isPresented: $showsHouseRecords) {
             HouseRecordsView()
                 .environment(\.syTheme, theme)
+                .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsHistory) {
             MatchHistoryView(
@@ -457,17 +460,20 @@ struct ContentView: View {
             )
             .environment(\.syTheme, theme)
             .environment(director)
+            .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsPlayers, onDismiss: { syncPlayerThemesFromRoster() }) {
             PlayersView()
                 .environment(\.syTheme, theme)
                 .environment(director)
+                .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsSettings, onDismiss: { syncCommentaryEngine() }) {
             SettingsView()
                 .environment(\.syTheme, theme)
                 .environment(commentaryVoices)
                 .environment(director)
+                .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsDiceFairness) {
             NavigationStack {
@@ -479,27 +485,33 @@ struct ContentView: View {
                     }
             }
             .environment(\.syTheme, theme)
+            .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsAbout) {
             AboutView()
                 .environment(\.syTheme, theme)
+                .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsFeelBoard) {
             FeelBoardView()
                 .environment(director)
                 .environment(\.syTheme, theme)
+                .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsGameNight) {
             TableSettingView(gameNight: gameNight, matchModel: model)
                 .environment(\.syTheme, theme)
+                .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsInviteInstructions) {
             GameNightInviteInstructions(accentColor: theme.primaryAccent)
+                .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsGameNightPendingSheet) {
             GameNightPendingSheet(accentColor: theme.primaryAccent) {
                 gameNight.cancelHostPreparation()
             }
+            .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsGameNightHelp) {
             GameNightHelpSheet(
@@ -508,10 +520,12 @@ struct ContentView: View {
                 appName: "SyFive",
                 accentColor: theme.primaryAccent
             )
+            .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsHowToPlay) {
             HowToPlayView(settings: appSettings)
                 .environment(\.syTheme, theme)
+                .sheetTextSizeCeiling()
         }
     }
 

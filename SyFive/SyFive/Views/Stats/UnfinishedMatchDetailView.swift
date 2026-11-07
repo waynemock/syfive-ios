@@ -99,6 +99,7 @@ struct UnfinishedMatchDetailView: View {
         }
         .sheet(isPresented: $showsGNLogs) {
             GameNightLogSheet(matchID: matchModel.id)
+                .sheetTextSizeCeiling()
         }
     }
 

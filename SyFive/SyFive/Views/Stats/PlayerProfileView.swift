@@ -146,6 +146,7 @@ struct PlayerProfileView: View {
                 opponentAccent: opponent.opponentAccent,
                 h2h: opponent.h2h
             )
+            .sheetTextSizeCeiling()
         }
         .tint(theme.primaryAccent)
         .environment(\.syTheme, theme)

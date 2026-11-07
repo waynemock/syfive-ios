@@ -43,6 +43,7 @@ private struct SeatEditButton: View {
                 }
             })
             .environment(\.syTheme, theme)
+            .sheetTextSizeCeiling()
         }
     }
 

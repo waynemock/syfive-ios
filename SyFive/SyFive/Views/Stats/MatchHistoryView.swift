@@ -181,9 +181,11 @@ struct MatchHistoryView: View {
             }
             .sheet(isPresented: $showsStagingLog) {
                 GameNightLogSheet(title: "Staging Log", content: GameNightLogBuffer.shared.stagingLogContent())
+                    .sheetTextSizeCeiling()
             }
             .sheet(isPresented: $showsPreviousLog) {
                 GameNightLogSheet(title: "Previous Log", content: GameNightLogBuffer.shared.previousLogContent())
+                    .sheetTextSizeCeiling()
             }
         }
     }

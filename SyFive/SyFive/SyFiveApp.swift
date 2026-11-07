@@ -9,6 +9,7 @@ import SwiftUI
 import SwiftData
 import SyLibCloud
 import SyLibCore
+import SyLibUI
 import SyLibScoringData
 
 @main
@@ -52,7 +53,7 @@ struct SyFiveApp: App {
         WindowGroup {
             ContentView()
                 .environment(gameNight)
-                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                .appTextSizeCeilings()  // game screen at xxxLarge, everything else at AX2 (D-175)
                 .task {
                     await gameNight.listenForSessions()
                 }

@@ -64,6 +64,11 @@ file is HEAD.*
 | D-168 | **CloudKit Development schema pushes go through SyLibCloud's `CloudKitSchema`** (SwiftData and Core Data entry points; `initializeScoringCloudKitSchema` for `makeScoringContainer` apps). Every Syzygy app with CloudKit adopts it, each in its own session; SyFive first. | `27 §2.1–2.3` (Pops, 6 Nov 2026) |
 | D-169 | **The push runs only behind `#if DEBUG` and `AppConfig.DebugCloudKit.runSchemaExercise`**, a flag on the pre-archive checklist; never a commented-out call. SyLib holds no gate. | `27 §2.5` |
 | D-170 | **A failed push is returned and logged, never fatal** (`Result<Void, Error>`, SyLib's `CloudKit` log category), **for a container identifier in the app's entitlements.** An identifier that isn't traps inside CloudKit and can't be caught, as SyFive's own copy always did (found by 27.1's test, 6 Nov 2026). | `27 §2.4` |
+| D-171 | **Game Night can start by bringing iPhones together (SharePlay over AirDrop), in 1.2.0.** `GameNightActivity` is `Transferable`; the session layer, payloads and versions are unchanged. The group Messages conversation iOS creates is accepted. | `17 §2.1` (Pops, 6 Nov 2026) |
+| D-172 | **Nothing new is visible.** The activity is advertised by a hidden `ShareLink` if iOS honors it (spike S2), otherwise by a UIKit `activityItemsConfiguration` responder; only while Game Night is idle and no local match is in progress. No visible SharePlay button. | `17 §2.2, §2.4` |
+| D-173 | **The advertising and its hint live in `SyLibGameNight`**, so Syderal can adopt them; Syderal's check waits for its next release. | `17 §2.3` |
+| D-174 | **The hint is a "Sitting together?" section in SyLib's Game Night help sheet, with Pops's copy (`17` §2.5), and the sheet's first line adds "or be sitting together (see below)".** | `17 §2.5` |
+| D-175 | **SyFive's game screen is capped at xxxLarge; its sheets, menus and alerts at AX2** (SyLibUI's `dynamicTypeCeiling(.xxxLarge)` inside `sceneDynamicTypeCeiling(.accessibility2)` at the root, and `dynamicTypeCeiling(.accessibility2)` at every sheet root). The game screen is 00B's E-2 exception to 00A §5's AX2 bar. | `29 §2` (Pops, 7 Nov 2026) |
 
 ## Product & rules
 

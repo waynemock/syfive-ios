@@ -83,6 +83,7 @@ struct MatchDetailView: View {
         .onAppear { scoreController.load(from: matchModel) }
         .sheet(isPresented: $showsGNLogs) {
             GameNightLogSheet(matchID: matchModel.id)
+                .sheetTextSizeCeiling()
         }
     }
 

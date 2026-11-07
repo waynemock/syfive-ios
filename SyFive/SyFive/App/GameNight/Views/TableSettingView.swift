@@ -67,6 +67,7 @@ struct TableSettingView: View {
             }
             .sheet(isPresented: $showsSeatClaim) {
                 SyFiveSeatClaimSheet(gameNight: gameNight, matchModel: matchModel)
+                    .sheetTextSizeCeiling()
             }
             .sheet(isPresented: $showsGameNightHelp) {
                 GameNightHelpSheet(
@@ -75,6 +76,7 @@ struct TableSettingView: View {
                     appName: "SyFive",
                     accentColor: theme.primaryAccent
                 )
+                .sheetTextSizeCeiling()
             }
         }
     }

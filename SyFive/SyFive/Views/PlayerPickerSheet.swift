@@ -91,6 +91,7 @@ struct PlayerPickerSheet: View {
             .sheet(item: $playerEditMode) { mode in
                 PlayerEditSheet(mode: mode, matchModel: model)
                     .environment(\.syTheme, theme)
+                    .sheetTextSizeCeiling()
             }
             .alert(
                 pendingArchive.map { "Archive \($0.name)?" } ?? "",

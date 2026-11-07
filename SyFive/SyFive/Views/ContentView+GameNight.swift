@@ -14,6 +14,13 @@ extension ContentView {
     /// control follow the session (17 §4.8).
     var gameNightEntry: GameNightEntryState { GameNightEntryState(session: gameNight.session) }
 
+    /// Bump to join is offered only while Game Night is idle and no local match is in progress
+    /// (17 §2.4, D-172).
+    var isNearbyInviteAdvertised: Bool {
+        guard case .idle = gameNightEntry else { return false }
+        return !model.hasStarted || model.isGameOver
+    }
+
     /// Which control the leading nav bar shows. The conditions live here, in one place, so
     /// leadingNavButton draws from it and its changes can be logged (18 §4.6). The order is
     /// the order the branches have always had.
