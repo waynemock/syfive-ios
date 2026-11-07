@@ -1,6 +1,6 @@
 # SyLib: one CloudKit schema push for every app (`SyLibCloud.CloudKitSchema`)
 
-**Status:** **Ready for the agent.** Version 1.0, 6 November 2026. All of §2 is ruled by Pops,
+**Status:** **Done for SyLib and SyFive** (27.1, 27.2, V1; 6 November 2026); other apps adopt per §6. Version 1.0, 6 November 2026. All of §2 is ruled by Pops,
 6 November 2026, including the recommendations in §2.3 to §2.5, ruled as written. Number 27 was previously used by a note that was never filed; that note is now
 `Requirements/17`.
 
@@ -242,13 +242,15 @@ Proposed text, under `00A` §8 or a new "CloudKit" heading:
 |---|---|---|
 | D-168 | **CloudKit Development schema pushes go through SyLibCloud's `CloudKitSchema`** (SwiftData and Core Data entry points; `initializeScoringCloudKitSchema` for `makeScoringContainer` apps). Every Syzygy app with CloudKit adopts it, each in its own session; SyFive first. | `27 §2.1–2.3` (Pops, 6 Nov 2026) |
 | D-169 | **The push runs only behind `#if DEBUG` and `AppConfig.DebugCloudKit.runSchemaExercise`**, a flag on the pre-archive checklist; never a commented-out call. SyLib holds no gate. | `27 §2.5` |
-| D-170 | **A failed push is returned and logged, never fatal** (`Result<Void, Error>`, SyLib's `CloudKit` log category). | `27 §2.4` |
+| D-170 | **A failed push is returned and logged, never fatal** (`Result<Void, Error>`, SyLib's `CloudKit` log category), **for a container identifier in the app's entitlements.** An identifier that isn't traps inside CloudKit and can't be caught, as SyFive's own copy always did (found by 27.1's test, 6 Nov 2026). | `27 §2.4` |
 
 ## 10. Results log
 
 | Task / V | Date | Result | Totals | Notes |
 |---|---|---|---|---|
-| 27.1 | | | | |
+| 27.1 | 6 Nov 2026 | Done (code checked by Claude); Syderal check not run | — / 1560 | `CloudKitSchema` (both entry points) in SyLibCloud; `scoringConfiguration` shared by `makeScoringContainer` and `initializeScoringCloudKitSchema`; SyLibScoringData depends on SyLibCloud; `CLOUD.md` and `SCORING_DATA.md` updated. **Test 2 deleted under the pre-authorized fallback:** with an identifier not in the process's entitlements, CloudKit traps inside Core Data's setup queue (`PFCloudKitContainerProvider`, `xctest-2026-11-06-205208.ips`), killing the process; no error reaches the `catch`. SyLib's test host can't hold an iCloud entitlement. Syderal's build is blocked by its pre-existing `Match(… options:)` break (26 §12) |
+| 27.2 | 6 Nov 2026 | Done (checked by Claude against the tree) | 20 expected / — | `SyFiveApp` calls `CloudKitSchema.initializeDevelopment(models:configuration:containerIdentifier:)` inside the same `#if DEBUG` and flag; its own copy and `import CoreData` removed (62 lines); `AppConfig`'s comment updated |
+| V1 | 6 Nov 2026 | **Pass** (Pops, device) | | Log: "initializeDevelopment: Development schema initialized". `runSchemaExercise` was left `true` after the run: set back to `false` before any archive (`00B` §6) |
 
 ## Changelog
 

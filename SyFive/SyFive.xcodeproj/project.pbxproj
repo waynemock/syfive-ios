@@ -21,6 +21,7 @@
 		B024FFD3303DCE700095E1AE /* SyLibUI in Frameworks */ = {isa = PBXBuildFile; productRef = B024FFD2303DCE700095E1AE /* SyLibUI */; };
 		B054B443309E924900D5B837 /* SyLibDiceFeel in Frameworks */ = {isa = PBXBuildFile; productRef = B054B442309E924900D5B837 /* SyLibDiceFeel */; };
 		B054B445309E925200D5B837 /* SyLibYatzyUI in Frameworks */ = {isa = PBXBuildFile; productRef = B054B444309E925200D5B837 /* SyLibYatzyUI */; };
+		B054B47D309ED8EC00D5B837 /* SyLibCloud in Frameworks */ = {isa = PBXBuildFile; productRef = B054B47C309ED8EC00D5B837 /* SyLibCloud */; };
 		B0ABB7833044C8DE00C5854C /* SyLibScoringUI in Frameworks */ = {isa = PBXBuildFile; productRef = B0ABB7823044C8DE00C5854C /* SyLibScoringUI */; };
 /* End PBXBuildFile section */
 
@@ -93,6 +94,7 @@
 				B01D8B2C303DDCCF00D0F468 /* SyLibFeel in Frameworks */,
 				B054B445309E925200D5B837 /* SyLibYatzyUI in Frameworks */,
 				B01D8D5E30408DBE00D0F468 /* SyLibCommentary in Frameworks */,
+				B054B47D309ED8EC00D5B837 /* SyLibCloud in Frameworks */,
 				B024FFD3303DCE700095E1AE /* SyLibUI in Frameworks */,
 				B01D8B40303F81C000D0F468 /* SyLibScoringData in Frameworks */,
 				B054B443309E924900D5B837 /* SyLibDiceFeel in Frameworks */,
@@ -189,6 +191,7 @@
 				B0ABB7823044C8DE00C5854C /* SyLibScoringUI */,
 				B054B442309E924900D5B837 /* SyLibDiceFeel */,
 				B054B444309E925200D5B837 /* SyLibYatzyUI */,
+				B054B47C309ED8EC00D5B837 /* SyLibCloud */,
 			);
 			productName = Pentara;
 			productReference = B09DE90D2F4BBD400018F241 /* SyFive.app */;
@@ -788,6 +791,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B024FFCB303DCE700095E1AE /* XCLocalSwiftPackageReference "../../sylib-swift" */;
 			productName = SyLibYatzyUI;
+		};
+		B054B47C309ED8EC00D5B837 /* SyLibCloud */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B024FFCB303DCE700095E1AE /* XCLocalSwiftPackageReference "../../sylib-swift" */;
+			productName = SyLibCloud;
 		};
 		B0ABB7823044C8DE00C5854C /* SyLibScoringUI */ = {
 			isa = XCSwiftPackageProductDependency;

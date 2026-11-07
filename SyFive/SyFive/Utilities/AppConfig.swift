@@ -20,7 +20,7 @@ struct AppConfig {
     }
 
     struct DebugCloudKit {
-        /// Runs `SyFiveApp.initializeCloudKitSchema` at launch, before the store opens: pushes
+        /// Runs `CloudKitSchema.initializeDevelopment` at launch, before the store opens: pushes
         /// every record type and field to CloudKit Development (D-026). Flip to true, run once
         /// on a device signed into iCloud, verify in CloudKit Console, then flip back.
         static let runSchemaExercise = false
