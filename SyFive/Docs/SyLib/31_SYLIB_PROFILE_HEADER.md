@@ -1,11 +1,12 @@
 # SyLib's profile header: Score It \*'s player card, with Edit, on SyFive's profile
 
-**Status:** **Done (31.1, 31.2); V1–V6 pass.** Version 1.0, 7 November 2026. In SyFive 1.2.0, before the first
+**Status:** **Done (31.1, 31.2); V1–V6 pass.** Version 1.1, 7 November 2026. In SyFive 1.2.0, before the first
 TestFlight build (Pops, 7 November 2026).
 
 **Scope:**
 - **SyLib:** `sylib-swift` on `syfive-integration`. Additive: a new `PlayerProfileHeader` in
-  `SyLibScoringUI`. Score It \* keeps its own header until it adopts this one in its own session.
+  `SyLibScoringUI`. Score It \* adopted it for players on 7 November 2026 (Score It \* `26`, Task 26.3), and removed its
+  player profile's ⋯; its team header stays its own.
   Syderal's check waits for its next release (26 §12).
 - **SyFive:** `syfive-ios` on `sylib-reintegration`.
 
@@ -160,3 +161,4 @@ twice in large type.
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 7 Nov 2026 | First version |
+| 1.1 | 7 Nov 2026 | Score It \* adopted `PlayerProfileHeader` for players (Score It \* `26`) |

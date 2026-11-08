@@ -1,7 +1,7 @@
 # Syzygy Softwerks — Studio Conventions
 
 **Studio-level. Identical in every project.**
-Version 1.7 · Ships in every agent prompt, alongside the project's own documents.
+Version 1.12 · Ships in every agent prompt, alongside the project's own documents.
 
 ---
 
@@ -53,6 +53,11 @@ later. A convention that lives only in a chat log is one the next project will n
 - The **decision ledger is the exception to rewriting in place**: its IDs are permanent and
   append-only, and a reversed decision has its row rewritten to the new ruling. It is the only place
   a reversal survives, because everything else is rewritten.
+- **Documents live in `Docs/` beside the `.xcodeproj`**, at the same level as the project file,
+  never inside the app's source folder. Added to the Xcode project as a folder reference that
+  belongs to no target, they are readable in Xcode, never copied into the app bundle, and adding a
+  document never means excluding it from a target. A project whose documents already live inside
+  its source folder keeps them there until a task names the move.
 
 ## 2. Writing a task
 
@@ -92,11 +97,29 @@ Stop it and look at what the specification left open — a retry reruns the same
   session handles it with fresh context and does it better.
 - **Noticing a problem outside scope is valuable. Report it; do not fix it.**
 
+### One project at a time
+
+**The studio works on one project at a time.** An agent session works only in the project in focus.
+It never opens, reads, builds, tests or edits another project's repository. A shared package (SyLib)
+is the one exception, and only where a task names the change.
+
+- **Compatibility of a shared-package change is proved by the package's own tests**, including a
+  test that every new option, left at its default, reproduces the existing output. No other project
+  is built against it.
+- **Other projects take up a shared-package change when they are next in focus.** If one needs
+  changing because of it, that work starts with a design session with Claude, never with an agent
+  task.
+- **A task that seems to need another project is wrong.** Report it; it is a stop condition (§4).
+- Claude may read a sibling project's source while writing specifications (§12); that is design
+  work, done outside the agent. The resulting spec carries what was learned, so the agent never
+  needs the sibling.
+
 ## 4. Stop conditions
 
 Halt and ask. Do not resolve inline.
 
 - A case the project's rules register does not cover.
+- Anything that seems to need another project's repository (§3, One project at a time).
 - A named type, folder, or constant that appears to be missing — it usually exists under another
   name.
 - Two documents that appear to conflict.
@@ -104,6 +127,8 @@ Halt and ask. Do not resolve inline.
   something achievable.
 - A test that fails where the fix would mean changing the test.
 - Work exceeding roughly double the estimated scope.
+- **Any git command that writes**, or work that seems to need one: a branch, a commit, a stash (§9).
+- A working tree that is not as expected: an unexpected branch, staged changes, a conflict. Report it; do not touch it (§9).
 - A UI/UX interaction or presentation change of any real size, where the request described a
   problem rather than prescribed a fix. Lay out the realistic approaches and their tradeoffs; do
   not choose one and build it. The person has firm opinions here and is the decision-maker.
@@ -118,8 +143,8 @@ VoiceOver or Reduce Motion certification** — no full-game playthrough under ei
 milestone gate that depends on one. The studio's own devices span xSmall to AX2, and that is the
 range an MVP is built and checked against.
 
-**Still required, because it is cheap and permanent:** never rely on colour alone to carry meaning;
-label every control for what it does rather than where it sits; honour the system Reduce Motion
+**Still required, because it is cheap and permanent:** never rely on color alone to carry meaning;
+label every control for what it does rather than where it sits; honor the system Reduce Motion
 flag wherever an animation is already gated; and never remove an affordance the framework provides
 for free. These cost almost nothing at build time and are expensive to retrofit.
 
@@ -153,9 +178,18 @@ CLAUSES:
 
 FILES:     (paths touched)
 TESTS:     (added, and the suite total)
+GIT:       (every git command run, verbatim, or "none")
 BLOCKED:   (what, and which document should answer it)
 NOTES:     (anything the next session needs; omit if nothing)
 ```
+
+**The summary is written into the task's document, not only into the chat.** The session's last
+step adds a row to the top of the document's Results log: the task, the date, `complete` or
+`blocked` (and why), the suite's own total line, and the files, fixes and warnings the review
+needs. That document is the one file outside the task's list the session edits. Claude reviews the
+tree against the row and marks it checked; the person never has to relay a summary.
+
+**`GIT` lists every git command the session ran**, so nothing that changed the repository can pass unseen. Every entry is read-only (§9).
 
 A `⚠️` is a successful session. **A clause is met or reported, never quietly renegotiated.** A ✅
 that does not mean what it says is worse than an open task.
@@ -224,12 +258,34 @@ session's to fix. A warning from a build setting, a dependency, or a file the ta
 **reported, not suppressed** — annotating it away where it appears is never the fix, even when the
 annotation is correct.
 
+**A compile error or warning that this session's own change causes is this session's to fix,
+without stopping.** A missing import, an argument label, a type mismatch, an unused value: fixing it
+is part of the change, not a decision. Fix it wherever it appears, even in a file the task doesn't
+name or lists under "must not touch", provided the fix changes no behavior, no test's expectation
+and no public API. List each such fix in the summary. Stop only when the fix would change one of
+those three, or when the error isn't from this session's change (the tree didn't build before it).
+
+**A task is not done while the build has an error or a warning this session introduced.**
+
 A quiet build is not the goal. A correct one is.
 
 ## 9. Version control and shell use
 
-**Agents never run `git`.** No commits, branches, stashes, or staging. Every task is reviewed as an
-uncommitted working tree; committing would bury the diff before anyone reads it.
+**Pops manages git. Agents only read it.** Every task is reviewed as an uncommitted working tree,
+on the branch Pops chose before the session. An agent that commits, stages or switches branches
+buries the diff before anyone reads it, or moves the work somewhere nobody expects.
+
+- **Allowed, read-only:** `git status`, `git diff`, `git log`, `git show`, `git blame`, and
+  `git branch` with no arguments or with `--list`.
+- **Never:** anything that changes the branch, the index, the history, the stash or a remote:
+  `commit`, `add`, `rm`, `mv`, `restore`, `reset`, `checkout`, `switch`, `branch` with a name,
+  `-d`, `-D` or `-m`, `stash`, `merge`, `rebase`, `cherry-pick`, `revert`, `tag`, `clean`, `push`,
+  `pull` and `fetch`. Not through a script, an IDE's source-control action or another tool either.
+- **A git command not named as allowed is treated as a write.**
+- **Never create a branch "to be safe"**, to checkpoint, or because the current branch has an
+  unfamiliar name. Work on the branch as found. If the work seems to need a git write, stop and
+  report it (§4).
+- **Every git command run goes in the session summary** (§6, `GIT`).
 
 **Python is the scripting language for anything beyond one plain command.** Searching logs,
 comparing test lists, batch text edits, extracting a section of a document: write a short
@@ -273,7 +329,7 @@ documents every other task reads.
   Syderal that is: no SpriteKit in `Model/`, no theme engine or generalised abstraction, no board
   coordinates outside `BoardGeometry`, no changes to the architecture document's type signatures, no
   turn timers, no `SyLibDice`, and the test framework choice. The rest — never run `git`, never
-  change a test to pass, do not refactor unnamed files, do not exceed the task — cite `00A`.
+  change a test to pass, do not refactor unnamed files, do not exceed the task — cite `00A`. (Older projects say "never run `git`"; `00A` §9 now allows read-only git and forbids every write.)
 - The implementation plan's **session summary block** is replaced by a citation to `00A` §6. The
   project keeps only what is genuinely its own, such as which documents to read at session start.
 - The engineering guidelines' **version control** and **scope control** sections become citations.
@@ -300,7 +356,7 @@ None of what follows is Game Night specific. All of it was paid for there.
 
 ### Read the sibling's source before writing a line of spec
 
-When another Syzygy app already does the thing, its source is the specification. Fifteen of
+This is Claude's work in a design session, never the agent's (§3, One project at a time). When another Syzygy app already does the thing, its source is the specification. Fifteen of
 Milestone 7's tasks reconstructed from scratch what SyFive already had — the alerts, the pending
 invite state, the leading control's states, the rematch, the roster upsert — because the reference
 wasn't in front of Claude and wasn't asked for. Every one of those came back later as a parity fix-up.
@@ -369,8 +425,13 @@ name the cases. The alternative is discovering the cases one at a time, from the
 
 | Version | Decision | Rationale |
 |---|---|---|
+| v1.12 | §6: the session's summary is written as a row at the top of the task document's Results log, as its last step; the document is the one file outside the task's list it edits | Directed by Pops on Syderal `26`, 8 Nov 2026: summaries lived only in the agent's chat, so every review waited on Pops pasting one, and a task was once logged done that had stopped |
+| v1.11 | §8: a compile error or warning the session's own change causes is the session's to fix without stopping (an import, a label, a type), in any file, even one under "must not touch", as long as the fix changes no behavior, test expectation or public API; a task isn't done with an error or warning it introduced | Directed by Pops on Syderal `26`, 8 Nov 2026: a missing `import SyLibCore` stopped a task and cost a round trip through Pops for a fix nobody needed to decide |
+| v1.10 | §1: documents live in `Docs/` beside the `.xcodeproj`, as a folder reference in no target | Learned on ScoreIt, 30 Oct 2026: its `Docs/` sat beside the project file, was added to Xcode as a reference, and never needed removing from a target. In Syderal, inside the synchronized source folder, every new document had to be excluded from the target by hand (72 exceptions). Directed by Pops as a studio convention. ScoreIt carries v1.10 first; each other project adopts it when next in focus |
+| v1.9 | §9's git rule rewritten: Pops manages git; agents may run only `status`, `diff`, `log`, `show`, `blame` and `branch --list`, and anything else is a write and forbidden, including creating or switching branches. §4 gains two stop conditions (a git write, or a tree not as expected); §6's summary gains a `GIT` line listing every git command run | Learned on Sydoku `09`, 28 Oct 2026: the old rule ("Agents never run `git`. No commits, branches, stashes, or staging.") was one line beside the scripting advice, absent from the stop conditions and the summary, and broader than meant, since read-only git is fine and agents ran it anyway. The agent created and switched to `feature/…` branches in both Sydoku and SyLib minutes after Pops made his own, and staged files; Pops's commit then landed on the agent's branch. Directed by Pops. Sydoku carries v1.9 first; each other project adopts it when next in focus |
+| v1.8 | New §3 rule, "One project at a time": an agent session never opens, reads, builds, tests or edits another project; shared-package compatibility is proved by the package's own default-preserving tests; other projects take up a change when next in focus, starting with a design session with Claude. §4 gains the stop condition; §12 says sibling reading is Claude's design work | Directed by Pops on Sydoku, 18 Oct 2026. The studio is one person and Claude, working one project at a time; Xcode cannot open two projects that use the same local package, so cross-project builds are impossible anyway; and changes to another project after a shared-package update are designed with Claude first, outside the agent. Studio-wide from the start. Sydoku carries v1.8 first; each other project adopts it when next in focus |
 | v1.7 | §9 becomes "Version control and shell use" and gains the rule that Python is the scripting language for anything beyond one plain command. Pipelines of `grep`, `sed`, `awk`, `comm` and `tr` are replaced by short `python3` scripts; single plain commands and the agent's file tools are unchanged | Directed by Pops on Syderal Milestone 9: each unfamiliar shell tool needed its own permission, and long pipelines were hard to read before approving. It applies to every session in every project, so it is studio-wide from the start |
-| v1.6 | New §12 "Working from a reference implementation": read the sibling's source before writing spec, sweep its whole API surface, cite rather than assert, extract the loop before adding transport, instrument before diagnosing across a device boundary, prefer one item-driven presenter, and name what a state change means rather than what triggered it | Learned on Syderal Milestone 7: fifteen tasks reconstructed behaviour SyFive already had, because the reference was never in front of the session and was never asked for. Every one came back as a parity fix-up. The other six are the same milestone's recurring failure shapes, none of them SharePlay-specific |
+| v1.6 | New §12 "Working from a reference implementation": read the sibling's source before writing spec, sweep its whole API surface, cite rather than assert, extract the loop before adding transport, instrument before diagnosing across a device boundary, prefer one item-driven presenter, and name what a state change means rather than what triggered it | Learned on Syderal Milestone 7: fifteen tasks reconstructed behavior SyFive already had, because the reference was never in front of the session and was never asked for. Every one came back as a parity fix-up. The other six are the same milestone's recurring failure shapes, none of them SharePlay-specific |
 | v1.5 | New §5 "Accessibility scope": the Syzygy MVP bar is Dynamic Type to AX2, no VoiceOver or Reduce Motion certification; verification is a static source audit plus a visual check at the ceiling, not a live playthrough | Learned on Syderal Milestone 6: an AX5 requirement was carried out of a design document into a dozen milestone done-whens without anyone checking the constant that governed it, and it was not a wrong decision but an unexamined one. The bar and the check-the-constant discipline both need to travel to the next project, not be re-derived from scratch |
 | v1.4 | A UI/UX change is a stop condition when the request described a problem, not a fix | Learned on Syderal Milestone 6 Wave C: asked to stop a table-set menu from dimming the sheet behind it, the agent picked a specific replacement (a forced popover) and built it without proposing alternatives. The person has firm UI/UX opinions and is the decision-maker; a described problem is not authorisation to choose the solution |
 | v1.3 | Device-interaction tools are invoked by request, not proactively | Learned on Syderal Milestone 6 Wave C: the agent ran repeated on-device verification passes after small UI changes without being asked, spending tool calls the person had not budgeted for and did not want — even though one such pass, earlier in the same session, had caught a real defect. The value of the check does not license making it the default |

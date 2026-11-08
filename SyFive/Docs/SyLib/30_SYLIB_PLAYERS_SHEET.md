@@ -1,11 +1,12 @@
 # SyLib's Players sheet: Score It \*'s roster, shared, and SyFive on it
 
-**Status:** **Done (30.1, 30.2); V7 with the Game Night pass.** Version 1.0, 7 November 2026. In SyFive 1.2.0,
+**Status:** **Done (30.1, 30.2); V7 with the Game Night pass.** Version 1.1, 7 November 2026. In SyFive 1.2.0,
 before the first TestFlight build (Pops, 7 November 2026).
 
 **Scope:**
 - **SyLib:** `sylib-swift` on `syfive-integration`. Additive: a new `PlayersSheet` and `NameStatsRow`
-  in `SyLibScoringUI`. Score It \* keeps its own copies until it adopts these in its own session.
+  in `SyLibScoringUI`. Score It \* adopted both on 7 November 2026 (Score It \* `26`, Tasks 26.1 and 26.2): SyLib's sheet
+  gained a second, additive init that takes the app's route and path, and SyFive's call is unchanged.
   Syderal's check waits for its next release (26 §12).
 - **SyFive:** `syfive-ios` on `sylib-reintegration`.
 
@@ -242,3 +243,4 @@ Score It \* has them. SyFive's Game Night rows' Archive uses the same archive al
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 7 Nov 2026 | First version |
+| 1.1 | 7 Nov 2026 | Score It \* adopted `PlayersSheet` and `NameStatsRow` (Score It \* `26`); the sheet's route form is additive, SyFive's call unchanged |
