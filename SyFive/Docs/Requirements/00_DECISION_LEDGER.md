@@ -1,17 +1,16 @@
 # SyFive / SyLib — Decision Ledger
 
-*The single mutable document in the corpus. One row per locked design decision, always
-showing the **current** ruling. The numbered design docs are immutable history; this
-file is HEAD.*
+*One row per locked design decision, always showing the **current** ruling. This file is
+HEAD. Design docs are rewritten in place with a version and changelog (D-001, `00A` §1).*
 
 ---
 
 ## How this file works
 
-- **Design docs are never edited after delivery.** When a newer doc changes a prior
-  ruling, it carries a **Supersessions** section quoting what it overrides, and the
-  affected row *here* is updated to the new ruling with the chain extended
-  (e.g. `02 §9 → 05 §1`).
+- **Design docs are rewritten in place** (`00A` §1, D-001 since 9 Nov 2026), each with a
+  version and changelog. When a ruling changes, the doc is revised and the affected row
+  *here* is updated with its chain extended (e.g. `02 §9 → 05 §1`). Earlier docs keep
+  their Supersessions blocks as history; they aren't converted.
 - **Rows are append-only; IDs are permanent.** Never renumber, never delete. A dead
   decision's row is rewritten to the current ruling — the old ruling survives in the
   source docs, which is where design progression lives.
@@ -32,10 +31,10 @@ file is HEAD.*
 
 | ID | Current ruling | Source → chain |
 |---|---|---|
-| D-001 | **SyFive exception to `00A` §1: documents are immutable once delivered.** Overrides travel through a Supersessions block in the newer document, plus a rewrite of the affected row here. This ledger is HEAD and accompanies every agent prompt, with `00A` and `00B`. | Session 05 · `05 §1` → `00B` E-1 (exception kept by Pops, 10 Oct 2026) |
+| D-001 | **SyFive follows `00A` §1: design documents are rewritten in place**, each with a version and changelog, as Syderal's and Score It \*'s are. Docs written under the old rule (immutable once delivered, changes by Supersessions) keep their Supersessions blocks as history and aren't converted. This ledger is HEAD and accompanies every agent prompt, with `00A` and `00B`. *Why:* the SyLib-series docs (`30`, `32`, `34`) were already versioned in place, so the old rule no longer matched practice (found by the agent in `34` 34.4). | Session 05 · `05 §1` → `00B` E-1 (kept, 10 Oct 2026) → `00B` E-1 retired (Pops, 9 Nov 2026) |
 | D-142 | **`00A_STUDIO_CONVENTIONS.md` is canonical for how sessions run, and `00B_SYFIVE_GUARDRAILS.md` holds SyFive's own rails.** Project documents cite them rather than restate them. Where `00A` and a SyFive rule conflicted on folders and on fixing out-of-scope smells, `00A` won. | `00A` §11 → `00B` §7 |
 | D-143 | **Tests run at the deployment floor**: iPhone SE (3rd generation), iOS 18.6, pinned in `00B` §5. Both test targets are set to iOS 18.6. | `00A` §7 → `00B` §5 |
-| D-148 | **`14_APPSTORE_COPY.md` is a living store record**, edited in place with a version and changelog (§10). It is an exception to D-001, which keeps every other SyFive design document immutable. | `14_APPSTORE_COPY.md` §9 (Pops, 11 Oct 2026) |
+| D-148 | **`14_APPSTORE_COPY.md` is a living store record**, edited in place with a version and changelog (§10). Since D-001's change (9 Nov 2026) every design document works this way, so this is no longer an exception. | `14_APPSTORE_COPY.md` §9 (Pops, 11 Oct 2026) → D-001 (9 Nov 2026) |
 
 ## Platform & data
 

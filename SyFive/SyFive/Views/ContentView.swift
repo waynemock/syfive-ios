@@ -257,7 +257,7 @@ struct ContentView: View {
             syncPlayerThemesFromRoster()
             healOrphanedParticipants()
             // Sync initial settings values (onChange won't fire for the first load).
-            director.soundMode      = appSettings?.soundMode      ?? .mix
+            director.soundMode      = effectiveSoundMode
             director.hapticsEnabled = appSettings?.hapticsEnabled ?? true
             // One owner for the app's appearance: every window's style, so open sheets follow
             // a change made inside them (D-159; THEME.md).
@@ -407,6 +407,7 @@ struct ContentView: View {
             logger.info(self, "leading slot: \(old) → \(new) hasGameActivity=\(model.hasGameActivity) over=\(model.isGameOver) players=\(model.playerCount)")
         }
         .onChange(of: appSettings?.soundModeRaw) { _, _ in handleSoundModeChanged() }
+        .onChange(of: gameNight.isSessionActive) { _, _ in handleSoundModeChanged() }
         .onChange(of: appSettings?.colorSchemeRaw) { _, _ in WindowAppearance.apply(appSettings?.colorScheme ?? .dark) }
         .onChange(of: theme) { _, _ in WindowTint.apply(UIColor(theme.primaryAccent)) }
         .onChange(of: appSettings?.hapticsEnabled) { _, v in director.hapticsEnabled = v ?? true }
@@ -474,6 +475,7 @@ struct ContentView: View {
                 .environment(\.syTheme, theme)
                 .environment(commentaryVoices)
                 .environment(director)
+                .environment(\.gameNightAudioActive, gameNight.isSessionActive)
                 .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsICloud) {

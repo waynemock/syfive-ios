@@ -2,6 +2,7 @@ import Foundation
 import SwiftData
 import SyLibCore
 import SyLibGameNightMatch
+import SyLibScoring
 import SyLibScoringData
 
 // Runs on every launch to repair or remove stale MatchModel records.
@@ -36,6 +37,45 @@ enum LegacyRematchRepair {
         )) ?? []
         if !orphanedParticipants.isEmpty {
             logger.info(Self.self, "orphan sweep: deleting \(orphanedParticipants.count) orphaned ParticipantModel(s)")
+
+            // Each orphan, then a summary, so a true orphan can be told from a participant that
+            // arrived before its match (34 §2.5, Task 34.5). Reads only; the deletes are unchanged.
+            // One player fetch; a player id with several synced rows is active if any row is.
+            let players = (try? context.fetch(FetchDescriptor<PlayerModel>())) ?? []
+            var archivedByID: [UUID: Bool] = [:]
+            for player in players {
+                archivedByID[player.id] = (archivedByID[player.id] ?? true) && player.isArchived
+            }
+            var orphansByPlayer: [String: Int] = [:]
+            var orphansWithNoRecordedAt = 0
+            for orphan in orphanedParticipants {
+                let playerID = orphan.playerID?.uuidString ?? "nil"
+                let state: String
+                if let id = orphan.playerID, let archived = archivedByID[id] {
+                    state = archived ? "archived" : "active"
+                } else {
+                    state = "missing"
+                }
+                let entries = orphan.scoreEntries
+                let scored = entries.filter { $0.value != nil }.count
+                let dates = entries.compactMap(\.recordedAt)
+                let recorded: String
+                if let oldest = dates.min(), let newest = dates.max() {
+                    recorded = "\(oldest.description)…\(newest.description)"
+                } else {
+                    recorded = "none"
+                    orphansWithNoRecordedAt += 1
+                }
+                let team = orphan.teamID.map { " teamID=\($0.uuidString)" } ?? ""
+                logger.info(Self.self, "orphan: id=\(orphan.id.uuidString) playerID=\(playerID) player=\(state) name=\(orphan.displayName) seat=\(orphan.seat) scored=\(scored) recordedAt=\(recorded)\(team)")
+                orphansByPlayer[playerID, default: 0] += 1
+            }
+            let perPlayer = orphansByPlayer
+                .sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }
+                .map { "\($0.key)=\($0.value)" }
+                .joined(separator: ", ")
+            logger.info(Self.self, "orphan sweep summary: \(orphanedParticipants.count) orphan(s); per playerID [\(perPlayer)]; \(orphansWithNoRecordedAt) with no recordedAt")
+
             orphanedParticipants.forEach { context.delete($0) }
             try? context.save()
         }

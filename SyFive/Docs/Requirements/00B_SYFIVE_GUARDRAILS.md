@@ -1,7 +1,7 @@
 # SyFive — Project Guard Rails
 
 **Project-level. SyFive only.** Companion to `00A_STUDIO_CONVENTIONS.md`.
-Version 1.2 · 11 October 2026 · Ships in every agent prompt, alongside `00A`, `00_DECISION_LEDGER.md`
+Version 1.4 · 9 November 2026 · Ships in every agent prompt, alongside `00A`, `00_DECISION_LEDGER.md`
 and the task's own documents.
 
 ---
@@ -31,17 +31,16 @@ the same rule, it is promoted to `00A` in project-neutral terms, and this docume
 
 ## 1. Exceptions to `00A`
 
-There are two exceptions, ledgered as `00A` requires.
+There is one exception, ledgered as `00A` requires (E-1 is retired).
 
-**E-1 · Document history (D-001). Exception to `00A` §1.** SyFive's design documents are
-**immutable once delivered**. A newer document that changes an earlier ruling carries a
-**Supersessions** block quoting what it overrides, and the ledger row is rewritten with its source
-chain extended. Nothing else in `00A` §1 changes for SyFive: numeric prefixes, SCREAMING_SNAKE_CASE,
-letter suffixes for companions, and a permanent, append-only ledger.
+**E-1 · Document history (D-001). Retired 9 November 2026.** SyFive now follows `00A` §1: design
+documents are rewritten in place, each with a version and changelog. Docs written while E-1 stood
+(immutable once delivered, changes by a Supersessions block) keep those blocks as history and aren't
+converted. The ledger rows' source chains stay as they are.
 
-*Why it stays:* SyFive's whole corpus, `00` to `17`, is built this way, and its ledger chains
-(`09 §1.5 → 14 §2.1 → 15 §9`) are the record of how rulings moved. Switching to rewrite-in-place
-mid-release would leave half the corpus in each style. Decided by Pops, 10 October 2026.
+*Why:* E-1 was kept on 10 October 2026 so the corpus wouldn't split between two styles mid-release.
+By November the SyLib-series docs (`30`, `32`, `34`) were already versioned in place, so it had
+split anyway. The agent found this in `34` 34.4. Decided by Pops, 9 November 2026.
 
 What `00A` §1 calls a decision log is, in a SyFive design document, its **Locked decisions**
 section: each ruling with its rationale.
@@ -133,6 +132,13 @@ In addition to `00A`. These apply to every task, in perpetuity.
    file if it will be searched more than once, and do not re-run a suite just to read it
    differently. This command is the one sanctioned use of `xcodebuild` from the shell for testing:
    no Xcode tool can pin a destination.
+
+   **Totals come from the result bundle, never from the log.** Add
+   `-resultBundlePath <path>.xcresult` to the command (a new path each run), then read the totals
+   with `xcrun xcresulttool get test-results summary --path <path>.xcresult` (and `tests` for the
+   case list). Report both **tests** and **runs**: they differ because `testLaunch()` runs once per
+   configuration. Matching lines in xcodebuild's output undercounts, because parallel output splits
+   lines mid-name (`34` 34.1 and 34.3).
 3. **SyLib's suite**, when a task touches SyLib, from the package folder:
 
    ```
@@ -141,7 +147,7 @@ In addition to `00A`. These apply to every task, in perpetuity.
 
    Never `swift test`: on macOS every `#if os(iOS)` suite compiles away and the run reports success
    without running it. Check the total against the previous run's, plus additions, less named
-   deletions.
+   deletions. Totals come from the result bundle, as for SyFive's suite.
 4. **Syderal compatibility**, when a task changes SyLib: build Syderal against the changed SyLib and
    run its suite on the same destination, from Syderal's project folder. Syderal is never edited or
    archived from a SyFive session. A Syderal failure is a stop condition (§2).
@@ -266,6 +272,8 @@ D-001 replaces its row. D-142 and D-143 are new, under Governance.
 
 | Version | Decision | Rationale |
 |---|---|---|
+| 1.4 | E-1 is retired: SyFive's design documents are rewritten in place under `00A` §1 (D-001 rewritten, D-148 no longer an exception) | The SyLib-series docs were already versioned in place, so E-1 no longer matched practice (`34` 34.4). Earlier docs keep their Supersessions blocks. Pops, 9 Nov 2026 |
+| 1.3 | §5's totals come from the `.xcresult` bundle (`xcresulttool`), reported as tests and runs | Twice in `34` (34.1, 34.3) counting `passed` lines in xcodebuild's output missed a run, because parallel output split a line. The bundle is exact. Pops, 9 Nov 2026 |
 | 1.2 | §2's dice stop condition names `builtIn` and the history (D-149), with no figures | v1.1 quoted p = 0.217 over 10,000 rolls, from an earlier pre-SyLib run. The shipped certification is July 2026's run (p 0.602 over the last 2,161 rolls of a 10,000-roll batch), and `23` replaces it. Figures in this file would go stale with every run |
 | 1.1 | A-1 also lists `00A` in the README, pastes the series' ledger rows and the D-GNP rows, corrects D-023, and covers `IMPLEMENTATION_STATUS.md`; the Scope Control sentence is kept | The agent's first read found a README requirement in `00A` §11, rows cited before they existed, a container-name typo, and a fourth copy of the flag list. Keeping "Keep refactors mechanical…" avoids a meaning change A-1 forbids |
 | 1.1 | `00A` §8 overrides agent-side memory about warnings | The agent's own memory said to fix every warning; `00A` §8 says report those outside the task |

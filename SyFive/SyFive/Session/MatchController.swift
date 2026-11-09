@@ -436,7 +436,8 @@ final class MatchController {
         guard let mid = persistedMatchID else { return }
         let descriptor = FetchDescriptor<MatchModel>(predicate: #Predicate { $0.id == mid })
         if let match = (try? context.fetch(descriptor))?.first, !isGameOver {
-            context.delete(match)
+            // The match and its participants, so no orphan still names its players (34 §2.4).
+            deleteMatch(match, in: context)
         }
         try? context.save()
         persistedMatchID = nil

@@ -162,7 +162,8 @@ struct MatchHistoryView: View {
                 Button("Delete", role: .destructive) {
                     if let m = matchToDelete {
                         if m.id == activeMatchID { onActiveMatchDeleted?() }
-                        modelContext.delete(m)
+                        // The match and its participants, so no orphan still names its players (34 §2.4).
+                        deleteMatch(m, in: modelContext)
                     }
                     matchToDelete = nil
                 }
@@ -176,7 +177,8 @@ struct MatchHistoryView: View {
             ) {
                 Button("Delete All", role: .destructive) {
                     let deletingActive = inProgressMatches.contains { $0.id == activeMatchID }
-                    for m in inProgressMatches { modelContext.delete(m) }
+                    // Each match and its participants, so no orphan still names its players (34 §2.4).
+                    for m in inProgressMatches { deleteMatch(m, in: modelContext) }
                     if deletingActive { onActiveMatchDeleted?() }
                 }
                 Button("Cancel", role: .cancel) {}
