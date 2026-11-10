@@ -13,6 +13,8 @@ struct PlayersView: View {
     @State private var pendingLink: PlayerModel? = nil
     @State private var pendingMerge: PlayerModel? = nil
     @State private var mergeFailureMessage: String? = nil
+    /// The name for §2.2's "Can't delete" alert: an archived player in a game in progress (34).
+    @State private var undeletableName: String? = nil
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
@@ -40,20 +42,18 @@ struct PlayersView: View {
         deleteTitle: "Delete this player?", deleteMessage: "This can't be undone.",
         emptyTitle: "No players yet", emptyMessage: "Add players here, or when you start a new game.")
 
-    /// Each listed player as a row: "1 game" or "N games", N their completed matches; Delete only
-    /// for a player no participant anywhere has (D-177, D-179).
+    /// Each listed player as a row: "1 game" or "N games", N their completed matches from SyLib's
+    /// `completedMatchCounts` (once per match id; 34 §3, Task 34.2); Delete only for a player no
+    /// participant anywhere has, finished or not (D-177, D-179).
     private var entries: [PlayerListEntry] {
-        var completedMatches: [UUID: Set<UUID>] = [:]
+        let completedCounts = (try? completedMatchCounts(in: modelContext)) ?? [:]
         var everPlayed: Set<UUID> = []
         for participant in participants {
             guard let playerID = participant.playerID else { continue }
             everPlayed.insert(playerID)
-            if let match = participant.match, match.statusRaw == "completed" {
-                completedMatches[playerID, default: []].insert(match.id)
-            }
         }
         return listedPlayers.map { player in
-            let n = completedMatches[player.id]?.count ?? 0
+            let n = completedCounts[player.id] ?? 0
             return PlayerListEntry(id: player.id, name: player.name, initials: player.initials,
                                    themeID: player.themeID, stats: n == 1 ? "1 game" : "\(n) games",
                                    isArchived: player.isArchived, canDelete: !everPlayed.contains(player.id))
@@ -62,6 +62,63 @@ struct PlayersView: View {
 
     private func player(_ id: UUID) -> PlayerModel? {
         allPlayers.first { $0.id == id }
+    }
+
+    /// `{others}` in the archived-delete alert (34 §2.1): "Ada", "Ada and Bo", "Ada, Bo and Cy",
+    /// then "Ada, Bo, Cy and 1 other" or "… and k others". Internal for the tests.
+    static func list(_ names: [String]) -> String {
+        switch names.count {
+        case 0: return ""
+        case 1: return names[0]
+        case 2: return "\(names[0]) and \(names[1])"
+        case 3: return "\(names[0]), \(names[1]) and \(names[2])"
+        default:
+            let k = names.count - 3
+            return "\(names[0]), \(names[1]), \(names[2]) and \(k) \(k == 1 ? "other" : "others")"
+        }
+    }
+
+    /// Delete on archived rows: the player and every game they played (34 §2.1, D-194). The
+    /// counts are completed games only (`playerDeletionImpact`).
+    private var archivedDelete: PlayersSheetArchivedDelete {
+        PlayersSheetArchivedDelete(
+            title: { id in
+                let name = player(id)?.name ?? ""
+                let n = (try? playerDeletionImpact(playerID: id, in: modelContext))?.matches ?? 0
+                switch n {
+                case 0: return "Delete \(name)?"
+                case 1: return "Delete \(name) and 1 game?"
+                default: return "Delete \(name) and \(n) games?"
+                }
+            },
+            message: { id in
+                guard let impact = try? playerDeletionImpact(playerID: id, in: modelContext),
+                      impact.matches > 0 else { return "This can't be undone." }
+                if impact.others.isEmpty {
+                    return "Those games leave your records. This can't be undone."
+                }
+                return "Those games leave everyone's records, including \(Self.list(impact.others)). This can't be undone."
+            },
+            action: { id in
+                guard let player = player(id) else { return }
+                // §2.2: not while they're in a game in progress. "inProgress" only: abandoned rows
+                // from earlier builds go with the player.
+                let inGame = participants.contains { $0.playerID == id && $0.match?.statusRaw == "inProgress" }
+                if inGame {
+                    let name = player.name
+                    // Set after the sheet's confirm alert has closed, so this one can present.
+                    Task { @MainActor in undeletableName = name }
+                    return
+                }
+                do {
+                    // Deletes every row of the id, its matches and their participants; SyFive
+                    // deletes nothing itself.
+                    try deletePlayerAndMatches(player, in: modelContext)
+                } catch {
+                    logger.error(self, "deletePlayerAndMatches failed: \(error)")
+                    mergeFailureMessage = "Couldn't delete that player. Please try again."
+                }
+            })
     }
 
     var body: some View {
@@ -82,10 +139,13 @@ struct PlayersView: View {
                 try? modelContext.save()
             },
             onDelete: { id in
-                if let player = player(id) { modelContext.delete(player) }
-                try? modelContext.save()
+                // Refuses a played player and deletes every synced row of the id; it saves (34.2).
+                if (try? deleteUnplayedPlayer(id: id, in: modelContext)) != true {
+                    mergeFailureMessage = "Couldn't delete that player. Please try again."
+                }
             },
             onMerge: { id in pendingMerge = player(id) },
+            archivedDelete: archivedDelete,
             profile: { id in
                 if let player = player(id) {
                     PlayerProfileView(
@@ -185,6 +245,18 @@ struct PlayersView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(mergeFailureMessage ?? "")
+        }
+        .alert(
+            undeletableName.map { "Can't delete \($0)" } ?? "",
+            isPresented: Binding(
+                get: { undeletableName != nil },
+                set: { if !$0 { undeletableName = nil } }
+            ),
+            presenting: undeletableName
+        ) { _ in
+            Button("OK", role: .cancel) {}
+        } message: { name in
+            Text("\(name) is in a game that isn't finished. Finish it, or delete it from Match History, first.")
         }
     }
 

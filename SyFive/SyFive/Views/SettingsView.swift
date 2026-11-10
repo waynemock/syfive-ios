@@ -37,7 +37,8 @@ private struct SettingsForm: View {
     @Environment(CommentaryVoices.self) private var commentaryVoices
     @Environment(FeelDirector.self) private var director
     @Environment(CloudAccountStatus.self) private var cloudStatus
-    
+    @Environment(\.gameNightAudioActive) private var gameNightAudioActive
+
     @Bindable var settings: AppSettingsModel
     @State private var showsICloud = false
 
@@ -52,12 +53,16 @@ private struct SettingsForm: View {
             .paletteRowBackground()
             
             Section {
-                FeelSettingsRows(soundMode: $settings.soundMode, hapticsEnabled: $settings.hapticsEnabled,
-                                 hapticsSupported: director.hapticSupported)
+                FeelSettingsRows(soundMode: Binding(
+                                     get: { GameNightAudio.effectiveSoundMode(settings.soundMode, gameNightActive: gameNightAudioActive) },
+                                     set: { settings.soundMode = $0 }),
+                                 hapticsEnabled: $settings.hapticsEnabled,
+                                 hapticsSupported: director.hapticSupported,
+                                 soundModes: GameNightAudio.choices(gameNightActive: gameNightAudioActive))
             } header: {
                 Text("Audio & Feedback")
             } footer: {
-                Text(FeelSettingsRows.footer)
+                Text(gameNightAudioActive ? FeelSettingsRows.footer + " " + GameNightAudio.footerNote : FeelSettingsRows.footer)
             }
             .paletteRowBackground()
 

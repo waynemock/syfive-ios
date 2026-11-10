@@ -1,7 +1,7 @@
 # Syzygy Softwerks — Studio Conventions
 
 **Studio-level. Identical in every project.**
-Version 1.12 · Ships in every agent prompt, alongside the project's own documents.
+Version 1.13 · Ships in every agent prompt, alongside the project's own documents.
 
 ---
 
@@ -114,12 +114,27 @@ is the one exception, and only where a task names the change.
   work, done outside the agent. The resulting spec carries what was learned, so the agent never
   needs the sibling.
 
+### Previews and simulators
+
+- **Write previews; never render them.** A task's `#Preview` blocks are written for the person to
+  look at in Xcode's canvas. The agent never renders, refreshes or inspects a preview, and never
+  checks a layout or a behavior "by preview": rendering hangs Xcode, and its readings are unreliable.
+  Where a task seems to need a visual check, the agent writes the preview, names it in its report,
+  and leaves the check to the person.
+- **No simulator or device sessions** unless the person asks for one in that message: no launching
+  the app to look at a screen, tap through a flow or take screenshots. Visual and on-device checks
+  are the person's, in the task's validation rows. Running the test suite on the pinned destination
+  (§7) is not such a session.
+- **A task that asks for either is wrong.** Report it; it is a stop condition (§4).
+
 ## 4. Stop conditions
 
 Halt and ask. Do not resolve inline.
 
 - A case the project's rules register does not cover.
 - Anything that seems to need another project's repository (§3, One project at a time).
+- A step that would render a preview or run the app in a simulator or on a device (§3, Previews and
+  simulators).
 - A named type, folder, or constant that appears to be missing — it usually exists under another
   name.
 - Two documents that appear to conflict.
@@ -425,6 +440,7 @@ name the cases. The alternative is discovering the cases one at a time, from the
 
 | Version | Decision | Rationale |
 |---|---|---|
+| v1.13 | New §3 rule, "Previews and simulators": previews are written, never rendered or used as a check; no simulator or device sessions unless the person asks in that message; a task asking for either is wrong. §4 gains the stop condition | Directed by Pops, 9 Nov 2026: Xcode and the agent are unreliable with previews, and rendering hangs Xcode. Score It \* (`00B` 1.3, 1.5), SyDice and Syzygies already carried it in their `00B`s; SyFive added it (`00B` 1.5) after a SyFive task wrongly asked for a simulator check. SyFive, Syderal and Score It \* carry v1.13 first; projects on older `00A` versions carry the rule in their `00B` until they adopt v1.13 |
 | v1.12 | §6: the session's summary is written as a row at the top of the task document's Results log, as its last step; the document is the one file outside the task's list it edits | Directed by Pops on Syderal `26`, 8 Nov 2026: summaries lived only in the agent's chat, so every review waited on Pops pasting one, and a task was once logged done that had stopped |
 | v1.11 | §8: a compile error or warning the session's own change causes is the session's to fix without stopping (an import, a label, a type), in any file, even one under "must not touch", as long as the fix changes no behavior, test expectation or public API; a task isn't done with an error or warning it introduced | Directed by Pops on Syderal `26`, 8 Nov 2026: a missing `import SyLibCore` stopped a task and cost a round trip through Pops for a fix nobody needed to decide |
 | v1.10 | §1: documents live in `Docs/` beside the `.xcodeproj`, as a folder reference in no target | Learned on ScoreIt, 30 Oct 2026: its `Docs/` sat beside the project file, was added to Xcode as a reference, and never needed removing from a target. In Syderal, inside the synchronized source folder, every new document had to be excluded from the target by hand (72 exceptions). Directed by Pops as a studio convention. ScoreIt carries v1.10 first; each other project adopts it when next in focus |

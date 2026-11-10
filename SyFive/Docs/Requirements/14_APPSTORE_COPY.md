@@ -4,9 +4,13 @@
 paste-ready source of truth for App Store Connect. All copy blocks below are final unless
 listed in Open Decisions (§7).*
 
-**Version 1.2.0** · revised 7 November 2026 · **A living record, edited in place** (D-148, an
+**Version 1.3.0** · revised 10 November 2026 · **A living record, edited in place** (D-148, an
 exception to D-001). Changes are listed in §10.
 
+> **Status (1.3.0):** §4a's What's New is new for 1.3.0, from `33` to `39`. §3's promotional text
+> can stay as 1.2.0's or change to the 1.3.0 candidate (§7.5). The description, name, subtitle and
+> keywords are unchanged.
+>
 > **Status (1.2.0):** §3's promotional text, §4's Game Night and fairness beats and §4a's What's
 > New are new for 1.2.0; the Game Night lines wait on `17`'s S2 (§7.4).
 >
@@ -107,7 +111,30 @@ Five dice. Pure calm.
 
 ---
 
-## 4a. What's New in 1.2.0 (release notes; paste as plain text)
+## 4a. What's New in 1.3.0 (release notes; paste as plain text)
+
+```
+New Game, redesigned: numbered seats and a chip for every player. Tap to seat, swipe to remove, touch and hold to reorder.
+
+Same as Last Time: seat your last game's players with one tap.
+
+Before you roll, each player's card shows their record. Playing solo? See your best, your average and the score to beat.
+
+Game Night remembers your seat: your device sits you down again next time, and you can change who's playing with a tap.
+
+Tidy your roster: an archived player can now be deleted, along with the games they played.
+
+Your games are safer: fixed a rare case where a finished Game Night game could be lost.
+
+Plus many small fixes.
+```
+
+Each line is a 1.3.0 change: `38` (D-203 to D-208), `38` §2.7 (D-206), `39` (D-209, D-211), `37`
+(D-202), `34` (D-194), `34` §2.7 (D-197). "Small fixes" covers `33` (D-193), red Delete swipes (D-201),
+the duplicate-row readers (D-198 to D-200) and match detail's places (`39` §2.9). The privacy manifest
+(`35`, D-195) changes nothing a player sees.
+
+## 4a (1.2.0). What's New in 1.2.0, for history
 
 ```
 Game Night at the table: hold two iPhones together to start or join. No call needed.
@@ -175,6 +202,9 @@ floated rather than filling the slot. Same restraint as the icon.
    TestFlight build offer and join Game Night when held together (with the hidden `ShareLink`, or
    the UIKit fallback if S2 fails). If the feature doesn't ship, use §3's 1.1.0 promotional text and
    §4's earlier Game Night beat, and drop §4a's first line.
+5. **1.3.0 promotional text.** Keep 1.2.0's (§3), or use this candidate (150 chars):
+   `New: set the table in one tap with Same as Last Time, and see every player's record before you roll. Real physics dice, no ads, no accounts, no noise.`
+   *Claude's lean: the candidate; 1.2.0's Game Night-at-the-table line has had its release.*
 
 ---
 
@@ -187,9 +217,12 @@ floated rather than filling the slot. Same restraint as the icon.
 - [ ] App Store name, subtitle and keywords entered as in §1–§2, with character counts as
       shown
 - [ ] No "Yahtzee" string anywhere in listing metadata
+- [ ] 1.3.0: §4a pasted as the version's What's New; §3's promotional text per §7.5;
+      `MARKETING_VERSION` 1.3.0 in both configurations
 - [ ] 1.2.0: `17`'s S2 passed before the Game Night lines are entered (§7.4); §4a pasted as the
       version's What's New
-- [ ] Privacy label attested as Data Not Collected (no analytics SDK present)
+- [ ] Privacy label attested as Data Not Collected (no analytics SDK present); from 1.3.0 the app
+      ships `PrivacyInfo.xcprivacy` declaring no tracking and no collected data (`35`, D-195)
 - [ ] Icon exported at all required sizes from the locked spec
 - [ ] Four screenshots captured at required device resolutions
 - [ ] Support + Marketing URLs live and reachable
@@ -224,4 +257,5 @@ floated rather than filling the slot. Same restraint as the icon.
 |---|---|---|
 | 1.0 | 2026 | First listing: name `SyFive`, subtitle `Classic Yatzy, real dice`, 91-char keywords |
 | 1.1.0 | 11 Oct 2026 | §1: store name `SyFive: Yatzy Dice Game`; subtitle `Classic rules, real physics`. §2: keywords drop words now in the name or subtitle, and add `shareplay`, `party`, `yacht` and `multiplayer` (98 chars). §7.1 resolved. §8 points to `00B` §6. §9 rows updated; D-148 added (Pops) |
+| 1.3.0 | 10 Nov 2026 | §4a: What's New for 1.3.0, from `33` to `39`; 1.2.0's kept below it for history. §7.5: a 1.3.0 promotional text candidate. §8: 1.3.0 items, and the privacy manifest beside the label |
 | 1.2.0 | 7 Nov 2026 | §3: a 1.2.0 promotional text naming Game Night at the table (141 chars). §4: the Game Night beat adds holding two iPhones together; the fairness beat's 10,000 rolls becomes 50,000 (D-152). §4a: What's New for 1.2.0. §7.4 and §8: the Game Night lines wait on `17`'s S2. §9's Game Night row updated |

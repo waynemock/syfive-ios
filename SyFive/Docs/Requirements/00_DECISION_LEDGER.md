@@ -1,17 +1,16 @@
 # SyFive / SyLib — Decision Ledger
 
-*The single mutable document in the corpus. One row per locked design decision, always
-showing the **current** ruling. The numbered design docs are immutable history; this
-file is HEAD.*
+*One row per locked design decision, always showing the **current** ruling. This file is
+HEAD. Design docs are rewritten in place with a version and changelog (D-001, `00A` §1).*
 
 ---
 
 ## How this file works
 
-- **Design docs are never edited after delivery.** When a newer doc changes a prior
-  ruling, it carries a **Supersessions** section quoting what it overrides, and the
-  affected row *here* is updated to the new ruling with the chain extended
-  (e.g. `02 §9 → 05 §1`).
+- **Design docs are rewritten in place** (`00A` §1, D-001 since 9 Nov 2026), each with a
+  version and changelog. When a ruling changes, the doc is revised and the affected row
+  *here* is updated with its chain extended (e.g. `02 §9 → 05 §1`). Earlier docs keep
+  their Supersessions blocks as history; they aren't converted.
 - **Rows are append-only; IDs are permanent.** Never renumber, never delete. A dead
   decision's row is rewritten to the current ruling — the old ruling survives in the
   source docs, which is where design progression lives.
@@ -32,10 +31,10 @@ file is HEAD.*
 
 | ID | Current ruling | Source → chain |
 |---|---|---|
-| D-001 | **SyFive exception to `00A` §1: documents are immutable once delivered.** Overrides travel through a Supersessions block in the newer document, plus a rewrite of the affected row here. This ledger is HEAD and accompanies every agent prompt, with `00A` and `00B`. | Session 05 · `05 §1` → `00B` E-1 (exception kept by Pops, 10 Oct 2026) |
+| D-001 | **SyFive follows `00A` §1: design documents are rewritten in place**, each with a version and changelog, as Syderal's and Score It \*'s are. Docs written under the old rule (immutable once delivered, changes by Supersessions) keep their Supersessions blocks as history and aren't converted. This ledger is HEAD and accompanies every agent prompt, with `00A` and `00B`. *Why:* the SyLib-series docs (`30`, `32`, `34`) were already versioned in place, so the old rule no longer matched practice (found by the agent in `34` 34.4). | Session 05 · `05 §1` → `00B` E-1 (kept, 10 Oct 2026) → `00B` E-1 retired (Pops, 9 Nov 2026) |
 | D-142 | **`00A_STUDIO_CONVENTIONS.md` is canonical for how sessions run, and `00B_SYFIVE_GUARDRAILS.md` holds SyFive's own rails.** Project documents cite them rather than restate them. Where `00A` and a SyFive rule conflicted on folders and on fixing out-of-scope smells, `00A` won. | `00A` §11 → `00B` §7 |
 | D-143 | **Tests run at the deployment floor**: iPhone SE (3rd generation), iOS 18.6, pinned in `00B` §5. Both test targets are set to iOS 18.6. | `00A` §7 → `00B` §5 |
-| D-148 | **`14_APPSTORE_COPY.md` is a living store record**, edited in place with a version and changelog (§10). It is an exception to D-001, which keeps every other SyFive design document immutable. | `14_APPSTORE_COPY.md` §9 (Pops, 11 Oct 2026) |
+| D-148 | **`14_APPSTORE_COPY.md` is a living store record**, edited in place with a version and changelog (§10). Since D-001's change (9 Nov 2026) every design document works this way, so this is no longer an exception. | `14_APPSTORE_COPY.md` §9 (Pops, 11 Oct 2026) → D-001 (9 Nov 2026) |
 
 ## Platform & data
 
@@ -83,9 +82,27 @@ file is HEAD.*
 | D-187 | **Every SyFive list is on the palette**: `paletteListBackground`, `paletteRowBackground`, `paletteBarBackground` and the accent tint on each sheet, as Score It \*. Meets D-166. | `28 §2.1` (Pops, 7 Nov 2026) |
 | D-188 | **Headers, Done and empty states are Score It \*'s**: plain headers in lists and forms, `SectionHeader` over the picker's and profile's sections, Done `.confirmationAction`, `EmptyStateView` with today's words. | `28 §2.2–2.4` |
 | D-189 | **The profile keeps its cards, on the palette**; the match detail cards take `theme.cellBackgroundColor`. | `28 §2.5` (Pops, 7 Nov 2026) |
-| D-190 | **New Game's roster is Score It \*'s chips**; "Playing" stays a list; editing, archiving and unarchiving are Players'. | `28 §2.6` (Pops, 7 Nov 2026) |
+| D-190 | **SyFive's New Game is SyLib's match setup** (`38`): **Done**, with edits applied live (seat, reorder, remove, Same as Last Time) so the iPad's pre-game grid follows; Same as Last Time as Players' first chip, from the latest completed non-Game Night game, shown when the players differ as a set; Score It \*'s numbered seats with a drawn handle, swipe to Remove, the Seats footer. Editing, archiving and unarchiving are Players'. | `28 §2.6` → `38 §2.3–2.8` (Pops, 9 Nov 2026) |
 | D-191 | **About is in the current palette; the studio link is `SyzygyLinks.developerAppStore`.** Dice Fairness and the Feel Board stay in ⋯. | `28 §2.7–2.8` (Pops, 7 Nov 2026) |
 | D-192 | **SyFive's toolbar buttons are `IconButton(…, context: .toolbar)`**, as Score It \*'s (SIA-216); SyLib's own controls stay. | `28` Task 28.5 |
+| D-194 | **An archived player can be deleted with every game they played**, through SyLibScoringData's `deletePlayerAndMatches`; an unplayed active player through `deleteUnplayedPlayer`, and the rows' counts from `completedMatchCounts` (Syderal S-21). The games leave everyone's records, and the alert names the completed count and the others ("1 other"). Not while they're in a game in progress (`"inProgress"`); any other status goes with them. Abandoning an unfinished game (`abandonMatch`), or deleting one from Match History, deletes its participants with it, through `deleteMatch` (§2.4); `LegacyRematchRepair`'s foreground orphan sweep is retired (D-196). Ruled separately below. *Why:* development test data kept creeping into synced production data with no way to clean it up, and players want the same for guests, duplicates and practice games. | `34 §2` (Pops, 8 Nov 2026) |
+| D-195 | **SyFive ships a privacy manifest, as Syderal and Score It \***: no tracking, no collected data types; UserDefaults (`CA92.1`) and system boot time (`35F9.1`, SyLibFeel's audio clock). File timestamps only if SyFive ever uses SyLibCache's `ImageCache` (`C617.1`). *Why:* found missing on 8 Nov 2026; App Store Connect expects every required-reason API declared. | `35 §2` (Pops, 8 Nov 2026) |
+| D-196 | **SyFive's foreground orphan sweep is retired.** No participant has a creation date, so the sweep couldn't tell a seat waiting for its match from a true orphan; on Pops's iPad it deleted both seats of a finished game whose match was gone. An orphan now stays until its player is deleted. | `34 §2.5–2.6` → `36` §4.1 (Pops, 9 Nov 2026) |
+| D-197 | **Abandoning never deletes a completed match.** `abandonMatch` deletes only a stored match whose `statusRaw` is `"inProgress"`, as well as one the controller holds as unfinished; a completed one is kept and the controller unbinds. Every abandon delete goes to `repair-log.txt` in the app's container, which survives relaunch. *Why:* a Game Night game is stored complete by `onMatchComplete` while the controller can lag a score behind, so its in-memory state alone could delete a finished game; the likely cause of the lost 30 October Game Night game. | `34 §2.7` (Pops, 9 Nov 2026) |
+| D-198 | **`LegacyRematchRepair` is retired, and SyFive's views take one row per match id** (the fullest, as SyLib's readers do) instead of deleting duplicates. Strategies 2 to 4 cleaned only old data; strategy 1's live case is settled by reading, not deleting. `LegacyYahtzeeRepair`, which deletes nothing, stays. *Why:* the aim is to stop loss from here on, and every part of the repair deleted data on every foreground. | `34 §2.8` → `36` §3–5 (Pops, 9 Nov 2026) |
+| D-199 | **`LegacyYahtzeeRepair` is retired**, and with it SyFive's last foreground data repair. It fixed two old field renames (the `"yahtzee"` slot key; `yatzyBonus` → `bonusPoints`), and every device that has run since has been repaired. *Why:* it read every participant at every foreground to fix records that no longer exist. | `34 §2.9` (Pops, 9 Nov 2026) |
+| D-200 | **SyLibScoringData owns one-row-per-match-id and delete-every-copy**: `onePerMatchID()` on `[MatchModel]` (the fullest copy, in first-appearance order), used by `fetchCompletedMatches` and `GNHistoryStore`, and `deleteMatches(id:in:)`. SyFive adopts both; Score It \* follows in its own session (`StatsMatches`, `MatchSetupSheet`, `MatchRecorder.delete`). *Why:* the rule was written five times, and Score It \*'s setup sheet used a different one. | `34 §2.10` (Pops, 9 Nov 2026) |
+| D-201 | **The roster sheets' Delete swipes are red, explicitly** (`.tint(.red)` with `role: .destructive`), in `PlayersSheet` and `TeamsSheet` for every app. *Why:* the sheet's own accent tint reached the untinted Delete, which showed orange beside Archive's orange (Pops, on device). | `34 §2.11` (Pops, 9 Nov 2026) |
+| D-203 | **Match setup's pieces are SyLibScoringUI's**: `SeatList`, `PlayerPicker`, `SameAsLastTimeSection` and `MatchSetupForm`, lifted from Score It \*'s New Match with its signatures, so Score It \* adopts by deleting its copies. Each app keeps its own "last time", Start rule and Start action. | `38 §2.1–2.2` (Pops, 9 Nov 2026) |
+| D-204 | **Match setup has no edit mode: a seat swipes to a red Remove** (with an xmark, as the Players sheet's swipes) and shows a drawn handle, reordering by long-press. *Why:* a seat only leaves the setup (Pops), and edit mode turned swipes off (V5, on device). | `38 §2.5` (Pops, 9 Nov 2026) |
+| D-205 | **The setup's Seats section says how to use it**: a footer, "Swipe left to remove." with one seat, adding "Touch and hold to reorder." with two or more, none when empty; always on, in every app. *Why:* without edit mode both gestures are hidden. | `38 §2.6` (Pops, 9 Nov 2026) |
+| D-206 | **Same as Last Time is the first chip in Players**: solid (`SelectableChip`'s new `emphasized`, the selected look without the selected trait), with a repeat arrow; shown only when the app passes its action. Score It \*'s "Same Teams as Last Time" becomes the same chip, first in its Teams section. `SameAsLastTimeSection` is retired. *Why:* it seats players, so it belongs with them (Pops). | `38 §2.7` (Pops, 9 Nov 2026) |
+| D-207 | **Match setup has two button modes**: `.cancelAndStart` (Score It \*'s draft: Start applies, Cancel or swipe-down discards) and `.done` (SyFive: one Done, edits applied live, an empty table allowed). *Why:* SyFive's Start started nothing, and a draft without Cancel would lose changes silently (Pops). | `38 §2.8` (Pops, 9 Nov 2026) |
+| D-208 | **A chip with an icon is `SelectableChip(_:systemImage:…)`**, never a `Label` in the chip: it draws icon and title 4 pt apart, the icon hidden from VoiceOver. *Why:* in a `List` row a `Label` puts its icon in the row's icon column, a wide gap (Pops, on device). | `38 §2.9–2.10` (Pops, 9 Nov 2026) |
+| D-209 | **Before the game, a player card's one control beside the name is a profile button** (`IconButton("person.crop.circle")`, roster players only), opening the player's profile, where Edit lives; the card's pencil and its "View profile" link are gone. *Why:* the pencil predated the profile's Edit (D-182) and duplicated it. | `39 §2` (Pops, 10 Nov 2026) |
+| D-210 | **`IconButton` has a `.small` size**: a `.body` symbol at large image scale, as every size, for an icon beside body-sized text, the 44 pt touch area unchanged. *Why:* `.regular` was too big beside a player's name (Pops, on device). | `39 §2.4` (Pops, 10 Nov 2026) |
+| D-211 | **Before the game, a player card's foot shows that player's figures for the table**: solo, their solo Games, Best and Avg and "Score to beat"; two players, Head to Head; three or four, their multiplayer Games, Wins and Win %; "First game, no stats yet" with none. At a solo table, the profile's opening sentence from solo games, when it has one; at other tables none. *Why:* the foot was empty for every table but two, and a sentence was too much for a card (Pops). | `39 §2.5, §2.7, §2.8` (Pops, 10 Nov 2026) |
+| D-212 | **`IconButton` takes a `weight`** (default `.bold`, so every button is as it was); SyFive's profile button is `.small`, `.regular`. *Why:* bold was too heavy beside a player's name (Pops). | `39 §2.6` (Pops, 10 Nov 2026) |
 
 ## Product & rules
 
@@ -181,6 +198,7 @@ file is HEAD.*
 | D-117 | **Undo feel: tiny D3 "set-down" tick.** Silent rejected — the tick correctly frames undo as a deliberate mechanical action, not an erasure. | `05 §11` (open → resolved on device) |
 | D-118 | **Settle haptic pattern: per-die transients.** Single all-settled pulse rejected — per-die transients preserve the one-die-at-a-time narrative that the settle thunk sounds already establish. | `05 §11` (open → resolved on device) |
 | D-119 | **Yatzy haptic: 200 ms continuous swell.** Canonical soft tick rejected — the swell reads as earned and sustained in a way the tick does not; matches the scale of the Yatzy moment. | `05 §11` (open → resolved on device) |
+| D-193 | **During a Game Night session, Mix with Other Audio isn't offered and a saved Mix plays as Game Audio Only** (it echoed in FaceTime, Syderal S-11). Settings offers Off and Game Audio Only and says why; the saved setting is never rewritten. SyFive's commentary level default stays Celebrations. | `33 §2` (Pops, 8 Nov 2026) |
 
 ## Game Night
 
@@ -210,6 +228,7 @@ file is HEAD.*
 | D-137 | **Roster upsert never merges two people at one table.** SyFive uses `upsertGameNightRoster` with `seatedPlayerIDs` at both call sites; `remapOntoArchived` stays `true`. | `14 §3.5, §4.2` (Syderal L-39, L-43) → `17 §2.4` |
 | D-138 | **History sync shares only completed Game Night matches the table shares**, judged by a match's fullest row, through `GNHistoryStore`. | `14 §3.4` (Syderal L-18, L-40) → `17 §2.5` |
 | D-140 | **Game Night menu items and the leading toolbar control are SyLib's** (`GameNightMenuSection`, `GameNightLeadingControlButton`), with SyLib's titles and labels. Play Again stays SyFive's. | `14 §3.10` (Syderal L-22) → `17 §2.9` |
+| D-202 | **A device remembers the last player it seated at Game Night and seats them again**, automatically, when a new Game Night reaches the table: stored locally (`"<prefix>.gn.lastSeatPlayerID"`), the app supplying the current player, never when that player is already seated (then the picker shows), forgotten when the device removes its own seat. A seated device can **Change** its player in place. In SyLibGameNight, for every app. | `37 §2` (Pops, 9 Nov 2026) |
 
 ## Celebrations
 

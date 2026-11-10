@@ -26,7 +26,7 @@ Views/
   DiceRKView.swift           — RealityKit dice renderer
   DicePill.swift             — dice value badge
   DiceDebugHUD.swift         — debug overlay (AppConfig-gated)
-  PlayerPickerSheet.swift    — player roster management sheet
+  NewGameSheet.swift         — New Game: SyLib's match setup over a draft of seats (38)
   PlayerEditSheet.swift      — create/edit a single player
   SafeAreaDebugView.swift    — layout debug overlay (AppConfig-gated)
 ```
@@ -76,7 +76,7 @@ SyFive/
   Extensions/          — Swift/Foundation extensions
   Feel/                — SyFiveCatalog: SyFive's sound and haptic recipes
   Persistence/         — SyFive-only persistence
-    Migration/         — One-off data repairs (LegacyYahtzeeRepair, LegacyRematchRepair)
+    RepairLog.swift    — Lasting log of abandonMatch's deletes (34 §2.7)
     Models/            — AppSettingsModel
   Session/             — MatchController: game state machine and scoring logic
   Theme/               — Theme struct, ThemeType enum, color definitions
@@ -113,7 +113,7 @@ Examples:
 - `ScorecardView` — the score tracking area
 - `PlayerScoreCardView` — one player's card within the scorecard
 - `DiceAreaView` — the tray + roll controls area
-- `PlayerPickerSheet` — the sheet for managing players
+- `NewGameSheet` — New Game's setup: who plays, in seat order (38)
 
 Prefer names that describe what the user sees or does, not what the code does internally.
 

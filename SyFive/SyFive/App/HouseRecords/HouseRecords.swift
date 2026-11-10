@@ -334,7 +334,7 @@ struct HouseRecords {
 
     /// Yatzy count per §4.2: base (scored 50) plus bonus rolls.
     /// Falls back to inferring yatzyBonus from the finalScore gap for any records
-    /// not yet repaired by LegacyYahtzeeRepair.
+    /// not repaired by the legacy repair retired in 34 §2.9.
     private static func yatzyCount(for p: Participant) -> Int {
         let entry = p.scoreEntries.first(where: { $0.slotKey == "yatzy" })
         let base = entry?.value == 50 ? 1 : 0

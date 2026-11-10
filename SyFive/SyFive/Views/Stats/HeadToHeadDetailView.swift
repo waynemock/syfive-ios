@@ -18,7 +18,9 @@ struct HeadToHeadDetailView: View {
 
     @Query(filter: #Predicate<MatchModel> { $0.statusRaw == "completed" },
            sort: \MatchModel.startedAt, order: .reverse)
-    private var completedModels: [MatchModel]
+    private var completedRows: [MatchModel]
+    /// One row per match id, so a game two devices both stored counts once (34 §2.8).
+    private var completedModels: [MatchModel] { completedRows.onePerMatchID() }
 
     private var sharedMatchModels: [MatchModel] {
         let aID = h2h.playerA

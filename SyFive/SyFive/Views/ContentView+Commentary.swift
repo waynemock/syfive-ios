@@ -14,11 +14,18 @@ extension ContentView {
         director.soundMode == .off || gameNight.commentaryIsSuppressed
     }
 
+    /// The Sound setting as played: Mix plays as Game Audio Only during Game Night (33, D-193).
+    var effectiveSoundMode: AppSoundMode {
+        GameNightAudio.effectiveSoundMode(appSettings?.soundMode ?? .mix,
+                                          gameNightActive: gameNight.isSessionActive)
+    }
+
     /// Called from onChange(of: appSettings?.soundModeRaw).
+    /// Also called when a Game Night session starts or ends.
     /// Updates the sound mode, handles §5.4 suppression reset, and applies the mute directly.
     func handleSoundModeChanged() {
         let wasOff = director.soundMode == .off
-        director.soundMode = appSettings?.soundMode ?? .mix
+        director.soundMode = effectiveSoundMode
         let isNowOff = director.soundMode == .off
         if wasOff && !isNowOff {
             // §5.4: button reappears unmuted — reset suppression state (D-GNP-009).

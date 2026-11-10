@@ -33,7 +33,6 @@ struct PlayerScoreCardView: View {
     @ScaledMetric private var initialsFontSize: CGFloat = 11
     @State private var isWinnerHighlightExpanded = false
     @State private var showsProfile = false
-    @State private var showsPlayerEdit: PlayerEditSheet.Mode? = nil
     @State private var displayedTotal: Int = 0
 
     var body: some View {
@@ -118,11 +117,6 @@ struct PlayerScoreCardView: View {
                 }
                 .sheetTextSizeCeiling()
             }
-            .sheet(item: $showsPlayerEdit) { mode in
-                PlayerEditSheet(mode: mode, matchModel: model)
-                    .environment(\.syTheme, theme)
-                    .sheetTextSizeCeiling()
-            }
             .task(id: model.isGameOver && isWinner) {
                 let finalTotal = model.totalScore(for: playerIndex)
                 let gameIsOver = model.isGameOver
@@ -158,15 +152,11 @@ struct PlayerScoreCardView: View {
                 if isCurrentPlayer && model.playerCount > 1 && model.hasStarted && !model.isGameOver {
                     Image(systemName: "dice.fill")
                 }
-                if model.canEditPlayers {
-                    Button {
-                        showsPlayerEdit = fetchPlayerEditMode()
-                    } label: {
-                        Image(systemName: "pencil")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
+                // 39 §2.1: before the game, a roster player's one control beside the name opens the
+                // profile, where Edit lives; kept away from the remove X.
+                if model.canEditPlayers, model.playerIDs[playerIndex] != nil {
+                    IconButton("person.crop.circle", size: .small, weight: .regular) { showsProfile = true }
+                        .accessibilityLabel("Profile, \(model.playerNames[playerIndex])")
                 }
             }
 
@@ -240,25 +230,8 @@ struct PlayerScoreCardView: View {
                     playerBID: bID,
                     playerBName: model.playerNames[bIndex]
                 )
-            }
-
-            if viewerID != nil {
-                Button {
-                    showsProfile = true
-                } label: {
-                    HStack(spacing: 3) {
-                        Text("View profile")
-                        Image(systemName: "chevron.right")
-                            .font(.caption2)
-                    }
-                    .font(.caption)
-                    .foregroundStyle(theme.primaryAccent.opacity(0.8))
-                }
-                .buttonStyle(.plain)
-            } else {
-                Text("Add to roster for stats")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            } else if let viewerID {
+                PreGameStatsCard(playerID: viewerID, playerCount: model.playerCount, theme: theme)
             }
         }
     }
@@ -420,14 +393,6 @@ struct PlayerScoreCardView: View {
 
     private var colorButtonBorder: Color {
         colorScheme == .dark ? Color.white.opacity(0.45) : Color.black.opacity(0.18)
-    }
-
-    private func fetchPlayerEditMode() -> PlayerEditSheet.Mode? {
-        guard let playerID = model.playerIDs[playerIndex] else { return nil }
-        var desc = FetchDescriptor<PlayerModel>(predicate: #Predicate { $0.id == playerID })
-        desc.fetchLimit = 1
-        guard let pm = (try? modelContext.fetch(desc))?.first else { return nil }
-        return .edit(pm, matchSlot: playerIndex)
     }
 }
 

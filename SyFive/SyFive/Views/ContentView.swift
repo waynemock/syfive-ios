@@ -257,7 +257,7 @@ struct ContentView: View {
             syncPlayerThemesFromRoster()
             healOrphanedParticipants()
             // Sync initial settings values (onChange won't fire for the first load).
-            director.soundMode      = appSettings?.soundMode      ?? .mix
+            director.soundMode      = effectiveSoundMode
             director.hapticsEnabled = appSettings?.hapticsEnabled ?? true
             // One owner for the app's appearance: every window's style, so open sheets follow
             // a change made inside them (D-159; THEME.md).
@@ -268,6 +268,16 @@ struct ContentView: View {
             director.warmUpHaptics()
             syncCommentaryEngine()
             gameNight.onCommentarySuppressedChanged = { handleCommentarySuppressionChanged() }
+            // The remembered seat's player (37 §2.4). Set here, before any session arrives, not with
+            // the per-activation hooks: the host's auto-seat runs while the session is configured,
+            // before onChange(sessionActivationCount) fires. Reads the pending host resume live.
+            let seatContext = modelContext
+            let seatScheme = colorScheme
+            let seatGameNight = gameNight
+            gameNight.session.rememberedSeatLookup = { id in
+                ContentView.rememberedSeatEntry(for: id, in: seatContext, colorScheme: seatScheme,
+                                                hostResumePending: seatGameNight.coordinator.hasPendingHostResume)
+            }
             // Wire score announcement banner for local PvP and GN host paths.
             let coordinator = celebrationCoordinator
             model.onScoreAnnounced = { playerIndex, category, value in
@@ -407,6 +417,7 @@ struct ContentView: View {
             logger.info(self, "leading slot: \(old) → \(new) hasGameActivity=\(model.hasGameActivity) over=\(model.isGameOver) players=\(model.playerCount)")
         }
         .onChange(of: appSettings?.soundModeRaw) { _, _ in handleSoundModeChanged() }
+        .onChange(of: gameNight.isSessionActive) { _, _ in handleSoundModeChanged() }
         .onChange(of: appSettings?.colorSchemeRaw) { _, _ in WindowAppearance.apply(appSettings?.colorScheme ?? .dark) }
         .onChange(of: theme) { _, _ in WindowTint.apply(UIColor(theme.primaryAccent)) }
         .onChange(of: appSettings?.hapticsEnabled) { _, v in director.hapticsEnabled = v ?? true }
@@ -420,8 +431,7 @@ struct ContentView: View {
                 saveShuffleForBackground()
             case .active:
                 director.handleForeground()
-                LegacyYahtzeeRepair.run(in: modelContext)
-                LegacyRematchRepair.run(in: modelContext)
+                // The legacy data repairs that ran here were retired (34 §2.8–2.9).
             case .inactive: break
             @unknown default: break
             }
@@ -474,6 +484,7 @@ struct ContentView: View {
                 .environment(\.syTheme, theme)
                 .environment(commentaryVoices)
                 .environment(director)
+                .environment(\.gameNightAudioActive, gameNight.isSessionActive)
                 .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsICloud) {
