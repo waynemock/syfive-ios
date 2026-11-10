@@ -436,8 +436,19 @@ final class MatchController {
         guard let mid = persistedMatchID else { return }
         let descriptor = FetchDescriptor<MatchModel>(predicate: #Predicate { $0.id == mid })
         if let match = (try? context.fetch(descriptor))?.first, !isGameOver {
-            // The match and its participants, so no orphan still names its players (34 §2.4).
-            deleteMatch(match, in: context)
+            // The stored row decides too: a Game Night game can be completed on disk while this
+            // controller is a score short (34 §2.7).
+            if match.statusRaw == "inProgress" {
+                let seats = match.participants
+                    .sorted { $0.seat < $1.seat }
+                    .map { "{id=\($0.id.uuidString) playerID=\($0.playerID?.uuidString ?? "nil") name=\($0.displayName) seat=\($0.seat)}" }
+                    .joined(separator: " ")
+                RepairLog.record("abandonMatch deleted: id=\(match.id.uuidString) status=\(match.statusRaw) isGameNight=\(match.isGameNight) startedAt=\(match.startedAt) participants=[\(seats)]")
+                // The match and its participants, so no orphan still names its players (34 §2.4).
+                deleteMatch(match, in: context)
+            } else {
+                logger.info(self, "abandonMatch: kept match \(match.id.uuidString), stored status=\(match.statusRaw), not in progress; unbinding only")
+            }
         }
         try? context.save()
         persistedMatchID = nil

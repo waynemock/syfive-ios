@@ -44,4 +44,44 @@ struct AbandonMatchTests {
         let players = try context.fetch(FetchDescriptor<PlayerModel>())
         #expect(Set(players.map(\.id)) == [ada.id, bo.id])
     }
+
+    // 34 §2.7, Task 34.8: Game Night's onMatchComplete can store the game as completed while this
+    // device's controller is a score short.
+    @Test("Abandoning never deletes a match stored as completed, and the controller still lets go")
+    func abandoningKeepsAMatchStoredAsCompleted() throws {
+        let container = try makeInMemoryScoringContainer(additionalModels: [AppSettingsModel.self])
+        let context = container.mainContext
+
+        let ada = PlayerModel()
+        ada.name = "Ada"
+        ada.initials = "A"
+        let bo = PlayerModel()
+        bo.name = "Bo"
+        bo.initials = "B"
+        context.insert(ada)
+        context.insert(bo)
+        try context.save()
+
+        let controller = MatchController()
+        controller.addPlayer(from: ada.toDomain())
+        controller.addPlayer(from: bo.toDomain())
+        controller.save(to: context, gameID: Game.builtInYatzyID)
+        try context.save()
+
+        // The stored row is completed, as onMatchComplete would leave it; the controller's
+        // scorecards stay empty, so it doesn't think the game is over.
+        let stored = try #require(try context.fetch(FetchDescriptor<MatchModel>()).first)
+        stored.statusRaw = "completed"
+        try context.save()
+        #expect(!controller.isGameOver)
+        #expect(controller.persistedMatchID == stored.id)
+
+        controller.abandonMatch(in: context)
+
+        let remaining = try context.fetch(FetchDescriptor<MatchModel>())
+        #expect(remaining.map(\.id) == [stored.id])
+        #expect(remaining.first?.statusRaw == "completed")
+        #expect(try context.fetchCount(FetchDescriptor<ParticipantModel>()) == 2)
+        #expect(controller.persistedMatchID == nil)
+    }
 }

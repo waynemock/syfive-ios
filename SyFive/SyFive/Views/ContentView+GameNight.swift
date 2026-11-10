@@ -10,6 +10,24 @@ import SwiftData
 
 extension ContentView {
 
+    /// The remembered Game Night player for auto-seat (37 §2.4): the player with `id`, if one row
+    /// of that id isn't archived, as `SyFiveSeatClaimSheet` builds its roster entries. Nil for an
+    /// archived or missing player, and nil while a host resume is pending: the host's auto-seat runs
+    /// when the session is configured, before a resume replaces the seats (37.1). Internal for tests.
+    static func rememberedSeatEntry(for id: UUID, in context: ModelContext, colorScheme: ColorScheme,
+                                    hostResumePending: Bool) -> SeatRosterEntry? {
+        guard !hostResumePending else { return nil }
+        let descriptor = FetchDescriptor<PlayerModel>(predicate: #Predicate { $0.id == id })
+        guard let pm = (try? context.fetch(descriptor))?.first(where: { !$0.isArchived }) else { return nil }
+        return SeatRosterEntry(
+            id: pm.id,
+            name: pm.name,
+            initials: pm.initials,
+            themeID: pm.themeID,
+            accentColor: SyTheme.accent(forThemeID: pm.themeID, colorScheme: colorScheme)
+        )
+    }
+
     /// Where this device stands with Game Night, read from `body` so the menu and the leading
     /// control follow the session (17 §4.8).
     var gameNightEntry: GameNightEntryState { GameNightEntryState(session: gameNight.session) }

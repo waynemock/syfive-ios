@@ -1,7 +1,7 @@
 # SyFive: the legacy data repairs, what each fixes and whether it's still needed
 
-**Status:** **Reference; no tasks yet.** Written 9 November 2026 from the code and Pops's account.
-§5's open items are Pops's. Version 1.1, 9 November 2026.
+**Status:** **Reference, now history. `LegacyRematchRepair` was retired on 9 November 2026 (`34` §2.8, Task 34.10); `LegacyYahtzeeRepair` (§6) the same day (`34` §2.9, Task 34.11). SyFive runs no data repairs now.** Written 9 November 2026 from the code and Pops's account.
+§5's open items are Pops's. Version 1.4, 9 November 2026.
 
 **Scope:** `syfive-ios`, `Persistence/Migration/`: `LegacyRematchRepair.swift` (210 lines) and, for
 completeness, `LegacyYahtzeeRepair.swift` (70). Nothing here changes code. `34` §2.5 cites this
@@ -100,6 +100,29 @@ Each group is one game stored more than once. Stats, Head-to-Head and House Reco
 (`34` 34.2). The two October groups are after 1.0, so the match-per-turn bug can't be their cause;
 Game Night history sync is the likelier one.
 
+### 4.4 Strategy 1 can keep a partial copy
+
+Strategy 1 keeps a completed row with the latest `completedAt`. SyLib's readers take the row with
+the most participants, since at Game Night every device on an account writes the finished match
+under its one id, and one copy's seats may not have arrived. So strategy 1 could delete the full
+copy, seats and all. Moot once the repair is retired (`34` §2.8, D-198): readers take the fullest row instead.
+
+### 4.5 Game Night history sync, reviewed (9 November 2026)
+
+Pops asked whether history sync deletes data or shares matches that don't belong. It does neither:
+- **No deletes.** `GNHistoryStore.storeReceived` only inserts, and skips a received match that
+  already exists by id or by fingerprint (`GNMatchIdentity.duplicateExists`), so it never
+  reconciles or overwrites an existing row.
+- **Only what the table shares.** A device offers and sends only completed Game Night matches in
+  which every person participant is seated now (`manifestIDs`, `matches(for:)`), from its 40 newest
+  completed matches, up to 20. The receiver keeps one only if it knows every person in it.
+- **One gap in principle:** the table test counts only participants with a `playerID`. A Game Night
+  match with a nil-id seat could be shared with a table that person isn't at. SyFive's Game Night
+  seats carry player ids, so this isn't known to happen; noted, not tasked.
+
+The Game Night deletes that can lose data are elsewhere: `abandonMatch` (`34` §2.7), strategy 1
+(§4.4), strategy 4 (§4.2).
+
 ---
 
 ## 5. Open for Pops
@@ -109,19 +132,25 @@ damaged before these fixes aren't pursued.
 
 0. **The 30 October game (§4.1): answered, not pursued.** It is in neither device's History, so the
    iPad's two orphans were a real game's seats, its match already gone, and the sweep deleted them.
-   What lost the match is unknown; `34` 34.7's log is what would show it next time.
-1. **The orphan sweep: ruled.** It is retired (`34` §2.6, D-196, Task 34.6, which also fixes both
-   header comments), and strategies 1 to 4's deletes go to a lasting log (Task 34.7).
+   It was a Game Night game (Pops). The likely cause is `abandonMatch` deleting a match that
+   `onMatchComplete` had already stored as completed; `34` §2.7 and Task 34.8 close that path.
+   **It may come back** (Pops, 9 Nov 2026): Sherida's device, on her own iCloud account, may still
+   hold it. Game Night history sync (`GNHistoryStore`, at every match start and rematch) offers a
+   peer each completed Game Night match whose every player is seated, from the newest 40 completed
+   matches (`scanLimit`), up to 20 (`limit`). A Sherida-and-Wayne table would bring it back to
+   Pops's account if it is still on her device and still in her newest 40. Best done after 34.8.
+1. **`LegacyRematchRepair`: ruled.** The orphan sweep is retired (`34` §2.6, Task 34.6). The rest
+   follows (`34` §2.8, D-198): SyFive's views take one row per id (Task 34.9), then the file is
+   deleted (Task 34.10). `abandonMatch`'s deletes go to 34.7's lasting log (Task 34.8).
 2. **Orphans blocking Delete, later:** SyLib's `deleteUnplayedPlayer` could ignore and remove a
    player's match-less participants (and SyFive's `everPlayed` ignore them), so a stray orphan never
    blocks Delete. With the sweep gone, a new orphan (from sync) now stays until its player is deleted.
-3. **Strategy 4 (§4.2), still open:** it can delete future Game Night matches too, if the owner's seat
-   ever carries another player id. Keep as it is, or require something firmer than solo history.
+3. **Strategy 4 (§4.2): moot,** retired with the rest (`34` §2.8).
 4. **The four groups (§4.3): not pursued** (old data, Pops). They stay as they are.
 
 ---
 
-## 6. `LegacyYahtzeeRepair`, for completeness
+## 6. `LegacyYahtzeeRepair`, for completeness (retired, `34` §2.9)
 
 Repairs `ParticipantModel` rows broken by the yahtzee → yatzy field renames (CloudKit treats a
 rename as a delete plus an add, so old records arrive with the new fields defaulted). Fix 1 renames
@@ -133,5 +162,8 @@ while any device can sync a pre-rename record.
 
 | Version | Date | Change |
 |---|---|---|
+| 1.4 | 9 Nov 2026 | `LegacyRematchRepair` is being retired (`34` §2.8); §4.4 and §5's strategy 4 item are moot |
+| 1.3 | 9 Nov 2026 | §4.4, strategy 1's keeper (fixed by `34` 34.9); §4.5, the Game Night history sync review |
+| 1.2 | 9 Nov 2026 | §5: the 30 October game was a Game Night game; its likely cause and fix are `34` §2.7 |
 | 1.1 | 9 Nov 2026 | §5: the 30 October game is in neither device's History; the sweep is retired and the repair's deletes are logged to a file (`34` §2.6) |
 | 1.0 | 9 Nov 2026 | First version, from the code, Pops's history of the match-per-turn bug, and V5's first log |

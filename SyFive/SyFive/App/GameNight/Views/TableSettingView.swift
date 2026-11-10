@@ -15,6 +15,7 @@ struct TableSettingView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.syTheme) private var theme
     @State private var showsSeatClaim = false
+    @State private var showsSeatChange = false
     @State private var showsGameNightHelp = false
     @State private var showsEndSessionConfirmation = false
 
@@ -24,6 +25,7 @@ struct TableSettingView: View {
                 gameNight: gameNight,
                 matchModel: matchModel,
                 onClaimSeat: { showsSeatClaim = true },
+                onChangeSeat: { showsSeatChange = true },
                 appSettings: { commentarySection }
             )
             .navigationTitle("Game Night")
@@ -66,6 +68,10 @@ struct TableSettingView: View {
             }
             .sheet(isPresented: $showsSeatClaim) {
                 SyFiveSeatClaimSheet(gameNight: gameNight, matchModel: matchModel)
+                    .sheetTextSizeCeiling()
+            }
+            .sheet(isPresented: $showsSeatChange) {
+                SyFiveSeatClaimSheet(gameNight: gameNight, matchModel: matchModel, changesSeat: true)
                     .sheetTextSizeCeiling()
             }
             .sheet(isPresented: $showsGameNightHelp) {

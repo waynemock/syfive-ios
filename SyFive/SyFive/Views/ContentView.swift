@@ -268,6 +268,16 @@ struct ContentView: View {
             director.warmUpHaptics()
             syncCommentaryEngine()
             gameNight.onCommentarySuppressedChanged = { handleCommentarySuppressionChanged() }
+            // The remembered seat's player (37 §2.4). Set here, before any session arrives, not with
+            // the per-activation hooks: the host's auto-seat runs while the session is configured,
+            // before onChange(sessionActivationCount) fires. Reads the pending host resume live.
+            let seatContext = modelContext
+            let seatScheme = colorScheme
+            let seatGameNight = gameNight
+            gameNight.session.rememberedSeatLookup = { id in
+                ContentView.rememberedSeatEntry(for: id, in: seatContext, colorScheme: seatScheme,
+                                                hostResumePending: seatGameNight.coordinator.hasPendingHostResume)
+            }
             // Wire score announcement banner for local PvP and GN host paths.
             let coordinator = celebrationCoordinator
             model.onScoreAnnounced = { playerIndex, category, value in
@@ -421,8 +431,7 @@ struct ContentView: View {
                 saveShuffleForBackground()
             case .active:
                 director.handleForeground()
-                LegacyYahtzeeRepair.run(in: modelContext)
-                LegacyRematchRepair.run(in: modelContext)
+                // The legacy data repairs that ran here were retired (34 §2.8–2.9).
             case .inactive: break
             @unknown default: break
             }

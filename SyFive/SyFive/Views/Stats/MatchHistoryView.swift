@@ -24,11 +24,15 @@ struct MatchHistoryView: View {
 
     @Query(filter: #Predicate<MatchModel> { $0.statusRaw == "completed" },
            sort: \MatchModel.startedAt, order: .reverse)
-    private var completedMatches: [MatchModel]
+    private var completedRows: [MatchModel]
+    /// One row per match id, so a game two devices both stored counts once (34 §2.8).
+    private var completedMatches: [MatchModel] { completedRows.onePerMatchID() }
 
     @Query(filter: #Predicate<MatchModel> { $0.statusRaw == "inProgress" },
            sort: \MatchModel.startedAt, order: .reverse)
-    private var inProgressMatches: [MatchModel]
+    private var inProgressRows: [MatchModel]
+    /// One row per match id, so a game two devices both stored counts once (34 §2.8).
+    private var inProgressMatches: [MatchModel] { inProgressRows.onePerMatchID() }
 
     @State private var segment: HistorySegment = .finished
     @State private var matchToDelete: MatchModel? = nil
@@ -162,8 +166,9 @@ struct MatchHistoryView: View {
                 Button("Delete", role: .destructive) {
                     if let m = matchToDelete {
                         if m.id == activeMatchID { onActiveMatchDeleted?() }
-                        // The match and its participants, so no orphan still names its players (34 §2.4).
-                        deleteMatch(m, in: modelContext)
+                        // The match and its participants, so no orphan still names its players (34 §2.4),
+                        // and every stored copy of its id, not only the row shown (34 §2.8).
+                        _ = try? deleteMatches(id: m.id, in: modelContext)
                     }
                     matchToDelete = nil
                 }
@@ -177,8 +182,9 @@ struct MatchHistoryView: View {
             ) {
                 Button("Delete All", role: .destructive) {
                     let deletingActive = inProgressMatches.contains { $0.id == activeMatchID }
-                    // Each match and its participants, so no orphan still names its players (34 §2.4).
-                    for m in inProgressMatches { deleteMatch(m, in: modelContext) }
+                    // Each match and its participants, so no orphan still names its players (34 §2.4),
+                    // over the raw query so every stored copy goes, not only the rows shown (34 §2.8).
+                    for m in inProgressRows { deleteMatch(m, in: modelContext) }
                     if deletingActive { onActiveMatchDeleted?() }
                 }
                 Button("Cancel", role: .cancel) {}

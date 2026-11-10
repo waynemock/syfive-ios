@@ -1,7 +1,6 @@
 # SyFive Game Night audio: no Mix with Other Audio during Game Night, as Syderal
 
-**Status:** **33.1 done and checked, 8 November 2026; open for V1** (Pops, two devices on
-FaceTime). The ledger row is filed when V1 passes. Version 1.0, 8 November 2026.
+**Status:** **Closed** 9 November 2026: 33.1 done and checked; V1 passes (Pops, on device); D-193 filed in `00_DECISION_LEDGER.md`. Version 1.0, 8 November 2026.
 
 **Scope:** `syfive-ios` on `sylib-reintegration`. SyLib is unchanged: `FeelSettingsRows(soundModes:)`
 landed in Syderal `26` Task 26.10 and is on SyLib `main`.
@@ -142,9 +141,10 @@ play-by-play, and no existing player's level moves.
 
 | Task / V | Date | Result | Totals | Notes |
 |---|---|---|---|---|
+| V1 | 9 Nov 2026 | **pass** (Pops, on device) | — | Game Night over FaceTime: Sound offers Off and Game Audio Only with the note, no echo; Mix again afterwards |
 | 33.1 | 8 Nov 2026 | complete (the agent); **checked by Claude against the tree**: every edit is as §3 specifies, nothing outside it changed. Report (1) is fine: the existing `isSessionActive` handler only runs on end (dismiss and `syncCommentaryEngine()`), and the new one just re-derives the sound mode, so their order doesn't matter. Report (2) noted; 20 tests (23 runs) is the new baseline. V1 is Pops's | Before: `** TEST SUCCEEDED **`, 20 tests (23 runs), 0 failed. After: `** TEST SUCCEEDED **`, 23 tests (26 runs), 0 failed: + `GameNightAudioTests`' three, none removed. Runs exceed tests because `SyFiveUITestsLaunchTests.testLaunch()` runs 4 times. Counted from the run's `Test case … passed` lines (xcodebuild prints no summary total). Destination `platform=iOS Simulator,name=iPhone SE (3rd generation),OS=18.6` | **Files:** new `SyFive/App/GameNight/GameNightAudio.swift` (§3 step 1, verbatim); `Views/ContentView+Commentary.swift` (`effectiveSoundMode`; `handleSoundModeChanged()` uses it, plus the doc-comment sentence); `Views/ContentView.swift` (`.onAppear` uses `effectiveSoundMode`; `.onChange(of: gameNight.isSessionActive) { handleSoundModeChanged() }` beside `soundModeRaw`'s; Settings sheet gets `.environment(\.gameNightAudioActive, …)` after `.environment(director)`); `Views/SettingsView.swift` (`SettingsForm`: environment value, get/set `Binding` with `soundModes:`, conditional footer; the blank line after it lost its trailing spaces); new `SyFiveTests/GameNightAudioTests.swift` (Swift Testing, `@MainActor` like `CommentaryPackTests`); this row. **Build:** `BuildProject` passed before and after (with test targets), 0 warnings both times; no fixes needed. **Git (read-only):** `git status --short`, `git diff --stat HEAD -- Docs/Requirements/`, `git diff`. **Report:** (1) `ContentView` already had `.onChange(of: gameNight.isSessionActive)` (line 282: dismiss the sheet and `syncCommentaryEngine()` on end), so there are now two handlers for that value; SwiftUI runs both, and they're independent. (2) Doc 32's baseline was 19 tests (22 runs); it was 20 (23) before this session, and 35.1 added none, so the extra test came in between. Not investigated. V1 is Pops's |
 
-## 6. Ledger row (Claude files it when 33 closes)
+## 6. Ledger row (filed 9 November 2026)
 
 | ID | Ruling | Source |
 |---|---|---|

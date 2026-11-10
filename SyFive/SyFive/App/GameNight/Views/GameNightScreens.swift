@@ -64,6 +64,8 @@ struct SyFiveGameNightTableView<Settings: View>: View {
     let gameNight: GameNightController
     let matchModel: MatchController
     let onClaimSeat: () -> Void
+    /// Change on this device's own seat (37 §2.3); nil shows no Change.
+    let onChangeSeat: (() -> Void)?
     let appSettings: () -> Settings
 
     @Environment(\.colorScheme) private var colorScheme
@@ -73,11 +75,13 @@ struct SyFiveGameNightTableView<Settings: View>: View {
         gameNight: GameNightController,
         matchModel: MatchController,
         onClaimSeat: @escaping () -> Void,
+        onChangeSeat: (() -> Void)? = nil,
         @ViewBuilder appSettings: @escaping () -> Settings
     ) {
         self.gameNight = gameNight
         self.matchModel = matchModel
         self.onClaimSeat = onClaimSeat
+        self.onChangeSeat = onChangeSeat
         self.appSettings = appSettings
     }
 
@@ -105,9 +109,12 @@ struct SyFiveGameNightTableView<Settings: View>: View {
                 if gameNight.role == .host {
                     gameNight.removeSeat(seatClaimID: seat.seatClaimID)
                 } else {
+                    // Removing one's own seat forgets the remembered player; Leave doesn't (37 §2.1).
+                    gameNight.session.forgetRememberedSeat()
                     gameNight.leaveSession()
                 }
             },
+            onChangeSeat: onChangeSeat,
             appSettings: appSettings,
             seatTrailing: { seat in
                 SeatEditButton(seat: seat, matchModel: matchModel, gameNight: gameNight)
@@ -122,6 +129,9 @@ struct SyFiveGameNightTableView<Settings: View>: View {
 struct SyFiveSeatClaimSheet: View {
     let gameNight: GameNightController
     let matchModel: MatchController
+    /// Change mode (37 §2.3): the chosen or created player replaces this device's own seat's,
+    /// through `changeLocalSeat(to:)`, instead of claiming a new seat.
+    var changesSeat = false
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.syTheme) private var theme
     @Query(sort: \PlayerModel.name) private var players: [PlayerModel]
@@ -146,12 +156,17 @@ struct SyFiveSeatClaimSheet: View {
             roster: availableRoster,
             accentColor: theme.primaryAccent,
             onClaim: { entry in
-                gameNight.claimSeat(
-                    displayName: entry.name,
-                    displayInitials: entry.initials,
-                    themeID: entry.themeID,
-                    playerID: entry.id
-                )
+                // Also called with New Player's created entry, so change mode covers both.
+                if changesSeat {
+                    gameNight.session.changeLocalSeat(to: entry)
+                } else {
+                    gameNight.claimSeat(
+                        displayName: entry.name,
+                        displayInitials: entry.initials,
+                        themeID: entry.themeID,
+                        playerID: entry.id
+                    )
+                }
             },
             createPlayerSheet: { done in
                 PlayerEditSheet(mode: .create, matchModel: matchModel, onCreated: { pm in

@@ -76,7 +76,7 @@ SyFive/
   Extensions/          — Swift/Foundation extensions
   Feel/                — SyFiveCatalog: SyFive's sound and haptic recipes
   Persistence/         — SyFive-only persistence
-    Migration/         — One-off data repairs (LegacyYahtzeeRepair, LegacyRematchRepair)
+    RepairLog.swift    — Lasting log of abandonMatch's deletes (34 §2.7)
     Models/            — AppSettingsModel
   Session/             — MatchController: game state machine and scoring logic
   Theme/               — Theme struct, ThemeType enum, color definitions
