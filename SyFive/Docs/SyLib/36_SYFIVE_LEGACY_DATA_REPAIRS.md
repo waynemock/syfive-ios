@@ -1,7 +1,7 @@
 # SyFive: the legacy data repairs, what each fixes and whether it's still needed
 
 **Status:** **Reference, now history. `LegacyRematchRepair` was retired on 9 November 2026 (`34` §2.8, Task 34.10); `LegacyYahtzeeRepair` (§6) the same day (`34` §2.9, Task 34.11). SyFive runs no data repairs now.** Written 9 November 2026 from the code and Pops's account.
-§5's open items are Pops's. Version 1.4, 9 November 2026.
+§5's open items are Pops's. Version 1.5, 10 November 2026.
 
 **Scope:** `syfive-ios`, `Persistence/Migration/`: `LegacyRematchRepair.swift` (210 lines) and, for
 completeness, `LegacyYahtzeeRepair.swift` (70). Nothing here changes code. `34` §2.5 cites this
@@ -123,6 +123,45 @@ Pops asked whether history sync deletes data or shares matches that don't belong
 The Game Night deletes that can lose data are elsewhere: `abandonMatch` (`34` §2.7), strategy 1
 (§4.4), strategy 4 (§4.2).
 
+### 4.6 BurnPad's stray players and games: not Game Night (10 November 2026)
+
+**What Pops saw.** BurnPad, a test iPad on **its own Apple ID**, which had only ever played Game Night
+against Pops, showed Sherida, Smelly and Mochi-queen as archived players (`source=gameNight`) and
+several games it was never in, among them a four-player game of 14 August 2026 (Mochi-queen, Smelly,
+Sherida, Wayne).
+
+**What it was: CloudKit's two environments.** Xcode builds sync with the **Development** database;
+TestFlight and App Store builds with **Production**. Both use the device's one local store.
+- Pops deleted the three players (and with them their games) on an **Xcode** build: the deletes
+  reached Development only.
+- He then installed **1.3.0 from TestFlight**. Its first launch synced from **Production**, which still
+  held them, and they came back, players and games. A Game Night with Pops's phone happened to be that
+  first launch.
+- **The test that settled it** (Pops, 10 November 2026): deleted again **on the TestFlight build**,
+  relaunched, then ran a Game Night between BurnPad and Pops's phone. **They did not return.** Game
+  Night brought nothing.
+
+**Game Night cleared, from the code too.** With only Wayne and BurnTest seated, neither path can add
+other players: the roster upsert (`upsertGameNightPlayerModels`) takes the match's and the seats'
+players only, and history sync (§4.5) offers only matches whose people are all seated and keeps only
+those whose people the device already knows. `deletePlayerAndMatches` leaves nothing behind to heal
+from: every row of the player, every copy of their matches with all participants, and their stray
+participants.
+
+**Not explained, and not traced further:** how those records first reached BurnPad's Production data.
+Most likely an earlier App Store or TestFlight build, possibly before history sync's table and roster
+tests moved into SyLib (`GNHistoryStore`, 10 October 2026; SyFive adopted it 17 October). Those records
+are gone, so there is nothing left to trace.
+
+**Noted, not tasked:**
+- **Clean up on the build you play.** A delete reaches only the environment of the build that makes it;
+  delete on the TestFlight or App Store build to clear what players see.
+- **A spectator keeps a live Game Night game it watched.** `onMatchComplete` stores the finished match
+  on every device in the session, seated or not, with no roster check (the heal later adds any missing
+  players as archived). By design today and not seen to cause harm. If it ever matters, the choice is
+  for a spectator to keep it (B, Claude's lean) or not (A), and for history sync to send a device only
+  matches its own player is in. Both would be SyLib changes, reaching Syderal too.
+
 ---
 
 ## 5. Open for Pops
@@ -162,6 +201,7 @@ while any device can sync a pre-rename record.
 
 | Version | Date | Change |
 |---|---|---|
+| 1.5 | 10 Nov 2026 | §4.6: BurnPad's stray players and games were CloudKit's Development and Production environments, not Game Night; tested by Pops; the spectator note |
 | 1.4 | 9 Nov 2026 | `LegacyRematchRepair` is being retired (`34` §2.8); §4.4 and §5's strategy 4 item are moot |
 | 1.3 | 9 Nov 2026 | §4.4, strategy 1's keeper (fixed by `34` 34.9); §4.5, the Game Night history sync review |
 | 1.2 | 9 Nov 2026 | §5: the 30 October game was a Game Night game; its likely cause and fix are `34` §2.7 |
