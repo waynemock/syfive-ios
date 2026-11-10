@@ -145,7 +145,7 @@ isn't ours to tune.
 - **VoiceOver** reads each chip by its title only: the icon is `.accessibilityHidden(true)`, so "New
   Player" and "Same as Last Time" read as they did.
 - **Score It \*** gets this by adopting (§4). Its own `AddPlayerSheet` has the same `Label` chip,
-  outside 38; noted for its session.
+  outside 38, but in a `ScrollView`, so without the gap; noted for its session.
 
 **2.10 `SelectableChip` draws an icon and title itself** (D-208; Pops, 9 November 2026; follows
 §2.9). 38.10 fixed the gap with a private helper in `PlayerPicker`, but every chip with an icon builds
@@ -415,9 +415,9 @@ Same as Last Time becomes `PlayerPicker`'s `onSameAsLastTime:`, and "Same Teams 
 same solid chip (`SelectableChip(…, emphasized: true)` with the repeat arrow) first in its own
 `SetupTeamsSection` (§2.7). No behavior change,
 except §2.5's and §2.6's: no edit mode; seats swipe to Remove and show a drawn handle, reordering by
-long-press; the Seats footer says so. Also in that session, outside 38: its `AddPlayerSheet`'s New
-Player chip has §2.9's wide gap: use `SelectableChip(_:systemImage:…)` (§2.10), as also for
-`GameEditorSheet`'s icon chips.
+long-press; the Seats footer says so. Also in that session, outside 38: `GameEditorSheet`'s icon chips sit in a `Form` and likely
+have §2.9's wide gap: use `SelectableChip(_:systemImage:…)` (§2.10). `AddPlayerSheet`'s New Player
+chip is in a `ScrollView`, so no gap; moving it is for consistency (Score It \* `29` §4.3).
 
 ---
 
