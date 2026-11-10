@@ -98,21 +98,26 @@ struct MatchDetailView: View {
             Text("Final Scores")
                 .font(.headline)
                 .foregroundStyle(winnerColor)
-            ForEach(sortedParticipants) { participant in
-                let color = playerColors[participant.id] ?? .primary
-                HStack {
-                    Text(participant.rank.ordinal)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 32, alignment: .leading)
-                    Text(participant.displayName)
-                        .font(.subheadline)
-                        .foregroundStyle(color)
-                    Spacer()
-                    Text(Int(truncating: participant.finalScore as NSDecimalNumber),
-                         format: .number)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(color)
+            // 39 §2.9: a grid, so the place column is as wide as its widest entry at any text
+            // size and never wraps, and the names line up.
+            Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 12) {
+                ForEach(sortedParticipants) { participant in
+                    let color = playerColors[participant.id] ?? .primary
+                    GridRow {
+                        Text(participant.rank.ordinal)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        Text(participant.displayName)
+                            .font(.subheadline)
+                            .foregroundStyle(color)
+                        Text(Int(truncating: participant.finalScore as NSDecimalNumber),
+                             format: .number)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(color)
+                            .gridColumnAlignment(.trailing)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
                 }
             }
         }
