@@ -1,7 +1,8 @@
 # SyFive: a privacy manifest, as Syderal and Score It \*
 
-**Status:** **35.1 done and checked, 8 November 2026; open for V1** (Pops, at the next archive). The
-ledger row is filed when V1 passes. Version 1.0, 8 November 2026.
+**Status:** **35.1 done and checked, 8 November 2026. V1's archive half passes, 10 November 2026; its
+upload half is open** (no ITMS-91053 email after the next App Store Connect upload). The ledger row is
+filed when it passes. Version 1.1, 10 November 2026.
 
 **Scope:** `syfive-ios`. One new file in the app's folder. SyLib is read, not changed.
 
@@ -90,12 +91,13 @@ own container).
 
 | # | Check | Pass |
 |---|---|---|
-| V1 | Archive SyFive; in the Organizer, the archive's ⋯ › Generate Privacy Report | The report lists SyFive's UserDefaults (CA92.1) and System Boot Time (35F9.1), and no tracking; the next upload to App Store Connect brings no missing-API-declaration email |
+| V1 | Archive SyFive. Check the archived `SyFive.app` holds `PrivacyInfo.xcprivacy`; then upload that archive to App Store Connect | The archived app's manifest lists UserDefaults (CA92.1) and System Boot Time (35F9.1), no tracking, no collected data; the upload brings no ITMS-91053 "Missing API declaration" email. *Not* the Organizer's Privacy Report: it shows only collected data and tracking, like the App Store's privacy label, never required-reason APIs, so SyFive's comes out blank (v1.1) |
 
 ## 5. Results log
 
 | Task / V | Date | Result | Totals | Notes |
 |---|---|---|---|---|
+| V1 (archive half) | 10 Nov 2026 | **pass**; the upload half is open | — | Archive `SyFive 11-10-26, 7.02 AM`: `SyFive.app/PrivacyInfo.xcprivacy` is present and reads UserDefaults (CA92.1), System Boot Time (35F9.1), no tracking, no tracking domains, no collected data (checked by Claude in the archive). The Organizer's Privacy Report came out blank, as it should: it lists collected data and tracking only, and SyFive has neither. V1's wording corrected (v1.1). Syderal's report of 9 Oct was blank for another reason: its manifest was added 10 Oct |
 | 35.1 | 8 Nov 2026 | complete (the agent); **checked by Claude against the tree**: the file matches §3 byte for byte, `project.pbxproj` untouched, nothing else changed. The staging was Xcode's, not a concern. V1 waits for Pops's next archive | Before: `** TEST SUCCEEDED **`, 23 test cases passed, 0 failed. After: `** TEST SUCCEEDED **`, 23 passed, 0 failed, identical case list (xcodebuild prints no summary total; counted from the run's `Test case … passed` lines). Destination `platform=iOS Simulator,name=iPhone SE (3rd generation),OS=18.6` | **Files:** new `SyFive/PrivacyInfo.xcprivacy` (816 bytes, extracted from §3's XML block by script, `plutil -lint` OK); this row. `project.pbxproj` untouched. **Build:** `BuildProject` passed before and after, 0 warnings both times; no fixes needed. **Bundle:** `~/Library/Developer/Xcode/DerivedData/SyFive-ashdkjxedghcihbnensovofiuvrf/Build/Products/Debug-iphonesimulator/SyFive.app/PrivacyInfo.xcprivacy` exists at the top level, byte-identical to the source. **Git (read-only):** `git status`, `git branch --list`, `git status --short`, `git diff --stat`. **Report:** after the file was created, `git status` showed it staged (`A`), and 34's unstaged edit was staged too; this session ran no git write (Xcode's auto-add, or Pops?). Left as found. Staged 33–35 at start were taken as Pops's docs. V1 is Pops's |
 
 ## 6. Ledger row (Claude files it when 35 closes)
@@ -108,4 +110,5 @@ own container).
 
 | Version | Date | Change |
 |---|---|---|
+| 1.1 | 10 Nov 2026 | V1 corrected: the Privacy Report shows no required-reason APIs; check the archived manifest and the upload instead. Its archive half passes |
 | 1.0 | 8 Nov 2026 | First version, from Score It \* `27`'s comparison of the apps |
