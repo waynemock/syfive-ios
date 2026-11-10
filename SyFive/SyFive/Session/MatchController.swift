@@ -219,6 +219,26 @@ final class MatchController {
         participantIDs.append(UUID())
     }
 
+    /// Seats exactly `players`, in order: New Game's Start (38 §2.3). Before the game starts only
+    /// (`canEditPlayers`). No change when the seats already hold those ids in that order; otherwise
+    /// every seat is cleared and each player seated as `addPlayer(from:)` seats one.
+    func setPlayers(_ players: [Player]) {
+        guard canEditPlayers else { return }
+        guard playerIDs != players.map({ Optional($0.id) }) else { return }
+        clearUndoState()
+        playerScores = []
+        playerScoreTimestamps = []
+        playerYatzyBonuses = []
+        playerThemes = []
+        playerDisplayNames = []
+        playerDisplayInitials = []
+        playerIDs = []
+        slotIDs = []
+        participantIDs = []
+        currentPlayerIndex = 0
+        for player in players { addPlayer(from: player) }
+    }
+
     // Adds an anonymous player (no roster record) — used for solo/default play.
     func addPlayer() {
         guard canEditPlayers else { return }

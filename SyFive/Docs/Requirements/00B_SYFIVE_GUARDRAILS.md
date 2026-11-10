@@ -1,7 +1,7 @@
 # SyFive — Project Guard Rails
 
 **Project-level. SyFive only.** Companion to `00A_STUDIO_CONVENTIONS.md`.
-Version 1.4 · 9 November 2026 · Ships in every agent prompt, alongside `00A`, `00_DECISION_LEDGER.md`
+Version 1.5 · 9 November 2026 · Ships in every agent prompt, alongside `00A`, `00_DECISION_LEDGER.md`
 and the task's own documents.
 
 ---
@@ -98,6 +98,15 @@ In addition to `00A`. These apply to every task, in perpetuity.
   default actor isolation.
 - **Unit tests use Swift Testing** (`@Test`, `#expect`). UI tests stay on XCTest, which UI testing
   requires. Never both in one target.
+- **Write previews; never render them.** A task's `#Preview` blocks are written for Pops to look at
+  in Xcode's canvas. The agent never renders, refreshes or inspects a preview, nor checks a layout or
+  a behavior "by preview": rendering hangs Xcode and its readings are unreliable. Where a task seems
+  to need a visual check, the agent writes the preview, names it in its report, and leaves the check
+  to Pops. (As Score It \*'s `00B` §3, Pops, 4 Nov 2026; adopted for SyFive 9 Nov 2026.)
+- **No simulator or device sessions** unless Pops asks for one in that message: no launching the app
+  to look at a screen, tap through a flow or take screenshots. Visual and on-device checks are Pops's
+  (a task's V rows). Running the test suite on the pinned simulator (§5) is not such a session. (As
+  Score It \*'s `00B` 1.3.) **A task that says otherwise is wrong:** report it rather than follow it.
 - How code is written (one view per file, previews, theming, enums over strings, `AppLogger` and
   never `print()`) is in `ENGINEERING_GUIDELINES.md`, and is not repeated here.
 
@@ -272,6 +281,7 @@ D-001 replaces its row. D-142 and D-143 are new, under Governance.
 
 | Version | Decision | Rationale |
 |---|---|---|
+| 1.5 | §3: previews are written, never rendered or used as a check; no simulator or device sessions unless Pops asks in that message | The agent kept rendering previews (Pops, 9 Nov 2026), and a SyFive task even asked for a simulator check (`38` 38.3 v1.1). Score It \*'s `00B` has had both rules since 2 and 4 Nov 2026 |
 | 1.4 | E-1 is retired: SyFive's design documents are rewritten in place under `00A` §1 (D-001 rewritten, D-148 no longer an exception) | The SyLib-series docs were already versioned in place, so E-1 no longer matched practice (`34` 34.4). Earlier docs keep their Supersessions blocks. Pops, 9 Nov 2026 |
 | 1.3 | §5's totals come from the `.xcresult` bundle (`xcresulttool`), reported as tests and runs | Twice in `34` (34.1, 34.3) counting `passed` lines in xcodebuild's output missed a run, because parallel output split a line. The bundle is exact. Pops, 9 Nov 2026 |
 | 1.2 | §2's dice stop condition names `builtIn` and the history (D-149), with no figures | v1.1 quoted p = 0.217 over 10,000 rolls, from an earlier pre-SyLib run. The shipped certification is July 2026's run (p 0.602 over the last 2,161 rolls of a 10,000-roll batch), and `23` replaces it. Figures in this file would go stale with every run |

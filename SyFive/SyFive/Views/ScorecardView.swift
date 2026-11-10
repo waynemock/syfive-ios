@@ -31,7 +31,7 @@ struct ScorecardView: View {
             }
         }
         .sheet(isPresented: $showsPlayerPicker) {
-            PlayerPickerSheet(model: model)
+            NewGameSheet(model: model)
                 .environment(\.syTheme, theme)
                 .sheetTextSizeCeiling()
         }
