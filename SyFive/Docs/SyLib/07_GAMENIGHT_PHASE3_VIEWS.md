@@ -26,7 +26,7 @@ as movable with injection. Reading the file properly after Phase 2, it is a
 
 That is app policy composing generic pieces. Moving it wholesale with slots would
 mean pushing five or six callbacks and two `@ViewBuilder`s through the boundary
-just to preserve behaviour — a redesign, not a move.
+just to preserve behavior — a redesign, not a move.
 
 **So Phase 3 splits in two.** 3a is a genuine move of the parts that are already
 generic. 3b extracts a `GameNightTableView` from `TableSettingView`, the way
@@ -94,7 +94,7 @@ public struct SeatRosterEntry: Identifiable, Sendable {
 
 ~600 lines. No new abstractions beyond `SeatRosterEntry`.
 
-## ⚠️ No visual or behavioural changes
+## ⚠️ No visual or behavioral changes
 
 Pixel-identical output. Do not restyle, relayout, or reword. The help sheet's
 copy in particular is the accumulated answer to "why can't my friend join" —
@@ -103,7 +103,7 @@ change nothing except the `appName` substitutions.
 ## 3a.1 `InitialsCircle`
 
 Currently defined at `TableSettingView.swift:300`. It resolves
-`Theme.ThemeType(rawValue: themeID)` to a colour — rendering is generic,
+`Theme.ThemeType(rawValue: themeID)` to a color — rendering is generic,
 resolution is not.
 
 Move it to its own file, taking a `Color` directly:
@@ -115,7 +115,7 @@ public struct InitialsCircle: View {
 ```
 
 Keep the `@ScaledMetric` sizes (32 / 11) exactly. Both remaining call sites in
-`TableSettingView` resolve the colour app-side and pass it in.
+`TableSettingView` resolve the color app-side and pass it in.
 
 ## 3a.2 `GameNightHelpSheet` (255)
 
@@ -289,7 +289,7 @@ should own the "End Game Night for Everyone?" confirmation or just expose
 - [ ] Previews rewritten without `ModelContainer`.
 - [ ] `GameNightScreens.swift` created in SyFive.
 - [ ] `TableSettingView` still in SyFive, working, using the moved
-      `InitialsCircle` with an app-resolved colour.
+      `InitialsCircle` with an app-resolved color.
 - [ ] Inventory 4.1–4.4 verified on two devices, plus the new-player path.
 - [ ] Report: the `onCreatePlayer` shape you settled on, each `Theme(...)` site
       converted, and anything that resisted injection.

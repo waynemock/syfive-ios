@@ -22,13 +22,13 @@ SyLibDice, so it only has to build (`00B` §5.4).
 `00B_SYFIVE_GUARDRAILS.md` (v1.2), this document. For §4.3, Pops attaches the iOS 27 run files from
 11 and 12 October. Pops places them himself before §4.3 (§3).
 
-**Authorisation:** `00B` §2 makes any change to dice physics, `DiceRoller.Config` or the fairness
-certification a stop condition. This document authorises:
+**Authorization:** `00B` §2 makes any change to dice physics, `DiceRoller.Config` or the fairness
+certification a stop condition. This document authorizes:
 - §4.1: a change to how the harness records a run;
 - §4.2 and §4.4: additions to the harness;
 - §4.3: new history files.
 
-It authorises nothing else. `DiceRoller.Config`, the physics and `FairnessCertification.builtIn`
+It authorizes nothing else. `DiceRoller.Config`, the physics and `FairnessCertification.builtIn`
 stay untouched.
 
 ---
@@ -85,7 +85,7 @@ Same device, so the OS is the only thing that changed. These findings cover the 
   Distinct faces per roll match theory in both runs.
 - **Rolls settle faster on iOS 27:** a mean of 0.907 s against 0.938 s (KS D 0.085).
 - **Unchanged:** stuck rerolls (z 1.0), clean-die alignment, where dice land, and the per-die stuck
-  pattern (die 2, the centre slot, is lowest in both).
+  pattern (die 2, the center slot, is lowest in both).
 - **Rescued dice lean toward 1 in both runs**, about 19–21% ones in every rescue kind, from 760
   pooled dice (z ≈ 2.4). It's weak, and full runs should settle it.
 
@@ -294,7 +294,7 @@ whether the app's tuning was certified when the batch started.
 - In `startBatch(count:)`, set it from `config.isCertifiedTuning` **before** `config = .batch`.
   Nothing clears it.
 
-This adds one stored property to the roller. It's authorised here and changes no physics.
+This adds one stored property to the roller. It's authorized here and changes no physics.
 
 **3. The report header.** New type, in `Analytics/DiceReportGenerator.swift`:
 
@@ -567,7 +567,7 @@ current) and a last column for the test result:
 5. **Rescues and stuck dice:** rescued and stuck totals with two-proportion z; rescue kinds; rescued,
    stacked and stuck counts per die.
 6. **Settling:** clean dice (neither rescued nor stuck) with `finalAlign` below 0.999, 0.99 and 0.95.
-7. **Where dice land:** mean |x| and |z|, dice beyond 0.10 from centre on either axis, and a chi² of
+7. **Where dice land:** mean |x| and |z|, dice beyond 0.10 from center on either axis, and a chi² of
    face against landing quadrant (sign of x and z; 15 df) for each run.
 8. **Rescued faces:** for each run and both pooled, face counts per rescue kind (floor, wall,
    stacked) and for stuck dice, with the share of ones. Give a chi² against even faces for each pooled

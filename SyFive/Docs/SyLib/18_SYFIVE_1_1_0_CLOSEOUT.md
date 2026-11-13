@@ -21,7 +21,7 @@ exceptions below.
 |---|---|---|
 | `17` §4.6 step 2: "In the existing `.task`, after `director.warmUp()`: `await commentaryVoices.refresh()`" | The voice scan runs in a `.task` of its own (§4.1) | Spec error, found in review. Behind the App Store check, which can wait up to 8 s, the scan delays the saved voice. Until the scan lands, `voiceInUse` is nil and the engine speaks in the system voice |
 | `17` §2.10, §4.9 step 4, the §8 invariant ("never covers the roll controls"), and A11 ("the status row keeps its own text") | The toast hangs from the Roll button and draws over the status row, including the stuck-dice warning and the proxy controls, for its two seconds | Pops's direction, 10 October 2026, already in D-141. Confirmed acceptable by Pops, 11 October 2026 |
-| `17` §10, "Open findings closed: traps on repeated ids" | **Partly closed.** `hydrate` now keeps duplicate participant rows, which then reach five dictionary initialisers that still trap. §4.2 closes the rest | Found in review |
+| `17` §10, "Open findings closed: traps on repeated ids" | **Partly closed.** `hydrate` now keeps duplicate participant rows, which then reach five dictionary initializers that still trap. §4.2 closes the rest | Found in review |
 | `17` §11.4, "Suggested next steps (Pops's call)" | **Devices first, no code** (D-144). 1.1.0 is not held for it | Pops, 11 October 2026 |
 | `16` §2.1 and `00B` §2: SyLib changes "keep every default" | Applies to `Toast`'s `.overBottom` default, which drifted slightly. §4.3 restores it | Found in review |
 
@@ -213,7 +213,7 @@ changed.
 | D-GNP-024 | Ranging begins at seat claiming when `commentaryEnabled` is true (extends D-GNP-010). *(reconstructed from code, 11 Oct 2026)* | `GameNightProximity.swift` 153 |
 | D-GNP-025 | `begin` needs a non-nil `localSharePlayID`; a caller without one defers. It is called from three places (session activation, the first `tableState`, seat claiming), so the first moment the id exists wins. It is idempotent once begun. *(reconstructed from code, 11 Oct 2026)* | `GameNightProximity.swift` 155; `GameNightController.swift` 49, 194, 239 |
 | D-GNP-026 | *Not known.* No code or doc in either tree cites this ID. | — |
-| D-GNP-027 | Presence is re-announced every 3 s until the resolution window opens. Directed tokens retry per peer, and each peer's retry is cancelled once a reading from it arrives. *(reconstructed from code, 11 Oct 2026)* | `GameNightProximity.swift` 104-106 |
+| D-GNP-027 | Presence is re-announced every 3 s until the resolution window opens. Directed tokens retry per peer, and each peer's retry is canceled once a reading from it arrives. *(reconstructed from code, 11 Oct 2026)* | `GameNightProximity.swift` 104-106 |
 | D-GNP-028 | A non-UWB device announces that it cannot range (`ProximityTokenPayload.supportsRanging == false`), and the host leaves it out of `expectedPairs` so the remaining pairs can still resolve early. The field defaults to `true` for older builds. *(reconstructed from code, 11 Oct 2026)* | `GameNightPayloads.swift` 141-155; `GameNightProximity.swift` 88, 111; `GameNightSession.swift` 118 |
 | D-GNP-029 | *Not known.* No code or doc in either tree cites this ID. | — |
 | D-GNP-030 | The proximity callbacks are wired once for the controller's lifetime and never cleared at teardown. Clearing them left every session after the first sending nothing ("nine presence announcements, zero transmissions"). *(reconstructed from code, 11 Oct 2026)* | `GameNightController.swift` 510; `GameNightProximity.swift` 179 |
@@ -242,7 +242,7 @@ code found no path that makes both fail while scores show. These were ruled out:
 is probably as old as 1.0. This task adds logging so that the next occurrence says which of two
 things happened: the gate read false, or `ContentView` stopped reacting to score changes.
 
-**Behaviour must not change.** Every edit below only adds log lines, or replaces `try?` with an
+**Behavior must not change.** Every edit below only adds log lines, or replaces `try?` with an
 equivalent `do`/`catch` that logs. Use `ContentView`'s existing `logger` (category
 `"ContentView"`). Every line below is `.info` or above, so it shows in Console on a TestFlight or
 App Store build.
@@ -329,7 +329,7 @@ None. `17` §11's RealityKit question is decided for 1.1.0 by D-144.
 ## 8. Invariants quick reference
 
 - Nothing at launch that speaks waits on the network. (§2.1)
-- Diagnostic logging never changes behaviour. (§4.6)
+- Diagnostic logging never changes behavior. (§4.6)
 - No `uniqueKeysWithValues` over participant ids. (§2.2)
 - A SyLib default is byte-for-byte unchanged by an additive parameter. (§2.3)
 - No SyLib dice edit without a named task. (D-144, `00B` §2)

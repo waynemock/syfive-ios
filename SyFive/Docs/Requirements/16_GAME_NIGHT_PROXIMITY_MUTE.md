@@ -36,7 +36,7 @@ smeared. It reads as an echo or a stutter, not as ambience.
 Dice audio is deliberately unaffected. Every device continues to play its own roll
 sounds; only spoken commentary is suppressed.
 
-This spec adds a per-device commentary mute, initialised automatically by UWB proximity
+This spec adds a per-device commentary mute, initialized automatically by UWB proximity
 ranging, overridable by one tap, and scoped to a single match.
 
 ---
@@ -167,7 +167,7 @@ proximity verdict for that device is discarded, and that device's `NISession`s a
 invalidated immediately.
 
 *Rationale:* the automatic guess exists to save a tap. Once the tap happens, the guess
-has nothing left to contribute. Cancelling also frees the radio early in the common case.
+has nothing left to contribute. Canceling also frees the radio early in the common case.
 
 ### D-GNP-009 — Session-scoped, no persistence
 
@@ -500,7 +500,7 @@ genuinely needs a third.
 | 1 | Host + guest, same room | Guest stays muted; host speaks; dice audio on both |
 | 2 | Host + guest, out of range | Guest unmutes within the window; both speak |
 | 3 | Guest carried out of range mid-match | Guest stays muted (one-shot, D-GNP-006) |
-| 4 | Guest taps mute before verdict arrives | Tap wins; verdict discarded; ranging cancelled |
+| 4 | Guest taps mute before verdict arrives | Tap wins; verdict discarded; ranging canceled |
 | 5 | Host taps mute | Host silent; **guests still speak** (validates §4.1) |
 | 6 | Commentary off at the table | No button anywhere; **no permission prompt**; no ranging |
 | 7 | Host enables commentary mid-match | Button appears; no verdict; all devices speak; manual fixes |

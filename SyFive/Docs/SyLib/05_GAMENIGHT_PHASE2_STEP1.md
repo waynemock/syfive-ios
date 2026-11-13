@@ -128,7 +128,7 @@ var onAppMessage: ((String, GameNightEnvelope, UUID) -> Void)?
 ```
 
 SyFive's controller does `GameNightMessageKind(rawValue: kind)` and drops what it
-doesn't recognise.
+doesn't recognize.
 
 ⚠️ **Inventory 5.2 changes code path but not behavior.** Unknown kinds were
 dropped by the session; now they are dropped by the app. The observable result is

@@ -142,7 +142,7 @@ One task per session, reported in `00A` §6's form.
 **Tests:** in `Tests/SyLibTests/SyLibGameNight/GameNightLogSheetTests.swift`, or a new
 `GameNightLogBufferTests.swift` beside it:
 - With no `categories`, a line under `"GameNightController"` is written and a line under
-  `"GameNightSession"` is not. This is the old behaviour.
+  `"GameNightSession"` is not. This is the old behavior.
 - With `defaultCategories.union(packageCategories)`, both are written.
 - With a set that leaves out `"ContentView"`, a `"ContentView"` line is not written.
 
@@ -278,7 +278,7 @@ block (lines 514-519) so that it names this hook too:
 No other hook in that list changes in this task. They are re-wired in three places: ContentView's
 `sessionActivationCount` handler wires the match-layer hooks (`Views/ContentView.swift` 317-402);
 `syncCommentaryEngine()` wires `onCommentaryReceived` (`ContentView+Commentary.swift` 84 and 100);
-and `DiceAreaView.wireGameNightHooks()` wires the four roll-theatre hooks (`DiceAreaView.swift`
+and `DiceAreaView.wireGameNightHooks()` wires the four roll-theater hooks (`DiceAreaView.swift`
 89-91 and 251-291). The last of these is keyed on `isSessionActive`, which has a gap of its own: see
 §11.
 
@@ -339,8 +339,8 @@ after one, stops the next line from being spoken.
    `"winnerTie"`, with the twenty lines §5 gives for that pack, verbatim. **Run this step only
    once §10 records Pops's approval of §5.**
 5. **The test.** Add `SyFiveTests/Commentary/CommentaryPackTests.swift`, marked `@MainActor`.
-   **This task authorises creating the folder `SyFiveTests/Commentary/`** (`00A` §10), beside the
-   existing `SyFiveTests/Feel/`. No other new folder is authorised.
+   **This task authorizes creating the folder `SyFiveTests/Commentary/`** (`00A` §10), beside the
+   existing `SyFiveTests/Feel/`. No other new folder is authorized.
    the packs and `allCases` are main-actor isolated under the app target's default isolation.
    - Every pack in `CommentaryPersonality.all` has at least one line for every
      `CommentaryEventKind.allCases`, and at least 20 for `soloFinished` (`09 §13`).
@@ -599,13 +599,13 @@ None, except Pops's approval of the copy in §5 (§2.4).
 These were noticed by reading. Each is left for Pops to rule on; none is to be fixed under this
 document.
 
-- **The roll-theatre hooks are lost when one live session replaces another.**
+- **The roll-theater hooks are lost when one live session replaces another.**
   `performControllerTearDown()` clears `onRollBegan`, `onRollResult`, `onHoldToggled` and
   `onUndoWithDice` (`GameNightController.swift` 520-524). `DiceAreaView` re-wires them only from
   `.onChange(of: gameNight.isSessionActive)` (`DiceAreaView.swift` 89-91). When a new session
   replaces a live one, `isSessionActive` goes true, false, true in one render pass, so that
   `onChange` does not fire. `ContentView.swift` 284-286 already notes this and keys its own
-  handler on `sessionActivationCount` for that reason. Spectators would then see no roll theatre
+  handler on `sessionActivationCount` for that reason. Spectators would then see no roll theater
   for the rest of that session. This is the same kind of fault as §4.4. The likely cure is to key
   `DiceAreaView`'s re-wire on `gameNight.session.sessionActivationCount`, as ContentView does. Not
   seen on a device.

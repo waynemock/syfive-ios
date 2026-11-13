@@ -127,7 +127,7 @@ else.
    fresh; otherwise it awaits the in-flight lookup if there is one, or starts one, stores it, and
    clears it when it finishes. The cache is written once per lookup, as now. Public API unchanged.
 
-3. **`AppUpdateState`: a test seam for the lookup.** Add an `internal` initialiser
+3. **`AppUpdateState`: a test seam for the lookup.** Add an `internal` initializer
    `init(userDefaults: UserDefaults = .standard, lookup: @escaping @Sendable () async -> (available: Bool, storeVersion: String?))`.
    The public `init(userDefaults:)` calls it with `{ await AppUpdateChecker.shared.updateStatus() }`.
    `check()` calls `lookup()` and then `apply(available:storeVersion:)`, as it does now with the
@@ -138,7 +138,7 @@ else.
      `check()`.
    - An `internal func appBecameActive() async`: when the flag is set, call `check()`; otherwise
      do nothing.
-   - In the initialiser, start observing the platform notification in §2.5 and call
+   - In the initializer, start observing the platform notification in §2.5 and call
      `appBecameActive()` on the main actor when it arrives. The observation holds the instance
      weakly and ends when the instance is deallocated. Guard the platforms with `#if os(…)`;
      watchOS compiles without it.
@@ -175,7 +175,7 @@ else.
 - Syderal builds against the changed SyLib and its suite passes, with no source edit (`00B` §5.4).
 - `swift build` is not used as evidence; the watchOS path is checked by reading, not building.
 
-**Do not:** change `AppUpdateState`'s public API or D-139's acknowledgement rules; open or edit any
+**Do not:** change `AppUpdateState`'s public API or D-139's acknowledgment rules; open or edit any
 app's repository other than building Syderal; add a public interval setting.
 
 ### 4.2 SyFive: build against the new SyLib and confirm
@@ -209,7 +209,7 @@ else.
 3. **A test seam for the lookup.** Add an `internal init(lookup: @escaping @Sendable () async -> (Bool, String?))`
    that `updateStatus()` calls in place of `performUpdateCheck()`. `shared` stays
    `AppUpdateChecker()`, whose lookup is `performUpdateCheck()`; there is still no public
-   initialiser. Keep the change as small as the actor allows (for example, a stored closure that
+   initializer. Keep the change as small as the actor allows (for example, a stored closure that
    the private `init()` sets to the network lookup).
 
 4. **Tests**, in `AppUpdateCheckerTests`, through item 3 with a fake that counts its calls (no
@@ -295,4 +295,4 @@ New row, under **Platform & data**, after D-139.
 
 **Review note (Claude, 28 Oct 2026).** §2.2 earns its place beyond previews and tests: SwiftUI evaluates `@State var updateState = AppUpdateState()` on every `ContentView` init and discards all but the first, and each discarded instance now registers an observer. They never call `check()`, so they never make a request, and their observers are removed when they are released.
 
-**Close-out review, 28 October 2026 (Claude, at source: SyLib and SyFive on `fg-update`, uncommitted).** §4.3 matches items 1–5. `minimumCheckInterval` is 900. `updateStatus()` caches only when the lookup's `storeVersion` is non-nil and clears `inFlightLookup` either way. The internal `init(lookup:)` is the only new initialiser: `shared` still uses the private `init()`, and the public API is unchanged. `performUpdateCheck()` became `private static`, which is harmless because it reads no instance state. `concurrentCallsShareOneLookup` waits for its second call with a fixed number of yields. If the second call ran late it would hit the cache and pass, so the test could pass wrongly but never fail wrongly. The agent's run with the in-flight branch disabled, which failed every time, shows the test does catch a regression. `APP_STORE.md` has no "hour" left in the `AppUpdateState` or `AppUpdateChecker` sections. D-154 in the ledger matches §7 v1.1. `IMPLEMENTATION_STATUS.md` is unchanged (§8). **Ship order:** merge SyLib `fg-update` before archiving SyFive. A running app gets the foreground check only from the first build that includes it, so U4 is the release after that build. This document is **Closed**.
+**Close-out review, 28 October 2026 (Claude, at source: SyLib and SyFive on `fg-update`, uncommitted).** §4.3 matches items 1–5. `minimumCheckInterval` is 900. `updateStatus()` caches only when the lookup's `storeVersion` is non-nil and clears `inFlightLookup` either way. The internal `init(lookup:)` is the only new initializer: `shared` still uses the private `init()`, and the public API is unchanged. `performUpdateCheck()` became `private static`, which is harmless because it reads no instance state. `concurrentCallsShareOneLookup` waits for its second call with a fixed number of yields. If the second call ran late it would hit the cache and pass, so the test could pass wrongly but never fail wrongly. The agent's run with the in-flight branch disabled, which failed every time, shows the test does catch a regression. `APP_STORE.md` has no "hour" left in the `AppUpdateState` or `AppUpdateChecker` sections. D-154 in the ledger matches §7 v1.1. `IMPLEMENTATION_STATUS.md` is unchanged (§8). **Ship order:** merge SyLib `fg-update` before archiving SyFive. A running app gets the foreground check only from the first build that includes it, so U4 is the release after that build. This document is **Closed**.

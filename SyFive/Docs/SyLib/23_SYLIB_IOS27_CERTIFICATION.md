@@ -16,8 +16,8 @@ doesn't import SyLibDice, so it only has to build (`00B` §5.4).
 `00B_SYFIVE_GUARDRAILS.md` (v1.2), this document. For §4.2, Pops places the five run files himself
 (§3).
 
-**Authorisation:** `00B` §2 makes any change to the fairness certification a stop condition. This
-document authorises exactly these changes:
+**Authorization:** `00B` §2 makes any change to the fairness certification a stop condition. This
+document authorizes exactly these changes:
 - §4.1: the certification's pass rule and its numbers;
 - §4.2: the history and the top-level fairness files;
 - §4.3: the fairness screens' copy, which Pops approved on 13 Oct 2026.

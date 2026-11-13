@@ -167,7 +167,7 @@ struct Distribution: Sendable { var bins: [Int: Int] }   // e.g. rank -> count, 
 
 Everything the UI charts — score trend over time, placement distribution, per-match
 progression race, category averages — is expressible as one of these. **SyLib never
-imports a charting framework.** This is the exact analogue of the dice engine handing
+imports a charting framework.** This is the exact analog of the dice engine handing
 Layer 1 a bare `[Int]`: the stats engine hands the App bare numbers.
 
 ---

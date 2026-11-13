@@ -67,7 +67,7 @@ transcription than to problem-solving.
 
 The test: if a done-when cannot be checked without looking at a rendered result, the agent cannot 
 do that task. It has no eyes. "Place it so it looks balanced" or "keep it clear of the other elements" 
-asks for a judgement it can only approximate by arithmetic against geometry it must first re-derive from source.
+asks for a judgment it can only approximate by arithmetic against geometry it must first re-derive from source.
 
 Specify exactly where the work is hard; leave free only what is mechanical. The instinct runs backwards, 
 ecause precise data is easy to write down and a loose rule feels generous. That is the worst possible split. 
@@ -78,8 +78,8 @@ values — absolute coordinates, keyframes, explicit tables. Keep the derivation
 the output so the result stays auditable and can be re-solved if the underlying thing moves. Never ask 
 the agent to re-solve it.
 
-Where judgement is unavoidable, make the clause report rather than decide. "Verify X and report what you observe" 
-is completable; "adjust X until it looks right" is not. Where a task could stall on a decision, pre-authorise the 
+Where judgment is unavoidable, make the clause report rather than decide. "Verify X and report what you observe" 
+is completable; "adjust X until it looks right" is not. Where a task could stall on a decision, pre-authorize the 
 fallback by name so the session continues instead of stopping to ask.
 
 Kill a stalled session early; do not retry it. The signature: the agent restates the contents of a file it could read, 
@@ -341,7 +341,7 @@ documents every other task reads.
 - The implementation plan's **stop conditions** keep only rows that name project documents; the
   general rows are replaced by a citation to `00A` §4.
 - The implementation plan's **standing prohibitions** keep only the project-specific ones. In
-  Syderal that is: no SpriteKit in `Model/`, no theme engine or generalised abstraction, no board
+  Syderal that is: no SpriteKit in `Model/`, no theme engine or generalized abstraction, no board
   coordinates outside `BoardGeometry`, no changes to the architecture document's type signatures, no
   turn timers, no `SyLibDice`, and the test framework choice. The rest — never run `git`, never
   change a test to pass, do not refactor unnamed files, do not exceed the task — cite `00A`. (Older projects say "never run `git`"; `00A` §9 now allows read-only git and forbids every write.)
@@ -449,7 +449,7 @@ name the cases. The alternative is discovering the cases one at a time, from the
 | v1.7 | §9 becomes "Version control and shell use" and gains the rule that Python is the scripting language for anything beyond one plain command. Pipelines of `grep`, `sed`, `awk`, `comm` and `tr` are replaced by short `python3` scripts; single plain commands and the agent's file tools are unchanged | Directed by Pops on Syderal Milestone 9: each unfamiliar shell tool needed its own permission, and long pipelines were hard to read before approving. It applies to every session in every project, so it is studio-wide from the start |
 | v1.6 | New §12 "Working from a reference implementation": read the sibling's source before writing spec, sweep its whole API surface, cite rather than assert, extract the loop before adding transport, instrument before diagnosing across a device boundary, prefer one item-driven presenter, and name what a state change means rather than what triggered it | Learned on Syderal Milestone 7: fifteen tasks reconstructed behavior SyFive already had, because the reference was never in front of the session and was never asked for. Every one came back as a parity fix-up. The other six are the same milestone's recurring failure shapes, none of them SharePlay-specific |
 | v1.5 | New §5 "Accessibility scope": the Syzygy MVP bar is Dynamic Type to AX2, no VoiceOver or Reduce Motion certification; verification is a static source audit plus a visual check at the ceiling, not a live playthrough | Learned on Syderal Milestone 6: an AX5 requirement was carried out of a design document into a dozen milestone done-whens without anyone checking the constant that governed it, and it was not a wrong decision but an unexamined one. The bar and the check-the-constant discipline both need to travel to the next project, not be re-derived from scratch |
-| v1.4 | A UI/UX change is a stop condition when the request described a problem, not a fix | Learned on Syderal Milestone 6 Wave C: asked to stop a table-set menu from dimming the sheet behind it, the agent picked a specific replacement (a forced popover) and built it without proposing alternatives. The person has firm UI/UX opinions and is the decision-maker; a described problem is not authorisation to choose the solution |
+| v1.4 | A UI/UX change is a stop condition when the request described a problem, not a fix | Learned on Syderal Milestone 6 Wave C: asked to stop a table-set menu from dimming the sheet behind it, the agent picked a specific replacement (a forced popover) and built it without proposing alternatives. The person has firm UI/UX opinions and is the decision-maker; a described problem is not authorization to choose the solution |
 | v1.3 | Device-interaction tools are invoked by request, not proactively | Learned on Syderal Milestone 6 Wave C: the agent ran repeated on-device verification passes after small UI changes without being asked, spending tool calls the person had not budgeted for and did not want — even though one such pass, earlier in the same session, had caught a real defect. The value of the check does not license making it the default |
 | v1.2 | Task specs are pasted verbatim in milestone records | Learned on Syderal Milestone 6: the agent appended shortened done-whens of its own and reported complete against them, silently deleting requirements from the register. A paraphrase that is shorter than the spec is a scope cut nobody decided to make |
 | v1.1 | A clause verified outside the session names its verifier | Learned on Syderal Milestone 2: three on-device checks were genuinely performed by the person, and the summary recorded them in the session's voice — leaving a claim that could not be corroborated from the record |

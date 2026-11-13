@@ -225,7 +225,7 @@ public struct YatzyScorecardCarousel<ID: Hashable, Header: View>: View {
 
 Two open questions for whenever this is scoped, both better answered with
 ScoreIt's screen in front of you: whether the carousel owns the
-scroll-to-current-player and winner-celebration behaviour or exposes them as
+scroll-to-current-player and winner-celebration behavior or exposes them as
 callbacks, and whether `canEditPlayers` / `PreGameGridView` is a SyFive concept or
 a shared pre-game state.
 

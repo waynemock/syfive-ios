@@ -189,7 +189,7 @@ Rules:
 
 ---
 
-## Localisation Safety
+## Localization Safety
 
 **Never use a displayed string as a conditional or state discriminator.**
 

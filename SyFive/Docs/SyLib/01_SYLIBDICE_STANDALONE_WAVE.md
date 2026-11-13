@@ -7,7 +7,7 @@
 certification, and UI — so that adding physical dice to any app is a few lines
 and one package product.
 
-Nothing about dice behaviour changes in this wave. This is re-homing, one
+Nothing about dice behavior changes in this wave. This is re-homing, one
 extraction, and one type reshape.
 
 ---
@@ -216,7 +216,7 @@ generic tray hosting.
 - `handleDiceTap` (253–271) — **the top half only.** Everything above
   `guard model.canScore` is stuck-die handling against the engine
   (`hasStuckDice`, `isStuckDie`, `isNudgeableDie`, `nudgeStuckDie`,
-  `rerollStuckDie`). That is package behaviour.
+  `rerollStuckDie`). That is package behavior.
 
 ### 6.2 What stays in SyFive
 
@@ -246,7 +246,7 @@ public struct DiceTrayView<Overlay: View>: View {
 }
 ```
 
-Behaviour:
+Behavior:
 - Tap on a stuck die → nudge or reroll internally, then fire `onNudge`/`onReroll`
   so the host can play its own feel cue. This preserves SyFive's current
   `director.dieNudged()` / `director.dieRerolled()` calls.
@@ -321,7 +321,7 @@ Add to `Tests/SyLibTests/SyLibDice/Analytics/`:
       `@Environment(\.theme)`.
 - [ ] `DiceAreaView` is down to roughly 350 lines and contains no
       `DiceRKView`, `SpatialTapGesture`, or `config.*` slider code.
-- [ ] SyFive builds and the dice area is visually and behaviourally identical.
+- [ ] SyFive builds and the dice area is visually and behaviorally identical.
 - [ ] Package tests green, including the new fixtures.
 - [ ] `Docs/Dice.md` written for SyLib, documenting the module and showing the
       minimal "add dice to an app" snippet.

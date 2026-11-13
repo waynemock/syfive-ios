@@ -27,7 +27,7 @@ consumer apps, both of which can be recompiled the same afternoon. So the seam
 does not need to be right the first time — it needs to be *close enough that
 Sideral is worth starting*, and then corrected in place when Sideral pushes back.
 
-That reverses the usual guidance. Do not optimise these for source stability:
+That reverses the usual guidance. Do not optimize these for source stability:
 protocol shape, facade width, type names, view signatures, generic-vs-concrete.
 Pick the shape that reads best and change it later.
 
@@ -250,7 +250,7 @@ A protocol refined against one caller is a guess with better formatting.
 Extend `GameNight-Behavior-Inventory.md` with the match-layer entries. Section 7
 covers rematch, late-join, history sync, and host-ends-mid-match, but there is
 nothing for participant resolution across reconnect, proxy mode's completion
-path, or undo across devices. Those are about to become package behaviour and
+path, or undo across devices. Those are about to become package behavior and
 need to be in the test suite before they move.
 
 This is the one discipline that does **not** relax now that breaking changes are

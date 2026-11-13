@@ -25,7 +25,7 @@ so this document does not repeat it.
 
 ---
 
-## 1. The programme
+## 1. The program
 
 | Phase | Doc | What it does | SyLib edits | Ends with |
 |---|---|---|---|---|
@@ -41,7 +41,7 @@ started under any of these three docs.
 
 ## 2. Locked decisions
 
-**2.1 Phase 1 changes no behaviour on purpose.** The only code edit is the one word in §4.2. The
+**2.1 Phase 1 changes no behavior on purpose.** The only code edit is the one word in §4.2. The
 only other edit is the version number in the project file (§4.4).
 Phase 1 records failures in the re-test pass and does not fix them; each failure has an owner in
 `16` or `17`, or becomes a new finding. *Rationale:* a baseline is only useful if nothing has
@@ -55,7 +55,7 @@ and a surprise from the Xcode 27 compiler is something Pops rules on.
 and SyLib's transport version stays **3**. *Rationale:* a host declines any joiner whose app
 version differs, so raising it would split 1.1.0 from 1.0.3 at the table (`14 §1.4`).
 
-**2.4 SyFive's store and catalogue seed never move into SyLib** (D-129). `SyFiveApp.swift`'s
+**2.4 SyFive's store and catalog seed never move into SyLib** (D-129). `SyFiveApp.swift`'s
 container and `seedYatzyGameIfNeeded()` stay exactly as they are. `makeScoringContainer`,
 `makeInMemoryScoringContainer` and `seedCatalogGame` are not adopted under any phase.
 *Rationale:* `14 §3.12`. The container was matched to Syderal's store, not SyFive's, and the
@@ -246,7 +246,7 @@ its existing row; the others went under the headings shown.
 | ID | Current ruling | Source → chain |
 |---|---|---|
 | D-128 | **1.1.0 brings SyFive onto the post-Syderal SyLib in three phases**: build and baseline (`15`), fixes (`16`), adoptions (`17`). The Syderal-style reshape (a bridge type for `GameNightMatchHost`, import boundaries, `nonisolated` default isolation) is **deferred to a later release, not rejected**. | `15 §1` *(rec.)* |
-| D-129 | **SyFive's store and catalogue seed never move into SyLib.** The container in `SyFiveApp.swift` and `seedYatzyGameIfNeeded()` stay SyFive's. `makeScoringContainer`, `makeInMemoryScoringContainer` and `seedCatalogGame` are never adopted. | `14 §3.12` (Syderal L-17) → `15 §2.4` |
+| D-129 | **SyFive's store and catalog seed never move into SyLib.** The container in `SyFiveApp.swift` and `seedYatzyGameIfNeeded()` stay SyFive's. `makeScoringContainer`, `makeInMemoryScoringContainer` and `seedCatalogGame` are never adopted. | `14 §3.12` (Syderal L-17) → `15 §2.4` |
 | D-131 | **Wire versions frozen for 1.1.0:** `appProtocolVersion` stays 1 and the transport stays 3, so 1.0.3 and 1.1.0 share a table. Raise either only with a doc that plans the split. | `14 §1.4` → `15 §2.3` |
 
 ---

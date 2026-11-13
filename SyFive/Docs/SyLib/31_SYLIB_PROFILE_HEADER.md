@@ -32,7 +32,7 @@ profile, can't be edited from there (Pops, 7 November 2026: "we lost the edit bu
 Score It \*'s profile (`Views/Players/PlayerProfileView.swift`, `score-it-all-ios` at `3c26af0`,
 lines 138–156) opens with a header card: a 44-point `InitialsCircle` in the player's accent, the
 name (title3 semibold, up to two lines), "Archived" under it for an archived player, and a pencil
-`IconButton` labelled "Edit Player", tinted the theme's primary accent. Its parts are already
+`IconButton` labeled "Edit Player", tinted the theme's primary accent. Its parts are already
 SyLib's (`InitialsCircle`, `IconButton`).
 
 ---

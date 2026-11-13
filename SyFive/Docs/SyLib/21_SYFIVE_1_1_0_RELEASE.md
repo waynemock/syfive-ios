@@ -15,7 +15,7 @@ the ledger (§4.3). **No code changes.**
 
 | Overrides | With | Why |
 |---|---|---|
-| `19` §2.2 (two styles, `.link` and `.prominent`) and §4.1's button body | One look in every app: a centred `.accent` `CapsuleButton`, with no style parameter. D-145 is already reworded | Pops's change after `19` §4.2, recorded in `19` §8. Recorded here so `19`'s text is not mistaken for what shipped |
+| `19` §2.2 (two styles, `.link` and `.prominent`) and §4.1's button body | One look in every app: a centered `.accent` `CapsuleButton`, with no style parameter. D-145 is already reworded | Pops's change after `19` §4.2, recorded in `19` §8. Recorded here so `19`'s text is not mistaken for what shipped |
 | `15` Supersessions row 3: on disk, SyLib's docs are `Commentary.md`, `Feel.md` and `Scoring.md` | SyLib's docs are now all upper-case on disk (`COMMENTARY.md`, `FEEL.md`, `SCORING.md`, `LOGGING.md`, and so on), matching SyLib's README | Renamed in SyLib after `18`. Older SyFive docs keep the names they were written with (D-001); on macOS either case opens the file |
 
 ---

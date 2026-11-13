@@ -19,7 +19,7 @@ Three of the five types you asked about should stay exactly as they are:
 These 159 lines are pure app↔package translation and every line earns its place.
 `SeatEditButton` owns `PlayerEditSheet` and the SwiftData fetch precisely so
 `SyLibGameNight` never sees either — it is the `seatTrailing` slot working as
-designed. `SyFiveGameNightTableView` maps theme colours, app name, and version
+designed. `SyFiveGameNightTableView` maps theme colors, app name, and version
 constants into the package view; `SyFiveSeatClaimSheet` maps `PlayerModel` to
 `SeatRosterEntry`.
 

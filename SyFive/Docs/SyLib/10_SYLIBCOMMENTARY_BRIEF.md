@@ -22,7 +22,7 @@ The four packs are SyFive's voice and the reason commentary is fun. **No line
 text changes.** `{player}` stays `{player}`; only the mechanism that substitutes
 it moves.
 
-No behaviour changes: same lines for the same events, same tier interrupts, same
+No behavior changes: same lines for the same events, same tier interrupts, same
 level gating, same voice, same prosody. If something looks wrong, report it.
 
 ---
@@ -52,7 +52,7 @@ Add `"SyLibCommentary"` to the `SyLibTests` target dependencies.
 
 ## 2. Step 1 — move the value types
 
-No generics yet, no behaviour change. Move to `Sources/SyLibCommentary/`:
+No generics yet, no behavior change. Move to `Sources/SyLibCommentary/`:
 
 | Type | From | Notes |
 |---|---|---|
@@ -178,7 +178,7 @@ public final class CommentaryEngine<Kind: CommentaryEventKind>: NSObject, AVSpee
 
 Preserve exactly: the no-repeat shuffle (`remainingIndices` / `lastUsedIndex`),
 the tier-based interrupt in `speak`, `passesLevelGate`, and the
-`speechSynthesizer(_:didFinish:)` handling. These are the behaviour.
+`speechSynthesizer(_:didFinish:)` handling. These are the behavior.
 
 The four packs become `CommentaryPersonality<CommentaryEventKind>` values.
 `CommentaryPersonality.all` and `find(id:)` stay in SyFive with the packs.
@@ -345,7 +345,7 @@ as a pair, so whoever revisits this finds both.
 
 ## 9. The Game Night relay is intentional
 
-Confirmed behaviour, not an accident — document it, do not "fix" it.
+Confirmed behavior, not an accident — document it, do not "fix" it.
 
 The host generates commentary locally and relays the resulting **text** to guests
 via `CommentaryPayload`; guests speak it verbatim through

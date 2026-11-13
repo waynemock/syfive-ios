@@ -138,7 +138,7 @@ four SyFive files, not one.
 | `Views/SyzygyInfo.swift` | 35 | `SyLibUI.AboutView` renders the footer itself |
 | `Views/SafariView.swift` | 12 | `SyLibUI.SyzygyInfo` owns Safari presentation |
 
-Note the behavioural difference: SyFive's `SyzygyInfo` takes an `action` closure
+Note the behavioral difference: SyFive's `SyzygyInfo` takes an `action` closure
 and makes the *host* present Safari (hence `@State isSafariPresented` and the
 `.sheet` in `AboutView`). SyLib's `SyzygyInfo` has `showLink: Bool` and presents
 its own sheet. So the state variable and the sheet modifier disappear too.
@@ -488,7 +488,7 @@ SyFive has `ember`; the palettes genuinely diverge), `Utilities/AppConfig.swift`
 `bonusPoints` type widening happens now (free, no data to migrate) or is deferred
 (§4.1). Doesn't block Waves 1–3.
 
-**Tray colours (Wave 3, item 7).** Palette fields or constants. Recommend
+**Tray colors (Wave 3, item 7).** Palette fields or constants. Recommend
 palette.
 
 ---

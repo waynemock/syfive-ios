@@ -12,7 +12,7 @@ Syderal adopts the component in its own `24_SYLIB_FROM_SYFIVE.md`, not from here
 
 ## Supersessions
 
-None. Nothing in an earlier document governs this button. SyFive's behaviour is unchanged; the
+None. Nothing in an earlier document governs this button. SyFive's behavior is unchanged; the
 code moves.
 
 ---
@@ -50,7 +50,7 @@ In Syderal, How to Play also moves into the menu's last section, beside About (`
 265-270). *Rationale:* the label says what the tap does, which "Got it" alone does not.
 
 **2.4 The copy is fixed in SyLib, and overridable.** It lives in public static constants, which
-the initialiser's parameters default to. A test pins each constant, because it is player-facing
+the initializer's parameters default to. A test pins each constant, because it is player-facing
 text (`00B` §2).
 
 ---
@@ -197,8 +197,8 @@ document. Pops may change either before the task runs.
 
 | Item | Value |
 |---|---|
-| §4.1: SyLib total; Syderal build and total | **Done 11 Oct 2026.**<br>• **New:** `Sources/SyLibUI/Components/HelpDismissButton.swift`, as specified: `Style.link` / `.prominent`, the three public constants, the given initialiser, and the alert with Cancel / Hide. Four previews: link and prominent, each in light and dark.<br>• **Test:** `Tests/SyLibTests/SyLibUI/HelpDismissButtonTests.swift`, `theDefaultWordingIsPinned`. The suite is `@MainActor`, because the View's constants are main-actor isolated.<br>• **Docs:** `UI_COMPONENTS.md` has a `HelpDismissButton` section after `MoreMenu`, with an example of each style and the two adoption lines. `README.md`'s SyLibUI row lists `HelpDismissButton`.<br>• **Results:** SyLib **1132 in 120 suites, passed** (18's 1131 + 1), 0 warnings. Syderal builds with no source edit: **897 / 893 passed / 4 skipped / 0 failed**, 0 warnings. SyFive BuildProject clean |
+| §4.1: SyLib total; Syderal build and total | **Done 11 Oct 2026.**<br>• **New:** `Sources/SyLibUI/Components/HelpDismissButton.swift`, as specified: `Style.link` / `.prominent`, the three public constants, the given initializer, and the alert with Cancel / Hide. Four previews: link and prominent, each in light and dark.<br>• **Test:** `Tests/SyLibTests/SyLibUI/HelpDismissButtonTests.swift`, `theDefaultWordingIsPinned`. The suite is `@MainActor`, because the View's constants are main-actor isolated.<br>• **Docs:** `UI_COMPONENTS.md` has a `HelpDismissButton` section after `MoreMenu`, with an example of each style and the two adoption lines. `README.md`'s SyLibUI row lists `HelpDismissButton`.<br>• **Results:** SyLib **1132 in 120 suites, passed** (18's 1131 + 1), 0 warnings. Syderal builds with no source edit: **897 / 893 passed / 4 skipped / 0 failed**, 0 warnings. SyFive BuildProject clean |
 | §4.2: SyFive suite | **Done 11 Oct 2026.** `HowToPlayView.swift`: `import SyLibUI` added. The button block is now `HelpDismissButton(style: .link, accentColor: theme.primaryAccent) { settings?.helpDismissed = true; dismiss() }.padding(.top, 4)` inside the same `if`. The `.alert("Hide the help button?", …)` modifier and the `showsDismissAlert` state are deleted. Both previews build; BuildProject clean, 0 warnings; **SyFive 19/19** on the pinned destination |
-| **Deliberate change after §4.2 (Pops, 11 Oct 2026)** | **Made on purpose, overriding §2.2 and §4.1's button body.**<br>• `HelpDismissButton` has **no `Style`**: `.link` and `.prominent` are removed, so every app's button looks the same.<br>• It draws a SyLibUI **`CapsuleButton` in the `.accent` style** (tinted outline, tinted `.subheadline` label, size `.regular`), **centred across the available width** (`.frame(maxWidth: .infinity)`).<br>• `accentColor` stays optional and tints the capsule; nil uses the environment's tint.<br>• The initialiser is now `init(_ title:, accentColor:, alertTitle:, alertMessage:, onHide:)`.<br>• The alert, its wording and the three pinned constants are unchanged.<br>• SyFive's call drops `style: .link`. The previews are now Light and Dark.<br>• `UI_COMPONENTS.md` describes the single look, and its Syderal adoption line reads "Syderal `24`" without a style.<br>• **Follow-ups:** D-145 in §7 (not yet in the ledger) still names the two styles and needs rewording when pasted. Syderal's `24` plan may name `.prominent` and should drop it. |
-| H1 | **Pass** (confirmed by Pops on device, 11 Oct 2026). This is the centred `CapsuleButton` look |
-| Ledger | D-145 pasted 11 Oct 2026 under Platform & data, reworded for the single centred `CapsuleButton` look (no styles) |
+| **Deliberate change after §4.2 (Pops, 11 Oct 2026)** | **Made on purpose, overriding §2.2 and §4.1's button body.**<br>• `HelpDismissButton` has **no `Style`**: `.link` and `.prominent` are removed, so every app's button looks the same.<br>• It draws a SyLibUI **`CapsuleButton` in the `.accent` style** (tinted outline, tinted `.subheadline` label, size `.regular`), **centered across the available width** (`.frame(maxWidth: .infinity)`).<br>• `accentColor` stays optional and tints the capsule; nil uses the environment's tint.<br>• The initializer is now `init(_ title:, accentColor:, alertTitle:, alertMessage:, onHide:)`.<br>• The alert, its wording and the three pinned constants are unchanged.<br>• SyFive's call drops `style: .link`. The previews are now Light and Dark.<br>• `UI_COMPONENTS.md` describes the single look, and its Syderal adoption line reads "Syderal `24`" without a style.<br>• **Follow-ups:** D-145 in §7 (not yet in the ledger) still names the two styles and needs rewording when pasted. Syderal's `24` plan may name `.prominent` and should drop it. |
+| H1 | **Pass** (confirmed by Pops on device, 11 Oct 2026). This is the centered `CapsuleButton` look |
+| Ledger | D-145 pasted 11 Oct 2026 under Platform & data, reworded for the single centered `CapsuleButton` look (no styles) |

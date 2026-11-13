@@ -25,7 +25,7 @@ Find each edit by the declaration named; the line number only says where to look
 | D-077: "Full shuffle-bag not required for 1.0" | D-077 amended: shuffle-bag, saved across launches | §4.6. The engine has drawn from a shuffled deck since `SyLibCommentary`; this phase saves the deck between launches. |
 | D-081: "Missing voice falls back to an enhanced locale voice" | D-081 amended: the best installed voice in the device's language, through `CommentaryVoices` | §4.6. The old fallback did not run for a deleted voice (`14 §3.7`). |
 | `14 §3.3`: SyFive passes `{ showsGameNight = true }` as `onReadyToSeat` on a reconnect | An empty `onReadyToSeat` on a reconnect | Decided with Pops (D-136). A resume that fails falls through to the normal seating sheet. |
-| `14 §3.9`: "Recommended: stay on the full initialiser" (the table view) | Unchanged. Not adopted here | Listed so nobody adopts it while in this code. |
+| `14 §3.9`: "Recommended: stay on the full initializer" (the table view) | Unchanged. Not adopted here | Listed so nobody adopts it while in this code. |
 
 ---
 
@@ -38,7 +38,7 @@ UI changes last.
 | § | Adoption | Replaces | Fixes | SyLib doc |
 |---|---|---|---|---|
 | 4.1 | `abandonSessionNotifyingGuests()` | send-then-abandon | The lost `matchAbandoned` (`14 §3.1`) | `GAME_NIGHT_MATCH.md` |
-| 4.2 | Pending host resume | `pendingResumeMatchID/GameID`, the literal 500 ms | A cancelled share sheet mislabels the next session (`14 §3.3`) | `GAME_NIGHT_MATCH.md` |
+| 4.2 | Pending host resume | `pendingResumeMatchID/GameID`, the literal 500 ms | A canceled share sheet mislabels the next session (`14 §3.3`) | `GAME_NIGHT_MATCH.md` |
 | 4.3 | Guest rejoin routing | The router head, the identity restore, the wrapper | Rejoin into a live session leaves the guest unable to roll (`14 §3.2`) | `GAME_NIGHT_MATCH.md` |
 | 4.4 | `GNHistoryStore` | Three history hook bodies | Incomplete matches can be stored; save errors are swallowed (`14 §3.4`) | `GAME_NIGHT_MATCH.md` |
 | 4.5 | `upsertGameNightRoster` | Two roster copies | Two same-named people at one table merge into one (`14 §4.2`) | `SCORING_DATA.md` |
@@ -50,7 +50,7 @@ UI changes last.
 §5 is release preparation, and §6 is the full validation pass.
 
 **Not adopted, so nobody should do it while in this code:** the `GameNightTableView(session:)`
-initialiser (`14 §3.9`); `upsertMatch`, `competitionRanks` and `playerOpponents` (`14 §3.6`);
+initializer (`14 §3.9`); `upsertMatch`, `competitionRanks` and `playerOpponents` (`14 §3.6`);
 `onTearDownWithReason`, `onGuestReconnectDeclined`, `leaveSessionOnThisDevice()` and
 `FeelCatalog.validate()` (`14 §3.11`); anything in D-129.
 
@@ -58,7 +58,7 @@ initialiser (`14 §3.9`); `upsertMatch`, `competitionRanks` and `playerOpponents
 
 ## 2. Locked decisions
 
-**2.1 An adoption may change behaviour only as its task says.** Each task lists what will differ.
+**2.1 An adoption may change behavior only as its task says.** Each task lists what will differ.
 Anything else that differs is a finding: report it, don't fix it. *Rationale:* every difference
 here was read from source and put to Pops; nothing else was.
 
@@ -70,7 +70,7 @@ here was read from source and put to Pops; nothing else was.
 falls through to the normal seating sheet. *Rationale:* `14 §3.3`; decided with Pops.
 
 **2.4 Roster upsert protects the table** (D-137). Both call sites pass `seatedPlayerIDs`, and
-`remapOntoArchived` stays at its default (`true`, SyFive's behaviour today). *Rationale:*
+`remapOntoArchived` stays at its default (`true`, SyFive's behavior today). *Rationale:*
 `14 §3.5`, `§4.2`.
 
 **2.5 History sync shares only completed Game Night matches the table shares** (D-138), as
@@ -84,7 +84,7 @@ never a novelty voice or a Personal Voice. SyFive keeps one saved voice for all 
 **2.7 The shuffle is saved across launches, per personality** (D-077 amended), under the key
 `com.syzygysoftwerksllc.syfive.commentaryShuffle`. Never change that key. *(rec.)*
 
-**2.8 The update badge clears from the Update Available item, and the acknowledgement is
+**2.8 The update badge clears from the Update Available item, and the acknowledgment is
 stored** (D-139). There is no "menu opened" signal to use (Syderal Q-32, Q-33). In the fallback
 drawing, where the system lacks `ellipsis.circle.badge`, the dot has no outline. *(rec.)*
 
@@ -503,7 +503,7 @@ version). Run those on a Debug build, then restore §5.1's values.
 | A6 | 4.5 | Device A has a local player "Sam S". Device B seats a different "Sam S" (another person, same name and initials) beside A's Sam at one table. Play a match | A holds two players named Sam S. The finished match shows both, with separate results. Players shows no merge |
 | A7 | 4.6 | Save a voice, delete it in iOS Settings, return to SyFive and play with commentary on | Commentary speaks in the best installed voice for the device's language. Settings → Commentary → Voice names that voice, and Preview speaks in it |
 | A8 | 4.6 | Play with one pack until a few lines have spoken, force-quit, relaunch, play again | No line from the earlier session repeats until the pack's deck has run through (spot check with Steady's `turnStart`) |
-| A9 | 4.7 | **Debug only.** `MARKETING_VERSION` set to `1.0.2` in the Debug configuration, as for R22, on a fresh install (the acknowledgement is stored under `SyLib.AcknowledgedUpdateVersion`, so delete the app to repeat). Open and close the menu, tap Update Available, then relaunch. Put the version back afterwards | The badge stays after open and close, clears on the tap, and stays cleared after relaunch. The Update Available item is still in the menu |
+| A9 | 4.7 | **Debug only.** `MARKETING_VERSION` set to `1.0.2` in the Debug configuration, as for R22, on a fresh install (the acknowledgment is stored under `SyLib.AcknowledgedUpdateVersion`, so delete the app to repeat). Open and close the menu, tap Update Available, then relaunch. Put the version back afterwards | The badge stays after open and close, clears on the tap, and stays cleared after relaunch. The Update Available item is still in the menu |
 | A10 | 4.8 | Walk every row of the table in §6.1 | Each state shows exactly the menu rows, toolbar control and help button that §6.1 gives |
 | A11 | 4.9 | Tap the commentary button during play, including while the stuck-dice message shows | A toast rises over the bottom of the tray for two seconds. The status row keeps its own text. The roll controls stay uncovered |
 
@@ -577,7 +577,7 @@ replaced their rows. The others are new.
 
 | ID | Current ruling | Source → chain |
 |---|---|---|
-| D-139 | **The update badge** comes from SyLibCore's `AppUpdateState` and SyLibUI's `MoreMenu`. It clears when Update Available is tapped, and the acknowledgement is stored per store version. Never acknowledge on menu open: SwiftUI's `Menu` has no reliable signal for it. | `14 §3.11, §4.5` (Syderal Q-32, Q-33) → `17 §2.8` *(rec.)* |
+| D-139 | **The update badge** comes from SyLibCore's `AppUpdateState` and SyLibUI's `MoreMenu`. It clears when Update Available is tapped, and the acknowledgment is stored per store version. Never acknowledge on menu open: SwiftUI's `Menu` has no reliable signal for it. | `14 §3.11, §4.5` (Syderal Q-32, Q-33) → `17 §2.8` *(rec.)* |
 
 ---
 
@@ -603,7 +603,7 @@ replaced their rows. The others are new.
 | RealityKit launch assertion (found 10 Oct 2026, **open, reported not fixed; full analysis in §11**) | One crash class is real, not environmental: `assertion failure: Index out of range (operator[]:line 858) index = 0, max = 0` in RealityKit `PhysicsSystem::ecsToSim`, ~1.7 s after launch (app stdout; crashes `SyFive-…-112107.ips` and `-152141.ips`). Reproduced deliberately: `testLaunchPerformance` ×8 gave **1 in 48 launches on iOS 18.6** (iPhone SE (3rd generation)) and **0 in 48 on iOS 27.0** (iPhone 17). It predates §4.6 (first seen at 11:21, during `16` §4.3). The dice scene is SyLib's (`SyLibDice`: `DiceRKView`/`DiceRoller.setup`). One unconfirmed lead: `setup` returns early when dice already exist, so a rebuilt `RealityView` would leave the dice parented to the old scene. A fix is a SyLib dice edit no task names: stop condition (`00B` §2) |
 | Toast placement (Pops, 10 Oct 2026, after §4.9) | The commentary toast slides down out from under the **Roll button** (`bottomPadding: 4`), over the status row; the button row has `.zIndex(1)` so the status text does not draw over it. Pops's second direction moved it from below the whole controls strip. SyLib `Toast` gained an additive `placement: ToastPlacement = .overBottom` (`.belowBottom` hangs it under the view's bottom edge, clipped there), so the default and Syderal's `GameHUD.swift:274` are unchanged. One test, `aToastMovesForItsPlacement`. `UI_COMPONENTS.md` updated. SyLib 1129 passed; Syderal builds, 897 / 893 passed / 4 skipped / 0 failed; SyFive 19/19. SyFive changes: `.toast($commentaryToast, bottomPadding: 4, placement: .belowBottom)` on the Roll button, `.zIndex(1)` on the button row, and `.zIndex(1)` on `DiceAreaView` in `ContentView+Layout.swift` so it draws over the scorecard. Ledger D-141 updated |
 | SyFive suite after §4.6 | 18/19: `testLaunchPerformance` lost to the RealityKit assertion above. All 16 unit tests pass. BuildProject clean, 0 warnings |
-| Open findings closed (Pops, 10 Oct 2026) | **`16` §11, roll-theatre hooks lost on session replacement:** `DiceAreaView` now re-wires on `gameNight.session.sessionActivationCount`, not `isSessionActive`. **`16` §11, traps on repeated ids:** SyLib `MatchModel.hydrate(from:context:)` builds its by-id map with `uniquingKeysWith` (keeps the first), with test `hydrateToleratesDuplicateParticipantIDs`. `MatchController`'s three score-entry maps (formerly 385, 400, 744) do the same. Copies are not resolved. **`CommentaryScreen` `#Preview`** added (in-memory `AppSettingsModel`, `CommentaryVoices()`); built, not rendered. **Docs:** README platform line is now iOS/iPadOS 18.6+, and `ENGINEERING_GUIDELINES.md`'s folder map was rewritten to the tree. **Syderal 894 vs 897** reconciled (`16` §10): Syderal's own latest record is 897. Checks: SyLib 1130 passed; Syderal 897 / 893 / 4 skipped / 0 failed; SyFive 19/19; 0 warnings. **Not done:** the two stale Syderal comments (`GameNightAdapter.swift` 124-128, `GameNightMatchBridge.swift` 282-287), because `00B` §5.4 says Syderal is never edited from a SyFive session |
+| Open findings closed (Pops, 10 Oct 2026) | **`16` §11, roll-theater hooks lost on session replacement:** `DiceAreaView` now re-wires on `gameNight.session.sessionActivationCount`, not `isSessionActive`. **`16` §11, traps on repeated ids:** SyLib `MatchModel.hydrate(from:context:)` builds its by-id map with `uniquingKeysWith` (keeps the first), with test `hydrateToleratesDuplicateParticipantIDs`. `MatchController`'s three score-entry maps (formerly 385, 400, 744) do the same. Copies are not resolved. **`CommentaryScreen` `#Preview`** added (in-memory `AppSettingsModel`, `CommentaryVoices()`); built, not rendered. **Docs:** README platform line is now iOS/iPadOS 18.6+, and `ENGINEERING_GUIDELINES.md`'s folder map was rewritten to the tree. **Syderal 894 vs 897** reconciled (`16` §10): Syderal's own latest record is 897. Checks: SyLib 1130 passed; Syderal 897 / 893 / 4 skipped / 0 failed; SyFive 19/19; 0 warnings. **Not done:** the two stale Syderal comments (`GameNightAdapter.swift` 124-128, `GameNightMatchBridge.swift` 282-287), because `00B` §5.4 says Syderal is never edited from a SyFive session |
 | Traps on repeated ids: the remaining five sites closed by `18` §4.2 | 11 Oct 2026. SyFive `MatchDetailView.swift` 45, 51 and `UnfinishedMatchDetailView.swift` 41, 45, plus SyLib `MatchProgression.swift` 108, now use `uniquingKeysWith` (keeps the first). New test `matchProgression_toleratesDuplicateParticipantIDs`. SyLib 1131 passed (1130 + 1); Syderal 897 / 893 passed / 4 skipped / 0 failed; SyFive 19/19 |
 | Full regression (R1 to R22, F1 to F6, A1 to A11) on Release | One row each |
 | Full regression (11 Oct 2026) | Pass (confirmed by Pops on device, 11 Oct 2026). Run on Release, with the Debug-only checks (F1, F6, R22, A9) on Debug, as `17` §6 allows |

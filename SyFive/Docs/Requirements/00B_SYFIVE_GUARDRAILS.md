@@ -85,8 +85,8 @@ In addition to `00A`. These apply to every task, in perpetuity.
   (`13_HOLD_HINT_DESIGN`).
 - **Snark targets dice and decisions, never people** (D-082). The commentator never refers to House
   Records (D-111). No anti-titles, ever (D-103).
-- **The store and the catalogue seed are SyFive's own** (D-129). Never adopt
-  `makeScoringContainer`, `makeInMemoryScoringContainer` or `seedCatalogGame`. The Yatzy catalogue
+- **The store and the catalog seed are SyFive's own** (D-129). Never adopt
+  `makeScoringContainer`, `makeInMemoryScoringContainer` or `seedCatalogGame`. The Yatzy catalog
   row keeps its fixed id, `Game.builtInYatzyID`.
 - **No stored aggregates.** Statistics and records are computed on read (D-114). Game Night adds no
   schema (D-064).
@@ -258,7 +258,7 @@ delivered with this document. They differ only as follows:
   (already set by Pops; the live store version is 1.0.3); SyLib work goes on the existing branch
   `syfive-reintegration`; Pops's `project.pbxproj` edits are the baseline; the ledger rows are pasted
   by A-1, not by each phase; `16` §4.2 names the SyLib test it re-pins and the stale comment it
-  fixes; `16` §4.6 authorises `SyFiveTests/Commentary/` and carries twenty lines per pack; D-130 and
+  fixes; `16` §4.6 authorizes `SyFiveTests/Commentary/` and carries twenty lines per pack; D-130 and
   D-132 are reworded to match what `GameNightProximity` does; and `17` §6.1 gives A10 a state table.
 - "Stop and report after each one" now reads: one task per session, reported in `00A` §6's
   form.

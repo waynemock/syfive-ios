@@ -13,7 +13,7 @@ generic seating UI comes *out* of it rather than the whole file moving.
 
 ---
 
-## ⚠️ No visual or behavioural changes
+## ⚠️ No visual or behavioral changes
 
 Pixel-identical output. The seating screen is the first thing anyone sees in Game
 Night and every affordance in it — the remove button appearing only for your own
@@ -108,7 +108,7 @@ call `leaveSession()`. Sideral will have its own rules about abandoning a game i
 progress.
 
 Package-owning the alert would mean pushing that whole decision tree through the
-boundary to reproduce today's behaviour.
+boundary to reproduce today's behavior.
 
 If you disagree with either recommendation after building it, say so in your
 report rather than changing course silently.
@@ -184,7 +184,7 @@ with the slots filled.
 
 Put the construction in `GameNightScreens.swift` alongside the 3a wrappers if it
 reads better there — the injection mapping (`accentColor`, `appName`, seat
-colour resolution) is already in that file.
+color resolution) is already in that file.
 
 ---
 
@@ -196,7 +196,7 @@ grep -rn "SwiftData\|PlayerModel\|GameModel\|MatchController\|PlayerEditSheet\|C
   Sources/SyLibGameNight    # must return nothing
 ```
 
-Two physical devices on a FaceTime call. This screen is where seat behaviour
+Two physical devices on a FaceTime call. This screen is where seat behavior
 lives, so the seat entries matter most:
 
 - **4.1** — guest claims a seat; appears on every device within a second.

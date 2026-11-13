@@ -169,13 +169,13 @@ not be the measure. Each call was compared with the finished declaration itself.
 
 | Module | SyFive files | How it was compared | Result |
 |---|---|---|---|
-| `SyLibGameNight` | 13 | Every member SyFive reads or calls on the session (42), the proximity component (15), the log buffer (10) and the alert state; every initialiser of `GameNightTableView`, `GameNightHelpSheet`, `SeatClaimSheet`, `SeatRosterEntry`, `GameNightPendingSheet`, `GameNightInviteInstructions`, `GameNightLogSheet` and the payload types; the `gameNightAlerts(…)` call. Labels, order and closure shapes read side by side | All match. `gameNightAlerts(…)` gained one defaulted parameter that SyFive does not pass (`ContentView.swift` 188-207) |
+| `SyLibGameNight` | 13 | Every member SyFive reads or calls on the session (42), the proximity component (15), the log buffer (10) and the alert state; every initializer of `GameNightTableView`, `GameNightHelpSheet`, `SeatClaimSheet`, `SeatRosterEntry`, `GameNightPendingSheet`, `GameNightInviteInstructions`, `GameNightLogSheet` and the payload types; the `gameNightAlerts(…)` call. Labels, order and closure shapes read side by side | All match. `gameNightAlerts(…)` gained one defaulted parameter that SyFive does not pass (`ContentView.swift` 188-207) |
 | `SyLibGameNightMatch` | 6 | Every coordinator member SyFive uses (28), the payload types, `GNMatchIdentity`, and every requirement of `GameNightMatchHost` against `Session/MatchController.swift` | All match. `resumeAsHost` now returns a discardable `Bool`; SyFive's one call (`GameNightController.swift` 312) ignores it. The protocol's two newer requirements, `appStateBlob` and `loadAppState(_:)`, have default implementations (`Sources/SyLibGameNightMatch/GameNightMatchHost.swift` 64-68), so the conformance at `MatchController.swift` 841 still holds |
-| `SyLibCommentary` | 17 | The engine's initialiser and the six members SyFive uses; `CommentaryPersonality`, `CommentaryProsody` and `CommentaryEvent` initialisers as the four packs and the event factories call them; `CommentarySettingsView`; the `CommentaryEventKind` protocol | All match. The newer parameters (`ipaTable`, `prosodyOverrides`, `voiceCriteria`, `personalityTitle`, `personalityFooter`) are defaulted |
-| `SyLibFeel` | 14 | The 19 `FeelDirector` members SyFive uses; every recipe initialiser in `Feel/SyFiveCatalog.swift` and `Views/FeelBoardView.swift`; `SoundRenderer` and `SoundCache` as `SyFiveTests/Feel/FeelTests.swift` calls them | All match. The newer `reverbSend`, `reverbPreset` and `reverbWetMix` are defaulted |
-| `SyLibCore` | 18 | `AppLogger` (initialiser, four level methods, `appName`), `AppUpdateChecker.shared.isUpdateAvailable()`, `Bundle.appVersionShort` | All match |
-| `SyLibUI` | 8 | `AboutView`, `IconButton` (both initialisers), `InitialsCircle`, `ParticleBurst`, `Particle`, `rainbowBorderIfNeeded`, `PlayerLinkSheet`, `PlayerMergeSheet`, `PlayerRosterEntry` | All match |
-| `SyLibScoringUI` | 4 | All eight view and record initialisers SyFive calls | All match. `numericDate` and `numericMatchDates` are defaulted |
+| `SyLibCommentary` | 17 | The engine's initializer and the six members SyFive uses; `CommentaryPersonality`, `CommentaryProsody` and `CommentaryEvent` initializers as the four packs and the event factories call them; `CommentarySettingsView`; the `CommentaryEventKind` protocol | All match. The newer parameters (`ipaTable`, `prosodyOverrides`, `voiceCriteria`, `personalityTitle`, `personalityFooter`) are defaulted |
+| `SyLibFeel` | 14 | The 19 `FeelDirector` members SyFive uses; every recipe initializer in `Feel/SyFiveCatalog.swift` and `Views/FeelBoardView.swift`; `SoundRenderer` and `SoundCache` as `SyFiveTests/Feel/FeelTests.swift` calls them | All match. The newer `reverbSend`, `reverbPreset` and `reverbWetMix` are defaulted |
+| `SyLibCore` | 18 | `AppLogger` (initializer, four level methods, `appName`), `AppUpdateChecker.shared.isUpdateAvailable()`, `Bundle.appVersionShort` | All match |
+| `SyLibUI` | 8 | `AboutView`, `IconButton` (both initializers), `InitialsCircle`, `ParticleBurst`, `Particle`, `rainbowBorderIfNeeded`, `PlayerLinkSheet`, `PlayerMergeSheet`, `PlayerRosterEntry` | All match |
+| `SyLibScoringUI` | 4 | All eight view and record initializers SyFive calls | All match. `numericDate` and `numericMatchDates` are defaulted |
 | `SyLibScoring`, `SyLibScoringData` | 28, 21 | By name: every function and member SyFive calls exists as a public declaration. Not label by label | No name missing. The value types, enums, models, schema and conversions are byte-identical in the SyLib of 2 October and the finished one |
 | `SyLibYatzy`, `SyLibDice` | 14, 5 | By name, as above | No name missing. Both modules are byte-identical in the SyLib of 2 October and the finished one, and every file in them is dated before SyFive's newest source file |
 
@@ -202,7 +202,7 @@ not be the measure. Each call was compared with the finished declaration itself.
 - **Milestone 13's additions** (checked 9 October 2026). Four new public names: `Toast`, the view
   modifier `toast(_:duration:bottomPadding:)`, `MoreMenu` and `CapsuleButton.Countdown`. A search of
   the snapshot finds none of the four names, nor `toast`, declared or used in SyFive, so nothing is
-  shadowed and nothing is ambiguous. `CapsuleButton`'s initialiser gained `countdown`, defaulted
+  shadowed and nothing is ambiguous. `CapsuleButton`'s initializer gained `countdown`, defaulted
   and placed before `action`, so a trailing-closure call compiles unchanged; SyFive does not use
   `CapsuleButton`. `IconButton` changed only in a preview. `FeelAudioEngine` gained no public
   member, and `GameNightHelpSheet` changed only in its text.
@@ -255,7 +255,7 @@ nil was not checked.
 ## 2. What changes with no change to SyFive
 
 Each entry says what SyLib now does, what a SyFive player or developer would notice, where it is
-in SyLib, and whether SyFive can have the old behaviour back. Entries marked *earlier* changed
+in SyLib, and whether SyFive can have the old behavior back. Entries marked *earlier* changed
 while Syderal was being built, before its last milestone; no earlier SyLib tree exists to compare
 with, so those rest on Syderal's records and on what the finished source shows. Entries marked
 *Milestone 13* were added by the revision of 9 October and were compared with the SyLib of
@@ -296,7 +296,7 @@ with, so those rest on Syderal's records and on what the finished source shows. 
   treated as arriving while a line speaks. One assumption is still unverified on any device: that
   the start is not reported in between the events an app emits together. It matters only under
   this policy, which is SyFive's and not Syderal's, so re-test 1 in §2.6 is its first check.
-- *Old behaviour back.* There is nothing to restore: this is the shipped rule. `.queue` exists and
+- *Old behavior back.* There is nothing to restore: this is the shipped rule. `.queue` exists and
   is what Syderal sets, but it is the backlog D-078 forbids, and this document does not propose it.
   SyFive's ledger row D-078 and `Docs/Requirements/09_COMMENTATOR_DESIGN.md` §1.5 are SyFive's to
   amend, to describe the burst and the three differences.
@@ -316,7 +316,7 @@ with, so those rest on Syderal's records and on what the finished source shows. 
   allowance has never run against SyFive's packs. Zen is the slowest (rate 0.42, with 0.35 seconds
   before and 0.30 after each line), and 171 of its 434 lines are longer than 50 characters, the
   length at which the per-character allowance passes the 6 second floor. Re-test 4.
-- *Old behaviour back.* No. The two watchdog values are internal.
+- *Old behavior back.* No. The two watchdog values are internal.
 
 **Five commentary rulings change nothing for SyFive.** Pronunciation-table terms match whole words
 only; SyFive's four packs pass no table, so that code never runs for it [L-8]. `onIdle` now fires on
@@ -336,7 +336,7 @@ for nothing [L-9]. The automatic voice and the shuffle store are new types SyFiv
   music from another app. With Sound set to Game Audio Only the category changes when the mode is
   applied, a moment later (`ContentView.swift` 261), and other audio stops then, as the Settings
   footer says it will.
-- *Old behaviour back.* No.
+- *Old behavior back.* No.
 
 **The audio engine starts at warm-up, in every sound mode** (*earlier*) [SYD-302].
 
@@ -345,7 +345,7 @@ for nothing [L-9]. The automatic voice and the shuffle store are new types SyFiv
   the sound mode.
 - *Noticed as.* The first sound of a launch no longer waits for the engine to start. With Sound
   set to Off the app still activates its audio session and runs the engine from launch, silently.
-- *Old behaviour back.* No.
+- *Old behavior back.* No.
 
 **A reverb bus is in the audio graph, with its return at zero for SyFive** (*earlier*) [SYD-192].
 
@@ -362,7 +362,7 @@ for nothing [L-9]. The automatic voice and the shuffle store are new types SyFiv
   update renders all sounds again once and sweeps the old files (`FeelDirector.swift` 47-86). The
   rendered sound itself does not depend on the field. Whether the shipped SyLib had the field could
   not be checked.
-- *Old behaviour back.* No.
+- *Old behavior back.* No.
 
 **Sound effects and haptics survive a route change** (*earlier*) [SYD-428].
 
@@ -372,7 +372,7 @@ for nothing [L-9]. The automatic voice and the shuffle store are new types SyFiv
   (`Sources/SyLibFeel/Playback/FeelHapticEngine.swift` 90-114).
 - *Noticed as.* Sound effects and haptics keep working after AirPlay is turned on or off. A sound
   playing at the moment of the change is cut.
-- *Old behaviour back.* No.
+- *Old behavior back.* No.
 
 **Haptics come back after a haptic server reset** [L-30].
 
@@ -381,7 +381,7 @@ for nothing [L-9]. The automatic voice and the shuffle store are new types SyFiv
   85-89 and 118-141).
 - *Noticed as.* After such a reset, haptics return without a relaunch. Since Milestone 13, sound
   effects do too (the next entry).
-- *Old behaviour back.* No, and nothing is asked of the app.
+- *Old behavior back.* No, and nothing is asked of the app.
 
 **Sound effects come back after a media-services reset** (*Milestone 13*) [F-14, SYD-499,
 SYD-505].
@@ -400,7 +400,7 @@ SYD-505].
   commentary also spoke again after the reset; the commentary engine was not changed for that, as
   it already rebuilt its synthesizer on the same notification (`CommentaryEngine.swift` 566-625).
   Re-test 10.
-- *Old behaviour back.* No, and nothing is asked of the app. The rebuild is internal.
+- *Old behavior back.* No, and nothing is asked of the app. The rebuild is internal.
 
 **The audio session's errors are logged** [L-34], **and more of the engine's life** (*Milestone 13*)
 [F-16, SYD-501].
@@ -426,7 +426,7 @@ SYD-505].
   transport version above 1 read as newer, an older one included.
 - *Noticed as.* A visible bug fix. A SyFive guest whose host is on an older build is told the host
   runs a different version and is not offered Update.
-- *Old behaviour back.* No.
+- *Old behavior back.* No.
 
 **`GroupSession.join()` runs off the main thread, and has never run beside proximity ranging**
 (*earlier*).
@@ -436,7 +436,7 @@ SYD-505].
 - *Noticed as.* Nothing is intended to show. Syderal has no proximity ranging, so this ordering has
   never run with it. SyFive begins ranging in the same pass that a session becomes active
   (`Views/ContentView.swift` 307; `App/GameNight/GameNightController.swift` 52-62). Re-test 11.
-- *Old behaviour back.* No.
+- *Old behavior back.* No.
 
 **The SharePlay sharing sheet is presented on the device's own scene** (*earlier*).
 
@@ -468,7 +468,7 @@ SYD-502].
   `Views/ContentView+GameNight.swift` 163-171), so both lines reach it. Its table's help passes
   `.joining` (`App/GameNight/Views/TableSettingView.swift` 71-74) and shows neither. The wording
   was checked against FaceTime on Syderal's devices. Re-test 18.
-- *Old behaviour back.* No. There is no parameter for the text.
+- *Old behavior back.* No. There is no parameter for the text.
 
 **A teardown reports its reason, and its log line changed** [L-13].
 
@@ -504,7 +504,7 @@ and 132, with the filter at 126).
   controls.
 - *Noticed as.* SyFive's Commentary screen (`App/Commentary/CommentaryScreens.swift` 11-18) looks
   different, and the labels now grow with Dynamic Type.
-- *Old behaviour back.* No parameter chooses the old controls.
+- *Old behavior back.* No parameter chooses the old controls.
 
 **The voice picker and the Add Voices sheet** (*earlier*).
 
@@ -522,11 +522,11 @@ and 132, with the filter at 126).
 
 **About: the footer is opaque** (*earlier*) [SYD-418].
 
-- *Now.* `AboutView` hands its background colour to the footer
+- *Now.* `AboutView` hands its background color to the footer
   (`Sources/SyLibUI/Branding/AboutView.swift` 141-143), where the footer used to be drawn on a clear
   background.
 - *Noticed as.* SyFive passes its theme's background (`Views/AboutView.swift` 17), so its footer is
-  opaque in the colour it already sits on, and the description no longer shows through it while
+  opaque in the color it already sits on, and the description no longer shows through it while
   scrolling.
 
 **History rows at accessibility text sizes** (*earlier*).
@@ -788,7 +788,7 @@ This is the one adoption that fixes a fault SyFive has today [L-14].
 
 - **The fault it cures.** By SyLib's own comment, `AVSpeechSynthesisVoice(identifier:)` returns a
   default voice, not nil, for an identifier that is no longer installed
-  (`Sources/SyLibCommentary/Engine/CommentaryVoices.swift` 23-24). That is AVFoundation behaviour
+  (`Sources/SyLibCommentary/Engine/CommentaryVoices.swift` 23-24). That is AVFoundation behavior
   and was not checked here. If so, SyFive's fallback to the device's language
   (`Views/ContentView+Commentary.swift` 69-71) does not run when a saved voice has been deleted.
   SyLib's settings screen names its Voice row the same way (`CommentarySettingsView.swift` 46-50),
@@ -824,13 +824,13 @@ This is the one adoption that fixes a fault SyFive has today [L-14].
   that keeps `Mode`, `matchModel`, `onSave`, `onCreated` and its `themeType` state. The Color
   section and `themePicker` (98-103 and 119-152) go in the sheet's trailing slot. The body of
   `save()` (154-184) moves into the `onSave` closure. SyFive passes
-  `deriveInitials: { deriveInitials(from: $0) }`, no limits, no background colour, and its theme's
+  `deriveInitials: { deriveInitials(from: $0) }`, no limits, no background color, and its theme's
   primary accent. Inside SyFive the type must be written `SyLibUI.PlayerEditSheet`, because
   SyFive's own type has the same name.
 - **What would differ.** Names and initials are trimmed of newlines as well as spaces; SyFive trims
   spaces only (62, 155 and 157). And SyLib's sheet sets its own tint from the `accentColor` it is
   passed (`PlayerEditSheet.swift` 136), where SyFive's sheet sets none and takes whatever tint
-  reaches it. So Cancel, Save and the field cursors can change colour wherever the theme's accent
+  reaches it. So Cancel, Save and the field cursors can change color wherever the theme's accent
   is not the tint the sheet has today. By reading, one such place is the sheet opened from the
   Players screen (`Views/PlayersView.swift` 88-91), which is presented outside the root tint
   (`Views/ContentView.swift` 242 and 487-491). Not seen. Nothing else, while no limit is passed.
@@ -840,7 +840,7 @@ This is the one adoption that fixes a fault SyFive has today [L-14].
 
 ### 3.9 The table view from a session, and the help context
 
-- **The SyLib API.** A second `GameNightTableView` initialiser that takes the session
+- **The SyLib API.** A second `GameNightTableView` initializer that takes the session
   (`Sources/SyLibGameNight/Views/GameNightTableView.swift` 100-138), and
   `GameNightHelpSheet.Context(session:)` (`Sources/SyLibGameNight/Views/GameNightHelpSheet.swift`
   262) [L-21].
@@ -848,7 +848,7 @@ This is the one adoption that fixes a fault SyFive has today [L-14].
   (`Views/ContentView+GameNight.swift` 163-171) is the same rule as SyLib's (271-279) and would
   become one call with no change in result. The literal `.joining` at
   `App/GameNight/Views/TableSettingView.swift` 72 is not derived by either and stays.
-- **The table initialiser would change one behaviour.** It would replace the call at
+- **The table initializer would change one behavior.** It would replace the call at
   `App/GameNight/Views/GameNightScreens.swift` 81-111. A guest removing its own seat would then
   call `session.leaveSession()` directly and no longer SyFive's wrapper, which also clears
   `coordinator.localParticipantID` (`GameNightController.swift` 217-220). The clearing matters: a
@@ -859,16 +859,16 @@ This is the one adoption that fixes a fault SyFive has today [L-14].
   with a session already up at the table (249-254). The wrapper is still the only thing that clears
   the id there. Nothing in the finished SyLib gives the coordinator its own handling of a seat
   release.
-- **Recommended: stay on the full initialiser.** It costs nothing but the eleven forwarded values,
+- **Recommended: stay on the full initializer.** It costs nothing but the eleven forwarded values,
   and its `onRemoveSeat` closure (`GameNightScreens.swift` 100-106) is where SyFive clears the id.
-  The session initialiser takes no closure for a guest's leaving. Adopting it would mean clearing
+  The session initializer takes no closure for a guest's leaving. Adopting it would mean clearing
   the id from somewhere else, for example by watching `session.localSeatClaimID`, which also goes
   nil when the host removes the seat (`GameNightSession.swift` 733-735), so that would clear the id
   in a case where SyFive keeps it today.
 - **No hook is asked of SyLib.** Syderal's milestone left it to this document whether the session
-  initialiser should gain a hook for what else a guest's leaving does. It should not for now.
-  SyFive is the only app that would use one, and the full initialiser already gives it that hook.
-  If SyFive later wants the session initialiser, the SyLib change is one optional closure on it,
+  initializer should gain a hook for what else a guest's leaving does. It should not for now.
+  SyFive is the only app that would use one, and the full initializer already gives it that hook.
+  If SyFive later wants the session initializer, the SyLib change is one optional closure on it,
   called after `session.leaveSession()` in the guest's branch (`GameNightTableView.swift`
   127-133), added and tested with SyFive open.
 - **Doc.** `GAME_NIGHT.md`, on building the seating screen.
@@ -897,7 +897,7 @@ This is the one adoption that fixes a fault SyFive has today [L-14].
 
 | SyLib API | What SyFive would do with it | What changes | Doc |
 |---|---|---|---|
-| `AppUpdateState` (`Sources/SyLibCore/AppStore/AppUpdateState.swift` 21-64) [L-3, SYD-514] | Replace its two state values and badge rule (`Views/ContentView.swift` 37-38, 248 and 542-549). Call `acknowledge()` from the Update Available item's action (92-96), not from a gesture on the menu | The acknowledgement is stored, so the badge does not return at every launch for a version already seen. SyFive's own rule does not have the fault Syderal's had at Milestone 12. **Where to acknowledge changed at Milestone 13** [SYD-514]: on the item, because SwiftUI's `Menu` gives no reliable "opened" signal (§4.5). `AppUpdateState`'s doc comment (8-9) and `APP_STORE.md` (19, 58, 69 and 87) still say to acknowledge when the menu opens, and the doc's example uses the tap gesture that does not fire; follow this row, not them, until Syderal's Task 13.14d brings SyLib's text into line (§5). Pairs with `MoreMenu`, below | `APP_STORE.md` |
+| `AppUpdateState` (`Sources/SyLibCore/AppStore/AppUpdateState.swift` 21-64) [L-3, SYD-514] | Replace its two state values and badge rule (`Views/ContentView.swift` 37-38, 248 and 542-549). Call `acknowledge()` from the Update Available item's action (92-96), not from a gesture on the menu | The acknowledgment is stored, so the badge does not return at every launch for a version already seen. SyFive's own rule does not have the fault Syderal's had at Milestone 12. **Where to acknowledge changed at Milestone 13** [SYD-514]: on the item, because SwiftUI's `Menu` gives no reliable "opened" signal (§4.5). `AppUpdateState`'s doc comment (8-9) and `APP_STORE.md` (19, 58, 69 and 87) still say to acknowledge when the menu opens, and the doc's example uses the tap gesture that does not fire; follow this row, not them, until Syderal's Task 13.14d brings SyLib's text into line (§5). Pairs with `MoreMenu`, below | `APP_STORE.md` |
 | `GameNightSession.onTearDownWithReason` (`GameNightSession.swift` 107) [L-13] | Wire it beside or in place of `onTearDown` | Nothing by itself. It is how to tell an ending from a session arriving: SyFive's teardown hook also runs each time a new session arrives, the first of a launch included | `GAME_NIGHT.md` |
 | `onGuestReconnectDeclined` on `gameNightAlerts(…)` (`GameNightAlertsModifier.swift` 119) [L-12] | Pass a closure | Nothing by itself. SyFive has no decline handling today; Play Locally only clears the pending id | `GAME_NIGHT.md` |
 | `FeelCatalog.validate()` (`Sources/SyLibFeel/Recipes/FeelCatalog+Validation.swift` 42) [L-25] | One line in `FeelTests.swift` expecting an empty result for `FeelCatalog.syFive` | A test. All twenty of SyFive's recipes have a key equal to their id, checked by script for this document. The peak rule was not run | `FEEL.md` |
@@ -908,7 +908,7 @@ This is the one adoption that fixes a fault SyFive has today [L-14].
 | `DynamicTypeSize.tvViewing(forDisplayWidth:)`, `EdgeInsets.tvContentMargins(forDisplayHeight:)` [L-24] | Only if SyFive gains an external display | Nothing today: SyFive has no external display code | `EXTERNAL_DISPLAY.md` |
 | `Toast` and `.toast(_:duration:bottomPadding:)` (`Sources/SyLibUI/Components/Toast.swift` 20-94) (*Milestone 13*) [SYD-507] | Replace the commentary button's "Commentary on/off" feedback: the `commentaryFeedback` and `commentaryFeedbackTask` state, `showCommentaryFeedback(suppressed:)` and the status-row branch that shows it (`Views/DiceAreaView.swift` 33-34, 295-303 and 210-212) become one `@State` `Toast?`, set on the tap and shown with `.toast(_:)` | The words leave the status row and rise from the bottom of the view the modifier is on, in a material capsule, for two seconds by default. The status row keeps its own line, so "Choose a category to score" no longer disappears for two seconds, and the stuck-dice message no longer hides the feedback. The toast takes no taps. Put the modifier on a view whose bottom edge sits above the roll controls if they should stay uncovered; Syderal anchors it just above its button row. Optional: SyFive's text fits where it is, which Syderal's did not | `UI_COMPONENTS.md`, Toast |
 | `CapsuleButton.Countdown` (`Sources/SyLibUI/Components/CapsuleButton.swift`) (*Milestone 13*) [SYD-509] | Nothing proposed. SyFive does not use `CapsuleButton`, and it has no screen that should time out | A countdown, when set, fills the capsule with the tint and drains it toward the leading edge, then calls the action once, as a tap would. Nil, the default, draws the button as before | `UI_COMPONENTS.md`, CapsuleButton |
-| `MoreMenu` (`Sources/SyLibUI/Components/MoreMenu.swift`) (*Milestone 13*) [SYD-510 to SYD-512, SYD-514, SYD-515] | Replace the toolbar menu's label and badge (`Views/ContentView.swift` 85-151): `Menu { … } label: { IconButton("ellipsis.circle", …, badge: …) }` with its `.simultaneousGesture` becomes `MoreMenu(showsBadge:badgeColor:badgedAccessibilityLabel:) { … }` with the same items. Acknowledge the badge from the Update Available item's action, beside `openAppStore()`, and drop the gesture | The badged label is the system's `ellipsis.circle.badge`, drawn as one glyph, so no separate dot sits over the toolbar button. Where the system lacks that symbol, `MoreMenu` falls back to `IconButton`'s drawn dot, at run time. On Syderal's device on 8 October it drew the system symbol, badge in the badge colour and circle in the tint. The badge clears when Update Available is tapped, not when the menu opens, which also cures the fault in §4.5. The accessibility labels are SyFive's own two strings, passed in. In the fallback the dot has no outline: `MoreMenu` passes none, where SyFive passes `badgeOutline` today. `MoreMenu` has no "opened" callback: an earlier `onOpen`, built on the same tap gesture, was removed before SyFive could copy it (Syderal Task 13.14c, SYD-515), and its example now acknowledges from the item | `UI_COMPONENTS.md`, MoreMenu |
+| `MoreMenu` (`Sources/SyLibUI/Components/MoreMenu.swift`) (*Milestone 13*) [SYD-510 to SYD-512, SYD-514, SYD-515] | Replace the toolbar menu's label and badge (`Views/ContentView.swift` 85-151): `Menu { … } label: { IconButton("ellipsis.circle", …, badge: …) }` with its `.simultaneousGesture` becomes `MoreMenu(showsBadge:badgeColor:badgedAccessibilityLabel:) { … }` with the same items. Acknowledge the badge from the Update Available item's action, beside `openAppStore()`, and drop the gesture | The badged label is the system's `ellipsis.circle.badge`, drawn as one glyph, so no separate dot sits over the toolbar button. Where the system lacks that symbol, `MoreMenu` falls back to `IconButton`'s drawn dot, at run time. On Syderal's device on 8 October it drew the system symbol, badge in the badge color and circle in the tint. The badge clears when Update Available is tapped, not when the menu opens, which also cures the fault in §4.5. The accessibility labels are SyFive's own two strings, passed in. In the fallback the dot has no outline: `MoreMenu` passes none, where SyFive passes `badgeOutline` today. `MoreMenu` has no "opened" callback: an earlier `onOpen`, built on the same tap gesture, was removed before SyFive could copy it (Syderal Task 13.14c, SYD-515), and its example now acknowledges from the item | `UI_COMPONENTS.md`, MoreMenu |
 
 ### 3.12 What SyFive must not adopt
 
@@ -916,9 +916,9 @@ This is the one adoption that fixes a fault SyFive has today [L-14].
   (`Sources/SyLibScoringData/Operations/ScoringContainer.swift` 16 and 34;
   `Sources/SyLibScoringData/Operations/GameModel+Operations.swift` 23) [L-17]. SyFive's production
   store must be built exactly as it is today (`SyFiveApp.swift` 21-34). SyLib's function builds its
-  configuration with a different initialiser call from SyFive's, and it was matched argument for
+  configuration with a different initializer call from SyFive's, and it was matched argument for
   argument to Syderal's store, not SyFive's. SyFive's seed (`Views/ContentView+Persistence.swift`
-  187-219) matches catalogue rows on `scoringSystemID` and removes extra rows under any id, which it
+  187-219) matches catalog rows on `scoringSystemID` and removes extra rows under any id, which it
   needs for rows older builds wrote; SyLib's matches on the id alone and never touches a row under
   another id, and the rest of SyFive finds its game by `scoringSystemID`
   (`TableSettingView.swift` 147-153). Syderal's milestone ruled this out, not deferred it. The
@@ -962,7 +962,7 @@ found afterwards, in SyLib's source, while its docs were rewritten.
   Milestone 13 kept that rule rather than change SyLib: Syderal's host, discarding a match while
   the table stays, now sends a message of its own app's kind instead [SYD-498]. The handler in
   SyLib is unchanged.
-- **Six behaviours that look like accidents and were deliberately not pinned by tests** [F-7].
+- **Six behaviors that look like accidents and were deliberately not pinned by tests** [F-7].
   *All six are in code SyFive runs.* (1) A relayed celebration line stops whatever a guest is
   speaking, another celebration included (`CommentaryEngine.swift` 385-387). (2) `MatchHistoryRow`
   sorts a participant whose rank is 0 ahead of the winner; SyFive writes real ranks for a finished
@@ -991,7 +991,7 @@ found afterwards, in SyLib's source, while its docs were rewritten.
   guest has a fault of the same shape was not traced: its match controller keeps a
   `persistedMatchID` it already holds when a snapshot of another match is loaded
   (`Session/MatchController.swift` 771-773).
-- **A reconnect recording left by a cancelled share sheet** [F-35]. In Syderal it can hold a host
+- **A reconnect recording left by a canceled share sheet** [F-35]. In Syderal it can hold a host
   on its waiting overlay. *SyFive:* has no such overlay; its form of the same leftover is the one
   described in §3.3, where the next session to arrive opens no seating sheet.
 
@@ -1020,7 +1020,7 @@ found afterwards, in SyLib's source, while its docs were rewritten.
   player reaches both devices at a match start before either's new row has synced. Not seen in
   Syderal's check. *SyFive:* its copies insert in the same way. One thing in the snapshot would
   make it worse there: `healOrphanedParticipants()` builds a dictionary keyed by player id with an
-  initialiser that traps on a repeated key (`Views/ContentView+Persistence.swift` 68), and it runs
+  initializer that traps on a repeated key (`Views/ContentView+Persistence.swift` 68), and it runs
   at launch (`Views/ContentView.swift` 259).
 - **Extra history traffic for a match held as a full row and a short row** [F-37]. Since the
   history store judges a match by its fullest row, such a device no longer lists the match, so a
@@ -1116,10 +1116,10 @@ neither has been seen in SyFive.
   Syderal's ruling records only that it is not, on recent iOS. Its second attempt, the menu content's
   `onAppear`, fired at launch, because iOS builds a menu's content when its label is drawn
   [SYD-514]. So, by reading, a SyFive player with an update waiting sees the badge for the whole
-  launch, however often the menu is opened. The acknowledgement is in memory only (37-38), so it
+  launch, however often the menu is opened. The acknowledgment is in memory only (37-38), so it
   would have returned at the next launch anyway. *The cure:* acknowledge from the Update Available
   item (92-96), in its action before `openAppStore()`, and remove the gesture. With `MoreMenu` and
-  `AppUpdateState` (§3.11) the cure comes with a stored acknowledgement; without them it is a
+  `AppUpdateState` (§3.11) the cure comes with a stored acknowledgment; without them it is a
   two-line change. *Check:* only with an update on the App Store newer than the build installed,
   or by setting `isUpdateAvailable` to true in a Debug build: the badge shows; open and close the
   menu, and the badge is still there; tap Update Available, and it is gone.
@@ -1194,10 +1194,10 @@ carry an entry, this one points there and gives only what the reading added.
   gameplay tuning (`Views/DiceAreaView.swift` 29).
 - **The fairness screen's headline and bars.** `DiceFairnessView` shows "These dice are fair."
   whatever the certification says (`Sources/SyLibDice/Views/DiceFairnessView.swift` 39, against
-  the icon at 34-36), draws faces 1 to 6 on a fixed scale (58 and 76), and colours its bars with
+  the icon at 34-36), draws faces 1 to 6 on a fixed scale (58 and 76), and colors its bars with
   `Color.accentColor`, not the `accentColor` it is passed (63, against 88). *SyFive:* passes the
-  built-in certification, which passes and fits the chart, so only the colour applies. By reading,
-  the bars take the app's accent and not the theme colour SyFive passes, because the sheet is
+  built-in certification, which passes and fits the chart, so only the color applies. By reading,
+  the bars take the app's accent and not the theme color SyFive passes, because the sheet is
   presented outside the root tint (`Views/ContentView.swift` 242 and 496-498). Not run.
 - **The haptic players are never built if the first start fails.** §4.3. The reading added that
   the start in question is the one at launch warm-up (`Views/ContentView.swift` 249), that a later
@@ -1328,7 +1328,7 @@ carry an entry, this one points there and gives only what the reading added.
   this revision was written. Until it does, §3.11's `AppUpdateState` row is the guidance.
 - **Seen only on Syderal's devices:** that sound effects and commentary return after a
   media-services reset; that FaceTime's Open matches the Help line's wording; that
-  `ellipsis.circle.badge` draws as one glyph with its badge in the badge colour; and that a tap
+  `ellipsis.circle.badge` draws as one glyph with its badge in the badge color; and that a tap
   gesture on a `Menu` is not delivered. Which iOS release first ships `ellipsis.circle.badge` was not
   checked; `MoreMenu` asks at run time and falls back to the drawn dot.
 - **The two findings added to §4.5 are read from SyFive's source of 2 October**, against
@@ -1348,7 +1348,7 @@ ruling rows of the milestone's five documents. The ledger number of L-n is SYD-(
 is this document.
 
 **Which rulings do what.** Five change what a rebuilt SyFive does with no edit: L-7, L-12, L-15,
-L-30 and L-34 (§2). L-25 changes three behaviours on paths SyFive does not reach. L-13 changes one
+L-30 and L-34 (§2). L-25 changes three behaviors on paths SyFive does not reach. L-13 changes one
 log line and L-44 one return type. L-26 is SyLib's docs
 and this document. Twenty-one more only add API or fix code that SyFive does not call: L-3, L-8 to
 L-11, L-14, L-16 to L-24, L-32, L-33, L-39 to L-41 and L-43 (§3 says which SyFive could adopt).
@@ -1359,7 +1359,7 @@ to L-38 and L-42.
 |---|---|---|---|
 | L-1 | SYD-439 | The terms on which code moved into SyLib. | **For SyFive:** nothing until it is rebuilt. SYD-357's suspension of "recompiles with zero source edits" stands; the handoff lists the edits. |
 | L-2 | SYD-440 | Syderal's history sync shares a match only with a table that seats everyone in it. Syderal's app only. | **For SyFive:** nothing. No SyLib file changes, and SyFive already applies both tests (`SF/Views/ContentView.swift` 352–402). |
-| L-3 | SYD-441 | The update badge shows only for an available update. `AppUpdateState` added to `SyLibCore`. | **For SyFive:** nothing. `AppUpdateState` is a new type SyFive does not reference, `AppUpdateChecker`'s behaviour is unchanged, and SyFive calls only `isUpdateAvailable()` (`SF/Views/ContentView.swift` 248) and keeps its in-memory acknowledgement (37–38, 542–549). The new type is `@MainActor` and constrains no app-supplied type, so a MainActor-default client can adopt it later. |
+| L-3 | SYD-441 | The update badge shows only for an available update. `AppUpdateState` added to `SyLibCore`. | **For SyFive:** nothing. `AppUpdateState` is a new type SyFive does not reference, `AppUpdateChecker`'s behavior is unchanged, and SyFive calls only `isUpdateAvailable()` (`SF/Views/ContentView.swift` 248) and keeps its in-memory acknowledgment (37–38, 542–549). The new type is `@MainActor` and constrains no app-supplied type, so a MainActor-default client can adopt it later. |
 | L-4 | SYD-442 | Syderal tells Feel when the app leaves and returns to the foreground. Syderal's app only. | **For SyFive:** nothing. No SyLib file changes. |
 | L-5 | SYD-443 | Syderal's match snapshot carries the match's own times. Syderal's app only. | **For SyFive:** nothing. No SyLib file changes. |
 | L-6 | SYD-444 | Syderal relays spoken lines in SyLib's `CommentaryPayload`. Syderal's app only. | **For SyFive:** nothing. No SyLib file changes; SyFive's own app protocol version and payload are untouched. |
@@ -1373,15 +1373,15 @@ to L-38 and L-42.
 | L-14 | SYD-452 | Ending Game Night as host is one awaited call. | **For SyFive:** nothing until it adopts the method. `abandonSession()` is unchanged, and SyFive's own send-then-abandon keeps its lost-message race until the handoff. |
 | L-15 | SYD-453 | The log sheet shares the file the log was written to. | **For SyFive:** the Share button in its match-log sheet (`SF/Views/Stats/MatchDetailView.swift` 82, `UnfinishedMatchDetailView.swift` 99) shares `gnlogs/syfive/<matchID>.log`, the file that exists. Nothing else changes; its four categories are still the ones kept. |
 | L-16 | SYD-454 | Competition ranks and a player's opponents are in `SyLibScoring`. | **For SyFive:** nothing. Both functions are new declarations and SyFive calls neither; `computeRank` and `opponentRecords` are untouched. If SyFive adopts later, `computeRank` becomes one call with `.highest`, and `opponentRecords` would name an opponent from the last match the two shared, not from the opponent's last match with anyone. |
-| L-17 | SYD-455 | Roster upsert, match upsert, completed-match fetch, catalogue seed and container functions are in `SyLibScoringData`. | **For SyFive:** nothing. All of it is new declarations; SyFive calls none and keeps its three roster copies, its upsert, its seed and its container. **SyFive is never moved onto the container or the seed function**: its production store must be built exactly as today, and its seed matches on `scoringSystemID`. If it later adopts the roster upsert with the default, the one difference is the fixed choice among several matching local players. |
+| L-17 | SYD-455 | Roster upsert, match upsert, completed-match fetch, catalog seed and container functions are in `SyLibScoringData`. | **For SyFive:** nothing. All of it is new declarations; SyFive calls none and keeps its three roster copies, its upsert, its seed and its container. **SyFive is never moved onto the container or the seed function**: its production store must be built exactly as today, and its seed matches on `scoringSystemID`. If it later adopts the roster upsert with the default, the one difference is the fixed choice among several matching local players. |
 | L-18 | SYD-456 | The history-sync store is in `SyLibGameNightMatch`. | **For SyFive:** nothing until it adopts. When it does, its three closures become three calls with the defaults, and it would differ from today in these ways and no others: a manifest never lists one id twice; a request is answered only with completed Game Night matches whose people are all seated now, each id once, where today any row with the id is sent; a received match that is not completed, or has no completion time, is skipped, where today it is inserted as a new row; the save happens only when something was stored, and a failure is thrown, not swallowed; its two "skipped" log lines go. The order key, the fetch of 40, the cap of 20, the roster skip and the duplicate skip are the same. |
 | L-19 | SYD-457 | A guest's rejoin is three coordinator methods. | **For SyFive:** nothing. It calls none of the three, and `isGuestAwaitingReconnect` is cleared only inside the new method. |
 | L-20 | SYD-458 | The player edit sheet is in `SyLibUI`. | **For SyFive:** nothing. The files are new, SyFive names none of the new symbols, and its own `PlayerEditSheet` shadows the package's inside its module, as Syderal's `AboutView` shadows `SyLibUI.AboutView`. |
-| L-21 | SYD-459 | The table view can be built from a session, and the help context is derived. | **For SyFive:** nothing. Both additions are new initialisers; SyFive calls neither. |
+| L-21 | SYD-459 | The table view can be built from a session, and the help context is derived. | **For SyFive:** nothing. Both additions are new initializers; SyFive calls neither. |
 | L-22 | SYD-460 | The Game Night menu section and toolbar control are in `SyLibGameNight`. | **For SyFive:** nothing. Three new files; `GameNightHelpSheet` is not edited. |
 | L-23 | SYD-461 | A host's reconnect is recorded and consumed by the coordinator. The seating delay is a constant. | **For SyFive:** nothing. It calls none of this, and `beginHosting` waits the same 500 ms, now read from the constant. |
 | L-24 | SYD-462 | The TV type size and margins are in `SyLibUI`. | **For SyFive:** nothing; it has no external display code. **For SydeTwo:** nothing; `scaled(for:)` and its tests are unchanged. |
-| L-25 | SYD-463 | SyLib's tests cover SyLib. Two bug fixes and one removal came with them. | **For SyFive:** nothing from the tests, the seams or the access changes: every default is unchanged and SyFive calls none of the new symbols (`holdSpeechForTesting`, `queuedTiers`, `queuedTexts`, `FeelCatalog.validate()`). Three things change behaviour or surface: `absorbPlayer(p, into: p.id, …)` now leaves the player alone (it deleted it), which SyFive never asks for: its two callers are `SF/Views/PlayersView.swift:111` (the link sheet, whose candidates are local players while its subject is a Game Night player) and `:132` (the merge sheet, whose candidate list filters the retiring player out at `:126`), and Syderal does not call `absorbPlayer` at all; `resumeAsHost` no longer traps on a match host with short arrays, which a host whose arrays match its count (SyFive's, and Syderal's bridge, `SYD/Multiplayer/GameNightMatchBridge.swift:91–108`) never meets; and `sessionCheckpoint(_:)` is gone, which SyFive does not call (the only match for it in the three trees is the file that declares it). |
+| L-25 | SYD-463 | SyLib's tests cover SyLib. Two bug fixes and one removal came with them. | **For SyFive:** nothing from the tests, the seams or the access changes: every default is unchanged and SyFive calls none of the new symbols (`holdSpeechForTesting`, `queuedTiers`, `queuedTexts`, `FeelCatalog.validate()`). Three things change behavior or surface: `absorbPlayer(p, into: p.id, …)` now leaves the player alone (it deleted it), which SyFive never asks for: its two callers are `SF/Views/PlayersView.swift:111` (the link sheet, whose candidates are local players while its subject is a Game Night player) and `:132` (the merge sheet, whose candidate list filters the retiring player out at `:126`), and Syderal does not call `absorbPlayer` at all; `resumeAsHost` no longer traps on a match host with short arrays, which a host whose arrays match its count (SyFive's, and Syderal's bridge, `SYD/Multiplayer/GameNightMatchBridge.swift:91–108`) never meets; and `sessionCheckpoint(_:)` is gone, which SyFive does not call (the only match for it in the three trees is the file that declares it). |
 | L-26 | SYD-464 | SyLib's docs are rewritten and renamed, and this document is written. | **For SyFive:** the docs it is handed describe the SyLib it will build against. |
 | L-27 | SYD-465 | A guest's rematch does not delete a match the device hosted earlier. Syderal's app only. | **For SyFive:** nothing. No SyLib source changes. |
 | L-28 | SYD-466 | Syderal offers Reconnect by the match it holds, not by the session's role. Syderal's app only. | **For SyFive:** nothing. No SyLib source changes. Its own offer (`fetchHostReconnectIDs`, `SF/Views/ContentView.swift` 195) was not read for the same fault. |

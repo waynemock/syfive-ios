@@ -100,7 +100,7 @@ and the flag leaks. That ordering is load-bearing.
 
 ### 2.3 Guest identity survives relaunch
 **Trigger:** Guest force-quits mid-match, relaunches while the session is live.
-**Correct behavior:** The guest is recognised as the same participant, in the same
+**Correct behavior:** The guest is recognized as the same participant, in the same
 seat, with their score intact.
 **Why it exists:** `UserDefaults.gnParticipantID(for: matchID)`, restored by
 `prepareForGuestReconnect(matchID:)` before the session arrives, so the UI can

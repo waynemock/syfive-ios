@@ -99,7 +99,7 @@ the Installation snippet. Both currently stop at `SyLibScoringData`.
 `SyLibGameNight` is in the test target's dependencies and has no tests. Three
 areas are pure functions and worth covering. **Do not attempt to test session
 lifecycle, seat claiming, or anything requiring a `GroupSession`** — that is what
-the behaviour inventory is for.
+the behavior inventory is for.
 
 Add `Tests/SyLibTests/SyLibGameNight/`:
 
@@ -178,7 +178,7 @@ completing.
 Run all 27 entries of `GameNight-Behavior-Inventory.md` against the final shape,
 on two physical devices, and fill in the sign-off table with dates.
 
-This becomes the baseline Sideral is checked against — a behaviour that works in
+This becomes the baseline Sideral is checked against — a behavior that works in
 SyFive and not in Sideral is then a Sideral integration bug rather than an open
 question about the module.
 

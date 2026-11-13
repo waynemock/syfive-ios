@@ -48,7 +48,7 @@ A single control at the **end** of the help content, after the player has had th
 
 Tapping it presents a **confirmation alert** (§2.6). Confirming is **permanent for the account** — there is no restore control, no Settings toggle, and no way to bring the toolbar button back short of a fresh install.
 
-Once dismissed, the footer control is **absent** from the sheet entirely — not disabled, not greyed. There is nothing left for it to do.
+Once dismissed, the footer control is **absent** from the sheet entirely — not disabled, not grayed. There is nothing left for it to do.
 
 **Rationale:** the only person qualified to dismiss the instructions is someone who has seen them, so the control sits at the bottom. Because the action is one-way, an alert is the correct weight — and it must be a **confirmation** with Cancel, not an acknowledgment with OK. An OK-only alert informs the player where Help went *after* they have already lost the button, which is the worst of both. Cancel is what earns the interruption.
 

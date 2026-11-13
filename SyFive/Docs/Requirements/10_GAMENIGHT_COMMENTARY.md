@@ -152,7 +152,7 @@ get no control (their control is the call itself — "Dad, turn that thing off")
 
 ### 2.2 Suppression visibility
 
-Guest devices show nothing about commentary. No greyed-out settings, no "host controls
+Guest devices show nothing about commentary. No grayed-out settings, no "host controls
 this" rows — absence, not disabled UI. A guest's own commentator settings remain
 untouched and take effect the moment they play locally again.
 

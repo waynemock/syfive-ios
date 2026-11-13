@@ -60,7 +60,7 @@ that are fading out, the shrink reads as part of the fade, not as a zoom. *Ratio
 ruling is "the current for both"; a Reduce Motion variant with `shrink: 0` would be a second
 celebration to keep in step.
 
-**2.3 Turning Reduce Motion on mid-burst ends that burst.** This is SyLib's behaviour
+**2.3 Turning Reduce Motion on mid-burst ends that burst.** This is SyLib's behavior
 (`.onChange(of: reduceMotion)`, Sydoku `09` S-7); nothing replays until the next Yatzy or game
 over. Accepted as is.
 
@@ -91,7 +91,7 @@ One task, reported in `00A` §6's form.
 ### 4.1 SyFive: pass each particle factory for Reduce Motion too
 
 **Read:** `Views/CelebrationView.swift`; `LIB/Sources/SyLibUI/Components/ParticleBurst.swift`
-(the two initialisers and their doc comments). Nothing else.
+(the two initializers and their doc comments). Nothing else.
 
 **Line numbers are the tree at SyFive `5da665f`.** Find each edit by its quoted text.
 
@@ -159,7 +159,7 @@ Rewrites D-073 in place, under **Celebrations**.
 
 | ID | Current ruling | Source → chain |
 |---|---|---|
-| D-073 | **Reduce Motion is honoured, and the particles are already its form.** With Reduce Motion on, the Yatzy motes and the game-over slow-fall play unchanged: each `ParticleBurst` passes its factory as both `particles:` and `reducedMotion:`. No flashing in either path. Celebrations are non-blocking and cancel cleanly on early dismissal. The rainbow border and card transitions are not gated (`24` §2.4). | `08 §4` → `24` §2 (Pops, 28 Oct 2026) |
+| D-073 | **Reduce Motion is honored, and the particles are already its form.** With Reduce Motion on, the Yatzy motes and the game-over slow-fall play unchanged: each `ParticleBurst` passes its factory as both `particles:` and `reducedMotion:`. No flashing in either path. Celebrations are non-blocking and cancel cleanly on early dismissal. The rainbow border and card transitions are not gated (`24` §2.4). | `08 §4` → `24` §2 (Pops, 28 Oct 2026) |
 
 ---
 
