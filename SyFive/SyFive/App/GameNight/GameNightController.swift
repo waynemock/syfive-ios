@@ -204,7 +204,6 @@ final class GameNightController {
     }
 
     func prepareAsHost() { session.prepareAsHost() }
-    func beginNearbyHosting() { session.beginNearbyHosting() }
     func cancelHostPreparation() { session.cancelHostPreparation() }
     func beginHosting(
         onNeedsConversation: @escaping () -> Void,

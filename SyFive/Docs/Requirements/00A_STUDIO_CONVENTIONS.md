@@ -1,7 +1,7 @@
 # Syzygy Softwerks — Studio Conventions
 
 **Studio-level. Identical in every project.**
-Version 1.13 · Ships in every agent prompt, alongside the project's own documents.
+Version 1.14 · Ships in every agent prompt, alongside the project's own documents.
 
 ---
 
@@ -312,6 +312,10 @@ comparing test lists, batch text edits, extracting a section of a document: writ
 Single plain commands (`xcodebuild`, `ls`, `wc`) and the agent's own file tools stay as they are.
 Python replaces pipelines, not tools.
 
+**Build numbers are Xcode's.** Xcode increments `CURRENT_PROJECT_VERSION` when an archive is
+uploaded. No task, checklist, review or session summary sets it, checks it or raises it. The
+release version (`MARKETING_VERSION`) is the only version anyone manages.
+
 ## 10. Structure
 
 - New work goes into an existing folder. **If a file seems to need a new folder, stop and ask.**
@@ -440,6 +444,7 @@ name the cases. The alternative is discovering the cases one at a time, from the
 
 | Version | Decision | Rationale |
 |---|---|---|
+| v1.14 | §9: build numbers are Xcode's; nobody sets, checks or raises `CURRENT_PROJECT_VERSION` | Directed by Pops, 14 Nov 2026: Xcode increments it on upload, and flagging it before a submission was noise. SyFive carries v1.14 first; each other project adopts it when next in focus |
 | v1.13 | New §3 rule, "Previews and simulators": previews are written, never rendered or used as a check; no simulator or device sessions unless the person asks in that message; a task asking for either is wrong. §4 gains the stop condition | Directed by Pops, 9 Nov 2026: Xcode and the agent are unreliable with previews, and rendering hangs Xcode. Score It \* (`00B` 1.3, 1.5), SyDice and Syzygies already carried it in their `00B`s; SyFive added it (`00B` 1.5) after a SyFive task wrongly asked for a simulator check. SyFive, Syderal and Score It \* carry v1.13 first; projects on older `00A` versions carry the rule in their `00B` until they adopt v1.13 |
 | v1.12 | §6: the session's summary is written as a row at the top of the task document's Results log, as its last step; the document is the one file outside the task's list it edits | Directed by Pops on Syderal `26`, 8 Nov 2026: summaries lived only in the agent's chat, so every review waited on Pops pasting one, and a task was once logged done that had stopped |
 | v1.11 | §8: a compile error or warning the session's own change causes is the session's to fix without stopping (an import, a label, a type), in any file, even one under "must not touch", as long as the fix changes no behavior, test expectation or public API; a task isn't done with an error or warning it introduced | Directed by Pops on Syderal `26`, 8 Nov 2026: a missing `import SyLibCore` stopped a task and cost a round trip through Pops for a fix nobody needed to decide |

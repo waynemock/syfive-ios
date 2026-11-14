@@ -59,8 +59,12 @@ extension ContentView {
             if let control = gameNightEntry.leadingControl {
                 GameNightLeadingControlButton(control) {
                     switch control {
-                    case .start:      startGameNight()
-                    case .inviteSent: showInviteSent()
+                    case .start:
+                        gameNight.beginHosting(
+                            onNeedsConversation: { showsInviteInstructions = true },
+                            onReadyToSeat: { presentGameNightSheetOrAlert() }
+                        )
+                    case .inviteSent: showsGameNightPendingSheet = true
                     case .setup:      showsGameNight = true
                     case .end:        gnAlerts.showsCancelSession = true
                     case .active:     break   // drawn as a status; never called
@@ -97,15 +101,12 @@ extension ContentView {
     var gameNightMenuSection: some View {
         GameNightMenuSection(
             state: gameNightEntry,
-            onStart: { startGameNight() },
-            onCancelInvite: {
-                if gameNight.session.isAdvertisingNearby {
-                    logger.info(self, "menu cancelInvite: reopening nearby waiting sheet")
-                    showsGameNightNearbyWaiting = true
-                } else {
-                    gnAlerts.showsCancelSession = true
-                }
+            onStart: {
+                gameNight.beginHosting(
+                    onNeedsConversation: { showsInviteInstructions = true },
+                    onReadyToSeat: { presentGameNightSheetOrAlert() })
             },
+            onCancelInvite: { gnAlerts.showsCancelSession = true },
             onOpenSetup: { showsGameNight = true },
             onEnd: { gnAlerts.showsCancelSession = true },
             onShowHelp: { showsGameNightHelp = true }
@@ -115,93 +116,6 @@ extension ContentView {
                     Label("Play Again", systemImage: "arrow.clockwise.circle")
                 }
             }
-        }
-    }
-
-    /// Start Game Night (17 §2.6, D-213): on iPhone, the choice between Tap to Play and the
-    /// picker; elsewhere the picker, as before.
-    func startGameNight() {
-        if UIDevice.current.userInterfaceIdiom == .phone {
-            logger.info(self, "startGameNight: presenting start choice")
-            showsGameNightStartChoice = true
-        } else {
-            logger.info(self, "startGameNight: not iPhone, beginHosting")
-            beginHostingFromStart()
-        }
-    }
-
-    /// Today's picker start, shared by Start Game Night on iPad and FaceTime or Messages.
-    func beginHostingFromStart() {
-        gameNight.beginHosting(
-            onNeedsConversation: { showsInviteInstructions = true },
-            onReadyToSeat: { presentGameNightSheetOrAlert() }
-        )
-    }
-
-    /// Tap to Play (17 §2.7, D-214). Starts nearby hosting and records the step; the waiting
-    /// sheet is presented from the choice sheet's `onDismiss` (17 §5G).
-    func chooseTapToPlay() {
-        gameNight.beginNearbyHosting()
-        recordStartStep(.tapToPlay)
-    }
-
-    /// FaceTime or Messages: records the step; the picker is presented from the choice sheet's
-    /// `onDismiss`, once the sheet is gone (17 §5G).
-    func chooseFaceTimeOrMessages() {
-        recordStartStep(.faceTimeOrMessages)
-    }
-
-    /// Everyone's In (17 §2.7, §5E). Stops advertising and records the step; the table is
-    /// presented from the waiting sheet's `onDismiss` (17 §5G).
-    func finishNearbyInvitesAndPresentTable() {
-        logger.info(self, "nearbyWaiting: Everyone's In participantCount=\(gameNight.session.participantCount) token=\(gameNight.session.nearbyHostToken?.uuidString ?? "nil")")
-        gameNight.session.finishNearbyInvites()
-        recordStartStep(.everyoneIn)
-    }
-
-    private func recordStartStep(_ step: StartStep) {
-        logger.info(self, "startStep: recorded \(step) isAdvertisingNearby=\(gameNight.session.isAdvertisingNearby) isSessionActive=\(gameNight.isSessionActive) token=\(gameNight.session.nearbyHostToken?.uuidString ?? "nil")")
-        pendingStartStep = step
-    }
-
-    /// The choice and waiting sheets' `onDismiss` (17 §5G): takes the pending step, clears it,
-    /// and runs it with no delay, since the sheet is gone. Nothing pending (Cancel, or a sheet
-    /// closed by the app) does nothing.
-    func runPendingStartStep(after sheet: String) {
-        guard let step = pendingStartStep else {
-            logger.info(self, "startStep: \(sheet) dismissed, nothing pending")
-            return
-        }
-        pendingStartStep = nil
-        switch step {
-        case .faceTimeOrMessages:
-            logger.info(self, "startStep: \(sheet) dismissed, running \(step): beginHosting")
-            beginHostingFromStart()
-        case .tapToPlay:
-            guard gameNight.session.isAdvertisingNearby else {
-                logger.info(self, "startStep: \(sheet) dismissed, \(step) skipped: not advertising isSessionActive=\(gameNight.isSessionActive)")
-                return
-            }
-            logger.info(self, "startStep: \(sheet) dismissed, running \(step): presenting nearby waiting sheet")
-            showsGameNightNearbyWaiting = true
-        case .everyoneIn:
-            guard gameNight.isSessionActive else {
-                logger.warning(self, "startStep: \(sheet) dismissed, \(step) skipped: no active session")
-                return
-            }
-            logger.info(self, "startStep: \(sheet) dismissed, running \(step): presenting the table")
-            presentGameNightSheetOrAlert()
-        }
-    }
-
-    /// The `.inviteSent` control: the waiting sheet while Tap to Play advertises, otherwise
-    /// the Messages pending sheet, as before.
-    func showInviteSent() {
-        if gameNight.session.isAdvertisingNearby {
-            logger.info(self, "inviteSent: reopening nearby waiting sheet")
-            showsGameNightNearbyWaiting = true
-        } else {
-            showsGameNightPendingSheet = true
         }
     }
 
@@ -282,12 +196,6 @@ extension ContentView {
         guard let gameID = (try? modelContext.fetch(gameDesc))?.first?.id else { return nil }
         return (match.id, gameID)
     }
-}
-
-/// The next step a Game Night start sheet's button chose, run from that sheet's `onDismiss`
-/// once it is gone (17 §5G).
-enum StartStep: Equatable {
-    case tapToPlay, faceTimeOrMessages, everyoneIn
 }
 
 /// The control in the leading nav bar slot (18 §4.6). Its changes are logged, to diagnose a

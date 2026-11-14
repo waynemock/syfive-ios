@@ -4,9 +4,14 @@
 paste-ready source of truth for App Store Connect. All copy blocks below are final unless
 listed in Open Decisions (§7).*
 
-**Version 1.3.0** · revised 10 November 2026 · **A living record, edited in place** (D-148, an
+**Version 1.3.1** · revised 14 November 2026 · **A living record, edited in place** (D-148, an
 exception to D-001). Changes are listed in §10.
 
+> **Status (1.3.1):** §4a's What's New is new for 1.3.1: bringing iPhones together is withdrawn
+> (`17` §0, D-217). §4's Game Night beat goes back to FaceTime or Messages only, so the description
+> changes with this version. §3's promotional text must not mention holding iPhones together (§7.5).
+> Name, subtitle and keywords are unchanged.
+>
 > **Status (1.3.0):** §4a's What's New is new for 1.3.0, from `33` to `39`. §3's promotional text
 > can stay as 1.2.0's or change to the 1.3.0 candidate (§7.5). The description, name, subtitle and
 > keywords are unchanged.
@@ -67,10 +72,16 @@ subtitle, description, or keywords. "Yatzy" (European spelling) only. This is a 
 ## 3. Promotional text (170 char — editable anytime without review)
 
 ```
-New: hold two iPhones together to start Game Night at the table. Real physics dice, a beautiful scorecard, and no ads, no accounts, no noise.
+New: set the table in one tap with Same as Last Time, and see every player's record before you roll. Real physics dice, no ads, no accounts, no noise.
 ```
 
-141 chars. For 1.2.0's release; it can change back anytime without review.
+150 chars. From 1.3.1 (§7.5): 1.2.0's text named holding two iPhones together, which is withdrawn.
+It can change anytime without review: 1.2.0's was still live on 14 Nov 2026, so replace it now,
+before 1.3.1 is submitted (Pops confirmed).
+
+- **1.2.0 value, for history (withdrawn feature, don't reuse):** `New: hold two iPhones together to
+  start Game Night at the table. Real physics dice, a beautiful scorecard, and no ads, no accounts,
+  no noise.`
 
 - **1.1.0 value, for history:** `Real physics dice you can actually feel. No ads, no accounts, no
   noise — just five dice, a beautiful scorecard, and a game that respects your evening.`
@@ -93,7 +104,7 @@ Five dice you can feel. They tumble, knock, rock to a stop, and catch the light 
 
 Classic Yatzy, in full. Upper bonus, the lower categories, the Yatzy bonus, joker scoring — all of it. And a scorecard that's finally readable: available moves obvious, locked ones quiet, totals that settle instead of pop.
 
-Game night, at the table or across any distance. Sitting together? Hold two iPhones close to start a Game Night. Far apart? Start one over FaceTime or Messages and pass the dice around — even when the table spans time zones.
+Game night, across any distance. Start a Game Night over FaceTime or Messages and pass the dice around the table — even when the table spans time zones.
 
 Made your way. Seven themes, light and dark. Optional spoken commentary in four voices, off until you ask for it. Celebrations that mark the moment without shouting.
 
@@ -104,6 +115,10 @@ No ads. No in-app purchases. No account. No tracking. No casino noise. Works ful
 Five dice. Pure calm.
 ```
 
+- **1.3.1 change:** the Game Night beat goes back to its 1.1.0 wording. 1.2.0's read "Game night,
+  at the table or across any distance. Sitting together? Hold two iPhones close to start a Game
+  Night. Far apart? Start one over FaceTime or Messages and pass the dice around — even when the
+  table spans time zones." Bringing iPhones together is withdrawn (`17` §0, D-217).
 - **1.2.0 changes, for history:** the fairness beat's 10,000 rolls is now 50,000 (D-152: five full
   runs pooled, 250,000 dice results, PASS, shipped in 1.1.0). The Game Night beat was "Game night,
   across any distance. Start a Game Night over FaceTime or Messages and pass the dice around the
@@ -111,7 +126,16 @@ Five dice. Pure calm.
 
 ---
 
-## 4a. What's New in 1.3.0 (release notes; paste as plain text)
+## 4a. What's New in 1.3.1 (release notes; paste as plain text)
+
+```
+Game Night now starts one way: over FaceTime or Messages. We've removed holding two iPhones together to start, since it still went through Messages and only added a step.
+```
+
+The withdrawal of `17` (D-171 to D-174, D-213 to D-216 withdrawn; D-217), and 1.3.1's only change
+(Pops, 14 Nov 2026). The help sheet's "Sitting together?" section is gone with it.
+
+## 4a (1.3.0). What's New in 1.3.0, for history
 
 ```
 New Game, redesigned: numbered seats and a chip for every player. Tap to seat, swipe to remove, touch and hold to reorder.
@@ -197,12 +221,14 @@ floated rather than filling the slot. Same restraint as the icon.
    + insights named lightly) or cut it entirely and let those be pure in-app discovery. Kept
    in the current draft.
 3. **Marketing/Support URLs:** confirm the exact Syzygy Softwerks URLs to enter.
-4. **The Game Night lines (1.2.0) are gated on `17`'s S2.** §3's promotional text, §4's "Sitting
+4. ~~**The Game Night lines (1.2.0) are gated on `17`'s S2.**~~ **Withdrawn (1.3.1):** bringing
+   iPhones together is pulled (`17` §0, D-217); §3, §4 and §4a no longer mention it. Original text: §3's promotional text, §4's "Sitting
    together?" sentence and §4a's first line go into App Store Connect only once two iPhones on the
    TestFlight build offer and join Game Night when held together (with the hidden `ShareLink`, or
    the UIKit fallback if S2 fails). If the feature doesn't ship, use §3's 1.1.0 promotional text and
    §4's earlier Game Night beat, and drop §4a's first line.
-5. **1.3.0 promotional text.** Keep 1.2.0's (§3), or use this candidate (150 chars):
+5. ~~**1.3.0 promotional text.**~~ **Resolved by 1.3.1:** 1.2.0's text named the withdrawn feature, so
+   §3 is now this candidate (150 chars):
    `New: set the table in one tap with Same as Last Time, and see every player's record before you roll. Real physics dice, no ads, no accounts, no noise.`
    *Claude's lean: the candidate; 1.2.0's Game Night-at-the-table line has had its release.*
 
@@ -217,6 +243,9 @@ floated rather than filling the slot. Same restraint as the icon.
 - [ ] App Store name, subtitle and keywords entered as in §1–§2, with character counts as
       shown
 - [ ] No "Yahtzee" string anywhere in listing metadata
+- [ ] 1.3.1: §4a pasted as the version's What's New; §4's description pasted (its Game Night beat
+      changed); §3's promotional text replaced if 1.2.0's is still live; `MARKETING_VERSION` 1.3.1
+      in both configurations
 - [ ] 1.3.0: §4a pasted as the version's What's New; §3's promotional text per §7.5;
       `MARKETING_VERSION` 1.3.0 in both configurations
 - [ ] 1.2.0: `17`'s S2 passed before the Game Night lines are entered (§7.4); §4a pasted as the
@@ -237,8 +266,8 @@ floated rather than filling the slot. Same restraint as the icon.
 - App Store: description leads with provable-fairness differentiator (physics + 10k-roll
   validation), closes on calm/no-noise ethos.
 - App Store: Game Night described as joining over FaceTime **or** Messages (corrects prior
-  FaceTime-only assumption), and from 1.2.0 by holding two iPhones together (D-171), once `17`'s
-  S2 passes.
+  FaceTime-only assumption). From 1.3.1, never as holding iPhones together: that was listed in 1.2.0
+  and 1.3.0 and is withdrawn (`17` §0, D-217).
 - App Store: screenshot count locked at **four** (dice tumble / two-player scorecard / Yatzy
   moment / dark ethos closer). Game Night deliberately not screenshotted.
 - App Store: privacy label = Data Not Collected; age rating 4+; private CloudKit sync does
@@ -257,5 +286,6 @@ floated rather than filling the slot. Same restraint as the icon.
 |---|---|---|
 | 1.0 | 2026 | First listing: name `SyFive`, subtitle `Classic Yatzy, real dice`, 91-char keywords |
 | 1.1.0 | 11 Oct 2026 | §1: store name `SyFive: Yatzy Dice Game`; subtitle `Classic rules, real physics`. §2: keywords drop words now in the name or subtitle, and add `shareplay`, `party`, `yacht` and `multiplayer` (98 chars). §7.1 resolved. §8 points to `00B` §6. §9 rows updated; D-148 added (Pops) |
+| 1.3.1 | 14 Nov 2026 | §4a: What's New for 1.3.1, the withdrawal of bringing iPhones together. §4: the Game Night beat back to FaceTime or Messages. §3: promotional text becomes §7.5's candidate, since 1.2.0's named the feature. §7.4 withdrawn, §7.5 resolved; §8 and §9 updated (Claude, for Pops) |
 | 1.3.0 | 10 Nov 2026 | §4a: What's New for 1.3.0, from `33` to `39`; 1.2.0's kept below it for history. §7.5: a 1.3.0 promotional text candidate. §8: 1.3.0 items, and the privacy manifest beside the label |
 | 1.2.0 | 7 Nov 2026 | §3: a 1.2.0 promotional text naming Game Night at the table (141 chars). §4: the Game Night beat adds holding two iPhones together; the fairness beat's 10,000 rolls becomes 50,000 (D-152). §4a: What's New for 1.2.0. §7.4 and §8: the Game Night lines wait on `17`'s S2. §9's Game Night row updated |

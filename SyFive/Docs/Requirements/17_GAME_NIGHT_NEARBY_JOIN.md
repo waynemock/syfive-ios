@@ -1,11 +1,9 @@
 # Game Night: join by bringing iPhones together (SharePlay over AirDrop)
 
-**Status:** **v2.12: Built (17.1 to 17.10); S1 to S20 open on TestFlight.** Version 2.12, 13 November 2026. In SyFive 1.2.0 (Pops, 6 November 2026). v2.0 makes advertising a
-choice the host makes (§2.6), because the first TestFlight bump left neither iPhone as host (§9,
-12 November 2026). Every question is ruled (§2). There is no throwaway spike: Pops can't test
-with two iPhones before TestFlight, so **the TestFlight build is the spike** (§6, Pops, 7 November
-2026). If S2 fails there, the modifier switches to C; if neither works, 17 comes out of 1.2.0.
-Rewrites the note once filed as `Docs/SyLib/27_SHAREPLAY_NEARBY.md` (3 November 2026).
+**Status:** **Withdrawn (v3.0, 13 November 2026); removal done in SyFive and SyLib (v3.2).** Tap to Play is pulled from SyFive, SyLib and,
+later, Syderal: back to how Game Night started before any of this doc's work. The lesson is §0; the
+removal is Tasks 17.11 and 17.12 (§0.4). Everything below §0 is kept as the record of what was built
+and why.
 
 **Scope:**
 - **SyFive:** `syfive-ios` on `sylib-reintegration`.
@@ -15,6 +13,113 @@ Rewrites the note once filed as `Docs/SyLib/27_SHAREPLAY_NEARBY.md` (3 November 
 
 **Ship with every prompt:** `00_DECISION_LEDGER.md`, `00A`, `00B`, `16_GAME_NIGHT_PROXIMITY_MUTE.md`,
 this document.
+
+---
+
+## 0. Withdrawn: what we learned (Pops, 13 November 2026)
+
+### 0.1 What happened
+
+The goal was to start Game Night at the same table without picking a Messages conversation. Two
+rounds were built and tried on device:
+- **v1 (17.1, 17.2):** every idle iPhone advertised a hidden `ShareLink`. On the first bump (12
+  November) neither phone became host: GroupActivities hands every participant the same session
+  and says nothing about who started it, and the role came only from `prepareAsHost()`, which the
+  bump path never calls, so both phones came up as guests.
+- **v2 (17.3 to 17.10):** Start Game Night asked how to host; only the host advertised, from a
+  waiting sheet; a host token settled ties; keep tapping added each further iPhone; the sheets
+  presented from `onDismiss`. It worked mechanically on TestFlight (13 November).
+- **The verdict:** it still ends in Messages. Bringing iPhones together makes iOS create a group
+  Messages conversation for the table (D-171 accepted that on day one), so the tap only replaced
+  picking a conversation, and it added a choice sheet, a waiting sheet and a physical step, on
+  iPhone only, with more than two players resting on undocumented behavior (S14, never run). More
+  steps, not fewer. Pops: "the same as the host just sending a message, but now with an added step."
+
+### 0.2 Lessons
+
+1. **SharePlay has two transports, FaceTime and Messages, and every entry point lands in one of
+   them.** A "new way to start" is only new if it removes steps end to end. Judge a SharePlay entry
+   point by counting the steps on device, against FaceTime's, before designing UI around it.
+2. **Feel the premise on device before building on it.** "The TestFlight build is the spike" (1.2)
+   was right about where to test, but ten tasks of UI went in before anyone held two phones and asked
+   whether the result beat sending a message. Next time: the smallest possible on-device build (one
+   hidden link, logs) and a go/no-go from Pops before any sheets.
+3. **GroupActivities never says who started a session.** Any start path that doesn't go through
+   `prepareAsHost()` needs its own explicit host signal; otherwise every device is a guest.
+4. **Messages and AirDrop SharePlay can't be judged from an Xcode build** (the system picker is
+   sandboxed there, and the bump rides the same machinery). TestFlight only.
+5. **Present the next sheet from the current sheet's `onDismiss`, never after a fixed delay** (17.9):
+   a full-height sheet outlived the 500 ms wait and UIKit dropped the picker silently. A keeper for
+   any sheet-to-sheet hand-off, Game Night or not.
+6. **FaceTime is Game Night's dependable start.** An audio-only call is enough, works with iPads and
+   with people across town, and is what the household actually uses.
+
+### 0.3 Do not revisit
+
+Bringing devices together (SharePlay over AirDrop, `ShareLink` / `activityItemsConfiguration`
+advertising) as a way to start Game Night, in any app, until Apple offers a SharePlay start that
+doesn't create a Messages conversation. MultipeerConnectivity, custom networking and a Bonjour
+lobby stay excluded (§7). Ledger: D-217.
+
+### 0.4 Removal: Tasks 17.11 and 17.12
+
+**Order matters.** SyFive stops using SyLib's pieces first (17.11), so SyLib can delete them
+without breaking SyFive (17.12). SyLib deletes `gameNightNearbyInvite` too: **Syderal won't build
+against SyLib after 17.12 until its own removal** (it calls `gameNightNearbyInvite` from
+`Multiplayer/GameNightEntryPoints.swift` and `App/RootView.swift` 282). That's accepted: one
+project at a time, and Syderal's turn comes later (Pops, 13 November 2026). Syderal's removal is
+`POST_MVP/33_REMOVE_NEARBY_INVITE.md` (v2.0, 14 November 2026), run when Syderal is picked up.
+Nothing was ever persisted or sent on the wire for Tap to Play (`hostToken` lived only in the
+activity), so there is no data or protocol to migrate.
+
+**Task 17.11 · SyFive: back to the picker.** Repo `syfive-ios`; SyLib unchanged.
+- `App/GameNight/GameNightActivity.swift`: back to its pre-17.2 form: `nonisolated struct
+  GameNightActivity: GroupActivity, Codable` (no `Transferable`, no `GameNightHostTokenCarrying`,
+  no `hostToken`); drop `import CoreTransferable` and `import SyLibGameNight`; `metadata` sets
+  `m.title = "SyFive Game Night"` again and `static let title` goes.
+- `App/GameNight/GameNightController.swift`: remove `beginNearbyHosting()`.
+- `Views/ContentView+GameNight.swift`: remove `StartStep`, `startGameNight()`,
+  `beginHostingFromStart()`, `chooseTapToPlay()`, `chooseFaceTimeOrMessages()`,
+  `finishNearbyInvitesAndPresentTable()`, `recordStartStep(_:)`, `runPendingStartStep(after:)` and
+  `showInviteSent()`. `leadingNavButton`'s `.start` and `gameNightMenuSection`'s `onStart` call
+  `gameNight.beginHosting(onNeedsConversation: { showsInviteInstructions = true }, onReadyToSeat: {
+  presentGameNightSheetOrAlert() })` directly again; `.inviteSent` sets `showsGameNightPendingSheet
+  = true`; `onCancelInvite` raises `gnAlerts.showsCancelSession = true`. (`isNearbyInviteAdvertised`
+  is already gone and stays gone.)
+- `Views/ContentView.swift`: remove `showsGameNightStartChoice`, `showsGameNightNearbyWaiting`,
+  `pendingStartStep`, both sheets, the `keepsNearbyWaiting` handling in
+  `onChange(sessionActivationCount)` (the table presents after `seatingSheetDelay` as before 17.4),
+  the Tap to Play lines in the `scenePhase` `.background` case, and the waiting-sheet close in
+  `onChange(phase)`.
+- Search the target for `Nearby`, `TapToPlay`, `hostToken`, `StartStep`, `EveryoneIn`: nothing left.
+- **Done when:** SyFive builds against today's SyLib and its suite passes (33). Log it in §9.
+
+**Task 17.12 · SyLib: remove Tap to Play and the nearby invite.** Repo `sylib-swift`.
+Runs after 17.11.
+- Delete `Sources/SyLibGameNight/GameNightHostToken.swift`.
+- `GameNightSession.swift`: back to its pre-17.3 behavior. Remove `nearbyHostToken`,
+  `isAdvertisingNearby`, `participantCount`, `beginNearbyHosting()`, `finishNearbyInvites()`,
+  `stopNearbyAdvertising(_:)`, `phase`'s `didSet`, `takesHostRole`, `keepsAdvertisingNearby`,
+  `ignoresSecondSession` and the second-session guard, and the token and participant logging.
+  `configureSession`'s role is `pendingHostSessionActivation || persistedAsHost` again;
+  `prepareAsHost()` returns nothing again; `cancelHostPreparation()` as before 17.3; the teardown and
+  participant observation as before 17.6.
+- `Views/GameNightSharingViews.swift`: remove `GameNightStartChoiceSheet`,
+  `ChoiceCardButtonStyle`, `GameNightNearbyWaitingSheet`, the choice-sheet `#Preview`, and
+  `import GroupActivities` if nothing else needs it.
+- `Views/GameNightHelpSheet.swift`: remove the "Sitting together?" section and its iPhone-only
+  condition (26.30), and the first line goes back to "Game Night plays alongside FaceTime or
+  Messages. Before you can start a game night, you need one of these open with your players:"
+  (D-174 withdrawn). Syderal's help sheets get this with no change.
+- Delete `Views/GameNightNearbyInvite.swift` (`gameNightNearbyInvite`).
+- Tests: delete `GameNightHostRoleTests.swift` and `GameNightNearbyAdvertisingTests.swift`, and any
+  other test that exists only for the removed pieces (say which). Expected total: 1596 (the
+  pre-17.3 count), 1 skipped; report it.
+- `Docs/GAME_NIGHT.md`: remove "Nearby hosting", the two sheets, the session rows and methods
+  above, and the arrival text back to pending-or-persisted; "Nearby invite" is removed, replaced by
+  one line pointing at SyFive `17` §0 (withdrawn).
+- **Done when:** SyLib builds and its suite passes; syfive-ios builds unchanged. Syderal is not
+  built (expected to break; §0.4). Log it in §9.
 
 ---
 
@@ -559,20 +664,22 @@ If neither A nor C produces the prompt, 17 comes out of 1.2.0 and the rest ships
 | Advertising during a game | Every pass of a phone would offer a new session (§2.4) |
 | Advertising automatically while idle (v1.x) | Every idle phone advertised, iOS shared an arbitrary one's activity, and neither phone knew it was host (S1, 12 Nov 2026) |
 | A timeout on Tap to Play | Advertising lasts until Cancel, a session or the background (Pops, 13 Nov 2026) |
+| **Bringing devices together as a Game Night start (all of 17)** | Withdrawn 13 Nov 2026: it still ends in a Messages conversation, so it only adds steps (§0, D-217) |
 | Electing the host by lowest participant ID | The host is the person who chose to host; the token settles the one tie (§2.8) |
 
 ## 8. Ledger rows (paste into `00_DECISION_LEDGER.md`)
 
 | ID | Ruling | Source |
 |---|---|---|
-| D-171 | **Game Night can start by bringing iPhones together (SharePlay over AirDrop), in 1.2.0.** `GameNightActivity` is `Transferable`; the session layer, payloads and versions are unchanged. The group Messages conversation iOS creates is accepted. | `17 §2.1` (Pops, 6 Nov 2026) |
-| D-172 | **Advertising is a choice, not automatic** (v2.0). The activity is advertised only after the host picks Tap to Play (D-213, D-214), by a hidden `ShareLink` on SyLib's waiting sheet if iOS honors it (S2, S11), otherwise by a UIKit `activityItemsConfiguration` responder. No visible SharePlay button. *Was:* advertised whenever Game Night was idle and no local match was in progress. | `17 §2.2, §2.4` → `17 v2.0 §2.6–2.7` (Pops, 13 Nov 2026) |
-| D-173 | **The advertising and its hint live in `SyLibGameNight`**, so Syderal can adopt them; Syderal's check waits for its next release. | `17 §2.3` |
-| D-174 | **The hint is a "Sitting together?" section in SyLib's Game Night help sheet** (copy in `17` §2.5; v2.0: Tap to Play, guests need nothing open), **and the sheet's first line adds "or be sitting together (see below)".** | `17 §2.5` → `17 v2.0 §2.5` |
-| D-213 | **On iPhone, Start Game Night asks "How do you want to host Game Night?" with two card buttons: Tap to Play ("Bring iPhones together. Best for just iPhones at the same table.") and FaceTime or Messages ("Invite from a call or a chat. Best if players aren't at the same table, or iPads are in the mix.")**, footer "You'll be the host.", full height (`17` §2.6). iPad goes straight to the picker; the reconnect paths stay on the picker. | `17 v2.0 §2.6` → `v2.3` → `v2.5` → `17 v2.8 §2.6` (Pops, 13 Nov 2026) |
-| D-214 | **Tap to Play advertises from a waiting sheet; only the host's phone advertises, and it keeps advertising after the first join so each iPhone can tap the host's in turn, until Everyone's In.** It also stops on Cancel (before anyone joins), when the match starts or the session ends, and in the background. No timeout. The sheet shows Tap to Play's symbol, large, with its waves pulsing in shades of green (static under Reduce Motion). While advertising with a live session, a different arriving session is ignored. Spike-gated by S14: if a later bump doesn't join the live session, the sheet closes on the first join and further players join through the Messages group. | `17 v2.0 §2.7` → `17 v2.5 §2.7` (Pops, 13 Nov 2026) |
-| D-215 | **The phone that chose Tap to Play hosts, with a host token as backstop.** `GameNightActivity` carries `hostToken`; a phone holding a nearby token hosts only if the session's activity carries it, so two phones that both chose Tap to Play still get one host. A persisted host flag (reconnect) still wins; the picker path is unchanged. *Why:* v1.x left both bump-joined phones as guests (S1, 12 Nov 2026). | `17 v2.0 §2.8` (Pops, 13 Nov 2026) |
-| D-216 | **Guests need nothing open:** the system's join prompt launches the app on the guest's iPhone (assumed; S10 confirms, and only copy changes if not). | `17 v2.0 §2.9` (Pops, 13 Nov 2026) |
+| D-171 | **Withdrawn: Game Night does not start by bringing iPhones together.** It still ends in a Messages conversation, so it only added steps (D-217). | `17 §2.1` → `17 v3.0 §0` (Pops, 13 Nov 2026) |
+| D-172 | **Withdrawn: nothing advertises a Game Night activity nearby** (no hidden `ShareLink`, no `activityItemsConfiguration`). | `17 §2.2, §2.4` → `v2.0` → `17 v3.0 §0` (Pops, 13 Nov 2026) |
+| D-173 | **Withdrawn with D-171.** SyLib's nearby pieces, `gameNightNearbyInvite` included, are removed (`17` Task 17.12); Syderal won't build against SyLib until its own removal, taken up when Syderal is next worked on. | `17 §2.3` → `17 v3.0 §0` (Pops, 13 Nov 2026) |
+| D-174 | **Withdrawn: Game Night Help has no "Sitting together?" section**, and its first line ends "…open with your players:" again. | `17 §2.5` → `v2.0` → `17 v3.0 §0` (Pops, 13 Nov 2026) |
+| D-213 | **Withdrawn: Start Game Night opens the SharePlay picker directly**, as before `17`; no choice sheet. | `17 v2.0 §2.6` → `v2.3` → `v2.5` → `v2.8` → `17 v3.0 §0` (Pops, 13 Nov 2026) |
+| D-214 | **Withdrawn with D-171** (Tap to Play's waiting sheet and keep tapping). | `17 v2.0 §2.7` → `v2.5` → `17 v3.0 §0` (Pops, 13 Nov 2026) |
+| D-215 | **Withdrawn: the role is `pending || persisted` again**, as before `17`; no host token. | `17 v2.0 §2.8` → `17 v3.0 §0` (Pops, 13 Nov 2026) |
+| D-216 | **Withdrawn with D-171.** | `17 v2.0 §2.9` → `17 v3.0 §0` (Pops, 13 Nov 2026) |
+| D-217 | **Don't revisit bringing devices together (SharePlay over AirDrop) as a way to start Game Night, in any Sy- app**, until Apple offers a SharePlay start that doesn't create a Messages conversation. FaceTime (an audio-only call is enough) is Game Night's dependable start. Lessons in `17` §0.2, including: judge a SharePlay entry point by its end-to-end steps on device before building UI; present a following sheet from `onDismiss`, never after a fixed delay. *Why:* built twice and tried on TestFlight; it only replaced picking a Messages conversation, with more steps. | `17 v3.0 §0` (Pops, 13 Nov 2026) |
 
 ## 9. Results log
 
@@ -583,6 +690,9 @@ If neither A nor C produces the prompt, 17 comes out of 1.2.0 and the rest ships
 | 17.2 | 7 Nov 2026 | Done (checked by Claude against the tree) | `GameNightActivity: GroupActivity, Codable, Transferable` with `static let title`, used by `metadata`; `isNearbyInviteAdvertised` in `ContentView+GameNight.swift`; the modifier at `ContentView.swift` 231. SyFive 20 expected |
 | S1 (first run) | 12 Nov 2026 | **Failed** | Both iPhones were idle with SyFive open, so both advertised. Neither had called `prepareAsHost()`, so `configureSession` made both `.guest` (reported as both acting as host; the logs' `role=` line confirms which). Led to v2.0 |
 | 17.6 | 13 Nov 2026 | **Done** (checked by Claude against the SyLib tree, 13 Nov 2026; the choices are accepted; syfive-ios's build break is the expected init change, fixed by 17.7) | SyLib `main`. The suite is **1613 passed, 1 skipped (1688 runs), 0 failed**, against 1603 passed, 1 skipped (1678 runs) before (17.5's run, same tree), on `platform=iOS Simulator,name=iPhone SE (3rd generation),OS=18.6`, from the result bundle: **+10 tests**. No warnings in the changed files. syfive-ios is expected not to build until 17.7 (the waiting sheet's init changed) and was not touched. *Built after the fact at Pops's prompt:* it fails with one error, `ContentView.swift:286: the compiler is unable to type-check this expression in reasonable time`. That is the expected init mismatch: the 17.4 call at `ContentView.swift` 558–566 passes the old arguments, inside `body`'s long modifier chain, so it surfaces as a type-check timeout rather than a missing-argument error. SyLib compiled with no errors or warnings in the same build. **Files:** `GameNightSession.swift`: adds `participantCount` (set on arrival, kept current by both participant observations, 0 at teardown); `phase` gets a `didSet` that stops advertising when it leaves `.settingTable`; `finishNearbyInvites()`; a private `stopNearbyAdvertising(_ reason:)`, used by `cancelHostPreparation()` (still first, unchanged in effect), `finishNearbyInvites()`, the phase change, every teardown and a non-matching arrival, which logs `nearby: isAdvertisingNearby true→false token=… reason=…` whenever either value was set; the static `keepsAdvertisingNearby(takesHost:localToken:activityToken:)` and `ignoresSecondSession(isSessionActive:role:isAdvertisingNearby:currentSessionID:incomingSessionID:)`; in `configureSession`, the guard right after the entry log line, logging `nearby: ignoring second session id=… while advertising (S14)` with the current id and `participantCount`, then the keep-advertising decision; the COMPLETE line adds `isAdvertisingNearby=` and `participantCount=`; the host's observation logs each `participantCount` change. `Views/GameNightSharingViews.swift`: the choice sheet loses `.presentationDetents` and card 1's line is "Bring iPhones together."; the waiting sheet has both §2.7 v2.5 states, verbatim. `Docs/GAME_NIGHT.md`: `participantCount`, `finishNearbyInvites()`, the advertising lifetime after a join, the second-session guard and its S14 gate, both sheets, the logging and the Testing note. New `Tests/…/GameNightNearbyAdvertisingTests.swift`: 5 keep-advertising cases (host by match; host with mismatched tokens; no local token; no activity token; a guest with matching tokens) and 5 guard cases (ignored while active, host and advertising with a different id; same id; not advertising; guest; no active session). **Choices to review:** (1) **Teardown ordering:** `configureSession` calls `tearDownSession(.adoptingNewSession)` after it decides the role, and §5D says every teardown clears the nearby state. So for a host by token match, the teardown clears both and `configureSession` sets them back straight after (`nearby: isAdvertisingNearby false→true … reason=kept, host by token match`). The log shows a clear and a restore within one synchronous call; SwiftUI sees no change. (2) The guard sits before the existing duplicate-id check and needs a non-nil current session id. (3) **Waiting sheet init:** the new order is `(activity:title:appName:accentColor:participantCount:onCancel:onEveryoneIn:)`. With two closures, 17.7 can't keep 17.4's trailing-closure call as is. (4) The before-anyone-joins body also takes v2.5's copy, dropping the Messages-group sentence. (5) Everyone's In is `.borderedProminent`, `.controlSize(.large)`, full width, headline font, with a clear row background and no row insets, tinted by `accentColor`. (6) `participantCount` is also updated on guests (as §5D says) but logged only on the host, to keep guest logs quiet. GIT: `git status --short` (read-only) |
+| 17.12 | 13 Nov 2026 | **Done** (checked by Claude, 13 Nov 2026: role back to `pending || persisted`, `prepareAsHost()` returns nothing, the help sheet's original first line and no "Sitting together?"; the reported search hits are `NearbyInteraction` (Proximity Mute, D-GNP) and an alert's "nearby", which stay; SyLib 1596) | SyLib `main` (HEAD `bd5cc8f`). **Suite:** before, 1613 passed, 1 skipped (1688 runs), from 17.10's run on the same tree; after, **1596 passed, 1 skipped (1671 runs), 0 failed**, the pre-17.3 count, on `platform=iOS Simulator,name=iPhone SE (3rd generation),OS=18.6`, from the result bundle. Removed: the 17 tests in §0.4's two files (`GameNightHostRoleTests.swift` 7, `GameNightNearbyAdvertisingTests.swift` 10). **No other test was removed:** none existed only for the removed pieces. No warnings in SyLibGameNight. syfive-ios builds with no change from this task (its tree holds only 17.11's four files). Syderal was not built or touched (§0.4). **Files:** deleted `Sources/SyLibGameNight/GameNightHostToken.swift`, `Sources/SyLibGameNight/Views/GameNightNearbyInvite.swift` and the two test files. `GameNightSession.swift` and `Views/GameNightSharingViews.swift` are byte-identical to `b92438f` (the commit before `bd5cc8f`, which carried 17.3 to 17.10): the role is `pendingHostSessionActivation \|\| persistedAsHost`, `prepareAsHost()` returns nothing, `cancelHostPreparation()`, the teardown and the participant observation are as before, and there are no sheets and no `import GroupActivities` in the views file. `Views/GameNightHelpSheet.swift` is byte-identical to before 17.1 (`4ebd6dc^`): the original first line, and no "Sitting together?" section or its iPhone condition; `isIPad` stays, since the hosting section still uses it. `Docs/GAME_NIGHT.md`: `b92438f`'s version, then the `.preSession` help row back to its pre-17.1 text and "Nearby invite" replaced by one line pointing at SyFive `17` §0. **⚠️ The search clause:** `Nearby` still matches 7 lines, all Apple's NearbyInteraction framework in Proximity Mute (`import NearbyInteraction`, `NINearbyObject`, `NINearbyPeerConfiguration` in `Proximity/GameNightProximity.swift`, `Proximity/ProximityNIDelegate.swift` and `ProximityProtocolTests.swift` 279). That code is 16's and isn't Tap to Play, so it was left alone. `hostToken`, `TapToPlay`, `StartChoice` and "Sitting together" find nothing, and `Nearby` finds nothing outside Proximity. **How it was done:** the files were written from `git show <commit>:<path>` output and the removed files deleted with `rm`; no `git restore`, `checkout` or `rm`. GIT: `git status --short`, `git log --oneline`, `git log -S`, `git show --stat`, `git show <commit>:<path>`, `git diff <commit> -- …` (read-only) |
+| 17.11 | 13 Nov 2026 | **Done** (checked by Claude, 13 Nov 2026: against `1f02426`, the commit before Tap to Play's v2, the two views differ only by 17.2's removed advertising; the activity and controller match `b9c27e4`) | syfive-ios `main`, against today's SyLib (unchanged; its tree is clean). The build is clean, with no warnings in the changed files. **Suite:** before, 33 passed, 0 failed (36 runs); after, 33 passed, 0 failed (36 runs). Both on `platform=iOS Simulator,name=iPhone SE (3rd generation),OS=18.6`, from the result bundles. **Search:** `Nearby`, `TapToPlay`, `hostToken`, `StartStep` and `EveryoneIn` across `SyFive`, `SyFiveTests` and `SyFiveUITests` (`*.swift`): no matches. **Files:** `App/GameNight/GameNightActivity.swift` and `App/GameNight/GameNightController.swift` are now byte-identical to `b9c27e4`, the commit before 17.2 (`git diff b9c27e4` on them is empty): `GroupActivity, Codable`, literal title, no `CoreTransferable` or `SyLibGameNight` import, no `beginNearbyHosting()`. `Views/ContentView+GameNight.swift`: `StartStep` and the nine functions §0.4 names are removed; `.start` and `onStart` call `gameNight.beginHosting(onNeedsConversation: { showsInviteInstructions = true }, onReadyToSeat: { presentGameNightSheetOrAlert() })` directly; `.inviteSent` sets `showsGameNightPendingSheet`; `onCancelInvite` raises `gnAlerts.showsCancelSession`. `Views/ContentView.swift`: the three state vars, both sheets, the `keepsNearbyWaiting` handling (the arrival goes straight from `consumePendingHostResume()` to the `seatingSheetDelay` presentation), the background lines and the `onChange(phase)` close are removed. Against `b9c27e4`, the two view files now differ only by later, unrelated work (remembered seat, iCloud status, `IconButton`, `SyTheme`, window appearance and tint), none of it Game Night start code. **How it was done:** by hand, not with `git restore`, which is a write; `b9c27e4` was located with `git log -S` and used only to compare. GIT: `git status --short`, `git log --oneline`, `git log -S`, `git show HEAD:…`, `git diff --stat`, `git diff b9c27e4 -- …` (read-only) |
+| TestFlight | 13 Nov 2026 | **Withdrawn** (Pops) | Tap to Play worked on device but still ends in Messages: the tap only replaces picking a conversation, with more steps. Pulled; §0 |
 | 17.10 | 13 Nov 2026 | **Done** (checked by Claude against the SyLib tree, 13 Nov 2026; the choices are accepted; the colors and animation are S20's) | SyLib `main`. The suite is unchanged at **1613 passed, 1 skipped (1688 runs), 0 failed**, on `platform=iOS Simulator,name=iPhone SE (3rd generation),OS=18.6`, from the result bundle. No warnings in `GameNightSharingViews.swift`. syfive-ios builds with no change from this task. **Files:** `Views/GameNightSharingViews.swift`: `GameNightNearbyWaitingSheet` reads `@Environment(\.accessibilityReduceMotion)` and has a new first `Section`, shown in both states, holding `Image(systemName: "iphone.radiowaves.left.and.right")` with `.font(.system(size: 96))`, `.symbolRenderingMode(.palette)`, `.foregroundStyle(.primary, .green)`, `.symbolEffect(.variableColor.iterative.dimInactiveLayers, options: .repeating, isActive: !reduceMotion)` and `.accessibilityHidden(true)`, centered (`.frame(maxWidth: .infinity)`) on a clear row background. The init, the copy, the buttons and the advertising are unchanged. `Docs/GAME_NIGHT.md`: the waiting sheet's paragraph describes the icon and its Reduce Motion behavior. **The layer check (§5H's stop condition), as far as a session can see without rendering:** CoreGlyphs' `symbol_categories.plist` lists `iphone.radiowaves.left.and.right` under `"variable"`, so the symbol supports variable color, which animates the waves as layers separate from the iPhone; palette rendering follows the same layers. Whether the iPhone actually draws in the primary color and the waves in green can only be seen rendered, so it's an S20 check, not a ✅ here. **Choices to review:** (1) The icon is its own `List` section, above the body text, on a clear row background, so it sits where the body's section already sits rather than in a new container. (2) 96 pt is fixed, not scaled with Dynamic Type, per "about 96 pt". (3) "The waves fully green" under Reduce Motion relies on an inactive `symbolEffect` drawing the plain palette. GIT: `git status --short` (read-only) |
 | 17.9 | 13 Nov 2026 | **Done** (checked by Claude against the tree, 13 Nov 2026; S19 on device is Pops's) | syfive-ios `main`, SyLib unchanged. The build is clean, with no warnings in the changed files. **Suite:** before, 33 passed, 0 failed (36 runs); after, 33 passed, 0 failed (36 runs). Both on `platform=iOS Simulator,name=iPhone SE (3rd generation),OS=18.6`, from the result bundles. **Files:** `Views/ContentView.swift`: `@State var pendingStartStep: StartStep?`; `onDismiss: { runPendingStartStep(after: "startChoice") }` on the choice sheet and `onDismiss: { runPendingStartStep(after: "nearbyWaiting") }` on the waiting sheet. `Views/ContentView+GameNight.swift`: `enum StartStep { tapToPlay, faceTimeOrMessages, everyoneIn }` beside `LeadingNavSlot`. `chooseTapToPlay()` calls `beginNearbyHosting()` and records `.tapToPlay`; `chooseFaceTimeOrMessages()` records `.faceTimeOrMessages`; `finishNearbyInvitesAndPresentTable()` logs Everyone's In, calls `finishNearbyInvites()` and records `.everyoneIn`. The three `seatingSheetDelay` sleeps are gone, and the session-arrival delay (`ContentView.swift` 407) is the only one left. New `runPendingStartStep(after:)` takes the step, clears it and runs it with no delay: `.faceTimeOrMessages` → `beginHostingFromStart()`; `.tapToPlay` → the waiting sheet if `isAdvertisingNearby`, otherwise logs the skip; `.everyoneIn` → `presentGameNightSheetOrAlert()` if `isSessionActive`, otherwise warns. **Logging:** `startStep: recorded <step> isAdvertisingNearby= isSessionActive= token=`, and `startStep: <sheet> dismissed, running <step>: …`, `… <step> skipped: …` or `… nothing pending`. **Choices to review:** (1) `onDismiss` also fires when the app closes the waiting sheet itself (a session arrival, the background, the match starting). Nothing is recorded then, so it logs "nothing pending" and does nothing. (2) The recording helper is private to the extension, while `pendingStartStep` is internal `@State`, like the file's other sheet flags. (3) No sheet route enum (00A §12): the step is the one new state, alongside the existing `Bool` flags. GIT: `git status --short` (read-only) |
 | 17.8 | 13 Nov 2026 | **Done** (checked by Claude against the SyLib tree, 13 Nov 2026) | SyLib `main`. The suite is unchanged at **1613 passed, 1 skipped (1688 runs), 0 failed**, on `platform=iOS Simulator,name=iPhone SE (3rd generation),OS=18.6`, from the result bundle. No warnings in `GameNightSharingViews.swift`. syfive-ios builds with no change from this task. **Files:** `Views/GameNightSharingViews.swift`: the private `choiceCard` takes a `bestFor:` line, drawn under the first line in the same style (`.subheadline`, `.secondary`, wrapping); Tap to Play's is "Best for just iPhones at the same table." and FaceTime or Messages's is "Best if players aren't at the same table, or iPads are in the mix.", verbatim. The init, layout, spacing, footer, Cancel and behavior are unchanged. `Docs/GAME_NIGHT.md`: the sheet's paragraph gains both lines. **Choice to review:** the two lines sit in the card's existing `VStack` at its 4 pt spacing, so the "Best for" line is as far below the first line as the first line is below the label. **Not this task's:** syfive-ios's tree now also shows `SyFive/Utilities/AppConfig.swift` modified (next to 17.7's `MARKETING_VERSION` bump in `project.pbxproj`); the session didn't make it and left it alone. GIT: `git status --short` (read-only) |
@@ -597,6 +707,9 @@ If neither A nor C produces the prompt, 17 comes out of 1.2.0 and the rest ships
 |---|---|---|
 | 0 | 3 Nov 2026 | Note filed as `Docs/SyLib/27_SHAREPLAY_NEARBY.md` |
 | 1.0 | 6 Nov 2026 | Rewritten in house style, as `Requirements/17`; corrected against the tree |
+| 3.2 | 13 Nov 2026 | 17.12 done: SyLib is back to before `17`. **The withdrawal is complete in SyFive and SyLib**; Syderal's removal waits for its turn (§0.4) (Claude) |
+| 3.1 | 13 Nov 2026 | 17.11 done: SyFive is back to the picker (Claude) |
+| 3.0 | 13 Nov 2026 | **Withdrawn.** On TestFlight Tap to Play worked but still ends in Messages, so it only added steps. Pulled from SyFive, SyLib and (later) Syderal; the lesson is §0; removal Tasks 17.11 and 17.12; D-171 to D-174 and D-213 to D-216 withdrawn; D-217 (Pops) |
 | 2.12 | 13 Nov 2026 | 17.10 done; every task built. Guests may run the App Store build (§6). Next: the TestFlight run (Claude) |
 | 2.11 | 13 Nov 2026 | The waiting sheet gets Tap to Play's symbol, large, with the waves pulsing in shades of green (static under Reduce Motion) (§2.7). Task 17.10; S20; D-214 notes it (Pops) |
 | 2.10 | 13 Nov 2026 | 17.9 done; every task built. Next: S19 on device, then the TestFlight run (Claude) |

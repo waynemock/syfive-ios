@@ -1,7 +1,7 @@
 # SyFive — Project Guard Rails
 
 **Project-level. SyFive only.** Companion to `00A_STUDIO_CONVENTIONS.md`.
-Version 1.5 · 9 November 2026 · Ships in every agent prompt, alongside `00A`, `00_DECISION_LEDGER.md`
+Version 1.6 · 14 November 2026 · Ships in every agent prompt, alongside `00A`, `00_DECISION_LEDGER.md`
 and the task's own documents.
 
 ---
@@ -171,7 +171,8 @@ Before any archive, TestFlight or App Store build:
   `DebugFeel.showFeelBoard`, `DebugDice.showPhysicsSliders`, `DebugDice.showHarness`,
   `DebugDice.logRollDiagnostics`, `DebugCloudKit.runSchemaExercise` and
   `DebugGameNight.showLogs`.
-- `MARKETING_VERSION` is the release version in **both** of the app target's configurations.
+- `MARKETING_VERSION` is the release version in **both** of the app target's configurations. The
+  build number is not on this list: Xcode increments it on upload (`00A` §9).
 - CloudKit Production matches Development for `iCloud.com.syzygysoftwerksllc.SyFive` (D-026).
 
 ---
@@ -281,6 +282,7 @@ D-001 replaces its row. D-142 and D-143 are new, under Governance.
 
 | Version | Decision | Rationale |
 |---|---|---|
+| 1.6 | §6: the build number is Xcode's, not a checklist item; adopts `00A` v1.14 | Pops, 14 Nov 2026 |
 | 1.5 | §3: previews are written, never rendered or used as a check; no simulator or device sessions unless Pops asks in that message | The agent kept rendering previews (Pops, 9 Nov 2026), and a SyFive task even asked for a simulator check (`38` 38.3 v1.1). Score It \*'s `00B` has had both rules since 2 and 4 Nov 2026 |
 | 1.4 | E-1 is retired: SyFive's design documents are rewritten in place under `00A` §1 (D-001 rewritten, D-148 no longer an exception) | The SyLib-series docs were already versioned in place, so E-1 no longer matched practice (`34` 34.4). Earlier docs keep their Supersessions blocks. Pops, 9 Nov 2026 |
 | 1.3 | §5's totals come from the `.xcresult` bundle (`xcresulttool`), reported as tests and runs | Twice in `34` (34.1, 34.3) counting `passed` lines in xcodebuild's output missed a run, because parallel output split a line. The bundle is exact. Pops, 9 Nov 2026 |

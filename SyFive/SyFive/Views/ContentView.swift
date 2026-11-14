@@ -28,10 +28,6 @@ struct ContentView: View {
     @State var showsGameNightLocalConflictAlert = false
     @State var showsInviteInstructions = false
     @State var showsGameNightPendingSheet = false
-    @State var showsGameNightStartChoice = false
-    @State var showsGameNightNearbyWaiting = false
-    /// What the choice or waiting sheet's button chose; run from that sheet's onDismiss (17 §5G).
-    @State var pendingStartStep: StartStep? = nil
     @State var showsGameNightHelp = false
     @State var showsHowToPlay = false
     @State var showsICloud = false
@@ -330,15 +326,6 @@ struct ContentView: View {
             showsAbout = false
             showsFeelBoard = false
             showsInviteInstructions = false
-            // Keep tapping (17 §2.7, §5E): a host still advertising keeps the waiting sheet up, and
-            // Everyone's In presents the table. Any other arrival closes it; the table follows below.
-            let keepsNearbyWaiting = gameNight.role == .host && gameNight.session.isAdvertisingNearby
-            if keepsNearbyWaiting {
-                logger.info(self, "onChange(sessionActivationCount): host still advertising, keeping nearby waiting sheet up showing=\(showsGameNightNearbyWaiting) participantCount=\(gameNight.session.participantCount) token=\(gameNight.session.nearbyHostToken?.uuidString ?? "nil")")
-            } else if showsGameNightNearbyWaiting {
-                logger.info(self, "onChange(sessionActivationCount): closing nearby waiting sheet role=\(String(describing: gameNight.role))")
-                showsGameNightNearbyWaiting = false
-            }
             gameNight.attach(matchController: model)
             // Wire score announcement banner for GN guest path (opponent scores via matchState diff).
             let announcementCoordinator = celebrationCoordinator
@@ -394,9 +381,6 @@ struct ContentView: View {
             // sheet. Fresh sessions, and a recording this session cannot resume, show it normally.
             if gameNight.coordinator.consumePendingHostResume() {
                 // Resumed: guests follow from the matchState it sent. No seating sheet.
-            } else if keepsNearbyWaiting {
-                // Keep tapping: Everyone's In presents the table (17 §5E).
-                logger.info(self, "onChange(sessionActivationCount): not presenting the table, waiting for Everyone's In")
             } else {
                 // Delay sheet presentation so the UIKit GroupActivitySharingController
                 // dismiss animation (~0.35s) fully completes before SwiftUI presents.
@@ -417,10 +401,6 @@ struct ContentView: View {
         .onChange(of: gameNight.phase) { _, newPhase in
             if newPhase == .inProgress {
                 showsGameNight = false
-                if showsGameNightNearbyWaiting {
-                    logger.info(self, "onChange(phase): inProgress, closing nearby waiting sheet")
-                    showsGameNightNearbyWaiting = false
-                }
                 upsertGameNightPlayerModels()
             }
             // Re-show the seating sheet when the host calls playAgain().
@@ -447,19 +427,6 @@ struct ContentView: View {
             case .background:
                 director.stopAudioForBackground()
                 saveShuffleForBackground()
-                // Tap to Play stops in the background (17 §2.7, §5E). Before anyone has joined it
-                // cancels, so a stale preparation can't claim a later session; with a live session
-                // it only stops advertising.
-                if gameNight.session.isAdvertisingNearby {
-                    if gameNight.isSessionActive {
-                        logger.info(self, "scenePhase background: live session, finishing nearby invites participantCount=\(gameNight.session.participantCount) token=\(gameNight.session.nearbyHostToken?.uuidString ?? "nil")")
-                        gameNight.session.finishNearbyInvites()
-                    } else {
-                        logger.info(self, "scenePhase background: no session yet, cancelling nearby hosting token=\(gameNight.session.nearbyHostToken?.uuidString ?? "nil")")
-                        gameNight.cancelHostPreparation()
-                    }
-                    showsGameNightNearbyWaiting = false
-                }
             case .active:
                 director.handleForeground()
                 // The legacy data repairs that ran here were retired (34 §2.8–2.9).
@@ -562,31 +529,6 @@ struct ContentView: View {
             GameNightPendingSheet(accentColor: theme.primaryAccent) {
                 gameNight.cancelHostPreparation()
             }
-            .sheetTextSizeCeiling()
-        }
-        .sheet(isPresented: $showsGameNightStartChoice, onDismiss: { runPendingStartStep(after: "startChoice") }) {
-            GameNightStartChoiceSheet(
-                appName: "SyFive",
-                accentColor: theme.primaryAccent,
-                onTapToPlay: { chooseTapToPlay() },
-                onInvite: { chooseFaceTimeOrMessages() },
-                onCancel: { logger.info(self, "startChoice: cancelled") }
-            )
-            .sheetTextSizeCeiling()
-        }
-        .sheet(isPresented: $showsGameNightNearbyWaiting, onDismiss: { runPendingStartStep(after: "nearbyWaiting") }) {
-            GameNightNearbyWaitingSheet(
-                activity: GameNightActivity(hostToken: gameNight.session.nearbyHostToken),
-                title: GameNightActivity.title,
-                appName: "SyFive",
-                accentColor: theme.primaryAccent,
-                participantCount: gameNight.session.participantCount,
-                onCancel: {
-                    logger.info(self, "nearbyWaiting: Cancel Game Night token=\(gameNight.session.nearbyHostToken?.uuidString ?? "nil")")
-                    gameNight.cancelHostPreparation()
-                },
-                onEveryoneIn: { finishNearbyInvitesAndPresentTable() }
-            )
             .sheetTextSizeCeiling()
         }
         .sheet(isPresented: $showsGameNightHelp) {
